@@ -19,7 +19,6 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PortfolioItem } from '@/types';
 
-// Mock data for portfolio items
 const mockPortfolioItems: PortfolioItem[] = [
   {
     id: '1',
@@ -91,7 +90,7 @@ const categoryOptions = [
   { value: 'mobile-app', label: 'Aplicativo Móvel' },
   { value: 'desktop-app', label: 'Aplicativo Desktop' },
   { value: 'integration', label: 'Integração' },
-  { value: 'ai-solution', label: 'Solução IA' },
+  { value: 'ai-solution', label: 'Soluç��o IA' },
   { value: 'other', label: 'Outro' }
 ];
 
@@ -175,13 +174,11 @@ const AdminPortfolio = () => {
 
   const handleAddImageUrl = () => {
     if (currentItem) {
-      // This is a mock function. In a real app, you'd implement an image upload functionality
       const mockImageUrl = `/portfolio/image-${Date.now()}.jpg`;
       
       setCurrentItem({
         ...currentItem,
         images: [...currentItem.images, mockImageUrl],
-        // If no featured image is set yet, make this the featured image
         featuredImage: currentItem.featuredImage || mockImageUrl
       });
       
@@ -193,7 +190,6 @@ const AdminPortfolio = () => {
     if (currentItem) {
       const updatedImages = currentItem.images.filter(img => img !== imageUrl);
       
-      // If we're removing the featured image, reset it
       const updatedFeaturedImage = 
         currentItem.featuredImage === imageUrl 
           ? (updatedImages.length > 0 ? updatedImages[0] : undefined) 
@@ -220,12 +216,10 @@ const AdminPortfolio = () => {
       return;
     }
 
-    // If it's a new item
     if (currentItem.id.startsWith('portfolio-')) {
       setPortfolioItems([...portfolioItems, currentItem]);
       toast.success('Novo projeto adicionado ao portfólio');
     } else {
-      // Updating existing item
       setPortfolioItems(portfolioItems.map(item => 
         item.id === currentItem.id ? currentItem : item
       ));
@@ -236,7 +230,6 @@ const AdminPortfolio = () => {
     setCurrentItem(null);
   };
 
-  // Filter and sort portfolio items
   const filteredAndSortedItems = portfolioItems
     .filter(item => 
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -371,225 +364,5 @@ const AdminPortfolio = () => {
           )}
         </div>
 
-        {/* Project Edit/Create Modal */}
-        {showProjectModal && currentItem && (
-          <Dialog open={showProjectModal} onOpenChange={setShowProjectModal}>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {currentItem.id.startsWith('portfolio-') ? 'Adicionar Projeto' : 'Editar Projeto'}
-                </DialogTitle>
-                <DialogDescription>
-                  Preencha os detalhes do projeto para o portfólio.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="title">Título do Projeto*</Label>
-                  <Input 
-                    id="title"
-                    value={currentItem.title}
-                    onChange={(e) => setCurrentItem({...currentItem, title: e.target.value})}
-                    placeholder="Ex: Website Corporativo"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="client">Cliente*</Label>
-                  <Input 
-                    id="client"
-                    value={currentItem.client}
-                    onChange={(e) => setCurrentItem({...currentItem, client: e.target.value})}
-                    placeholder="Ex: Empresa XYZ"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea 
-                    id="description"
-                    value={currentItem.description}
-                    onChange={(e) => setCurrentItem({...currentItem, description: e.target.value})}
-                    placeholder="Descreva o projeto e seus objetivos"
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="category">Categoria</Label>
-                    <Select
-                      value={currentItem.category}
-                      onValueChange={(value) => setCurrentItem({...currentItem, category: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="completed">Data de Conclusão</Label>
-                    <Input 
-                      id="completed"
-                      type="date"
-                      value={currentItem.completed.toISOString().split('T')[0]}
-                      onChange={(e) => setCurrentItem({
-                        ...currentItem, 
-                        completed: new Date(e.target.value)
-                      })}
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="link">Link do Projeto (opcional)</Label>
-                  <Input 
-                    id="link"
-                    value={currentItem.link || ''}
-                    onChange={(e) => setCurrentItem({...currentItem, link: e.target.value})}
-                    placeholder="Ex: https://www.projeto.com.br"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="featured">Destaque</Label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="featured"
-                      checked={currentItem.featured}
-                      onChange={(e) => setCurrentItem({...currentItem, featured: e.target.checked})}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <Label htmlFor="featured" className="text-sm font-normal">
-                      Mostrar este projeto em destaque no site
-                    </Label>
-                  </div>
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label>Tecnologias</Label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {currentItem.technologies.map((tech, i) => (
-                      <Badge key={i} variant="secondary" className="flex items-center gap-1">
-                        {tech}
-                        <button 
-                          onClick={() => removeTechnology(tech)}
-                          className="ml-1 text-xs hover:text-destructive"
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input 
-                      value={newTech}
-                      onChange={(e) => setNewTech(e.target.value)}
-                      placeholder="Adicionar tecnologia"
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTechnology())}
-                    />
-                    <Button type="button" size="sm" onClick={addTechnology}>
-                      Adicionar
-                    </Button>
-                  </div>
-                </div>
+        {
 
-                {/* Images Management Section */}
-                <div className="grid gap-2">
-                  <Label>Imagens do Projeto</Label>
-                  
-                  {/* Image Gallery */}
-                  {currentItem.images.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-                      {currentItem.images.map((img, i) => (
-                        <div key={i} className="relative group">
-                          <div className="relative aspect-video rounded-md overflow-hidden border bg-muted">
-                            <img 
-                              src={img} 
-                              alt={`Imagem ${i+1}`}
-                              className="object-cover w-full h-full"
-                            />
-                            {img === currentItem.featuredImage && (
-                              <div className="absolute bottom-1 left-1">
-                                <Badge variant="secondary" className="text-xs bg-background/70 backdrop-blur-sm">
-                                  Destaque
-                                </Badge>
-                              </div>
-                            )}
-                          </div>
-                          <div className="absolute inset-0 bg-background/70 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-                            {img !== currentItem.featuredImage && (
-                              <Button 
-                                size="sm" 
-                                variant="secondary" 
-                                className="h-8 px-2"
-                                onClick={() => handleSetFeaturedImage(img)}
-                              >
-                                <ImageIcon className="h-3.5 w-3.5 mr-1" /> Destacar
-                              </Button>
-                            )}
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              className="h-8 w-8 p-0"
-                              onClick={() => removeImage(img)}
-                            >
-                              <Trash className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-6 border rounded-md bg-muted/20">
-                      <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        Nenhuma imagem adicionada
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Image Input (in a real app, this would be a file upload) */}
-                  <div className="mt-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={handleAddImageUrl}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" /> Adicionar Imagem
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-1 text-center">
-                      Em um aplicativo real, este seria um controle para upload de imagens.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowProjectModal(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleSave}>
-                  {currentItem.id.startsWith('portfolio-') ? 'Criar Projeto' : 'Salvar Alterações'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-    </AdminLayout>
-  );
-};
-
-export default AdminPortfolio;
