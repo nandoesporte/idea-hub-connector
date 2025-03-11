@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -522,7 +521,7 @@ const AdminPortfolio = () => {
                             />
                             {img === currentItem.featuredImage && (
                               <div className="absolute bottom-1 left-1">
-                                <Badge size="sm" variant="secondary" className="text-xs bg-background/70 backdrop-blur-sm">
+                                <Badge variant="secondary" className="text-xs bg-background/70 backdrop-blur-sm">
                                   Destaque
                                 </Badge>
                               </div>
