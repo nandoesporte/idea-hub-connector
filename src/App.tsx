@@ -10,6 +10,9 @@ import SubmitIdea from "./pages/SubmitIdea";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
+import ProjectTracking from "./pages/ProjectTracking";
+import AdminPanel from "./pages/AdminPanel";
+import Portfolio from "./pages/Portfolio";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +28,9 @@ const App = () => (
           <Route path="/submit-idea" element={<SubmitIdea />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/projects" element={<ProjectTracking />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/portfolio" element={<Portfolio />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
