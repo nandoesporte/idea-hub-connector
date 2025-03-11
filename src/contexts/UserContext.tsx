@@ -1,8 +1,8 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 type UserContextType = {
   session: Session | null;
@@ -35,6 +35,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setSession(session);
         setUser(session?.user ?? null);
+
+        // Set admin role for specific user
+        if (session?.user?.email === 'kcsantin@gmail.com') {
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: { role: 'admin' }
+          });
+
+          if (updateError) {
+            toast.error('Erro ao definir permissões de administrador');
+          } else {
+            toast.success('Permissões de administrador definidas com sucesso');
+          }
+        }
       }
       setLoading(false);
     };
