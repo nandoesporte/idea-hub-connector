@@ -18,13 +18,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow users to view their own profile
-CREATE POLICY "Users can view their own profile" 
+CREATE POLICY IF NOT EXISTS "Users can view their own profile" 
 ON public.profiles 
 FOR SELECT 
 USING (auth.uid() = id);
 
 -- Create policy to allow users to update their own profile
-CREATE POLICY "Users can update their own profile" 
+CREATE POLICY IF NOT EXISTS "Users can update their own profile" 
 ON public.profiles 
 FOR UPDATE 
 USING (auth.uid() = id);
@@ -78,25 +78,25 @@ CREATE TABLE IF NOT EXISTS public.projects (
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow users to view their own projects
-CREATE POLICY "Users can view their own projects" 
+CREATE POLICY IF NOT EXISTS "Users can view their own projects" 
 ON public.projects 
 FOR SELECT 
 USING (auth.uid() = user_id);
 
 -- Create policy to allow users to insert their own projects
-CREATE POLICY "Users can insert their own projects" 
+CREATE POLICY IF NOT EXISTS "Users can insert their own projects" 
 ON public.projects 
 FOR INSERT 
 WITH CHECK (auth.uid() = user_id);
 
 -- Create policy to allow users to update their own projects
-CREATE POLICY "Users can update their own projects" 
+CREATE POLICY IF NOT EXISTS "Users can update their own projects" 
 ON public.projects 
 FOR UPDATE 
 USING (auth.uid() = user_id);
 
 -- Create a trigger to automatically update the updated_at column
-CREATE TRIGGER update_projects_updated_at
+CREATE TRIGGER IF NOT EXISTS update_projects_updated_at
   BEFORE UPDATE ON public.projects
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS public.project_attachments (
 ALTER TABLE public.project_attachments ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow users to view attachments of their own projects
-CREATE POLICY "Users can view attachments of their own projects" 
+CREATE POLICY IF NOT EXISTS "Users can view attachments of their own projects" 
 ON public.project_attachments 
 FOR SELECT 
 USING (auth.uid() IN (
@@ -123,7 +123,7 @@ USING (auth.uid() IN (
 ));
 
 -- Create policy to allow users to insert attachments to their own projects
-CREATE POLICY "Users can insert attachments to their own projects" 
+CREATE POLICY IF NOT EXISTS "Users can insert attachments to their own projects" 
 ON public.project_attachments 
 FOR INSERT 
 WITH CHECK (auth.uid() IN (
@@ -131,7 +131,7 @@ WITH CHECK (auth.uid() IN (
 ));
 
 -- Create policy to allow users to delete attachments from their own projects
-CREATE POLICY "Users can delete attachments from their own projects" 
+CREATE POLICY IF NOT EXISTS "Users can delete attachments from their own projects" 
 ON public.project_attachments 
 FOR DELETE 
 USING (auth.uid() IN (
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS public.project_status_updates (
 ALTER TABLE public.project_status_updates ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow users to view status updates of their own projects
-CREATE POLICY "Users can view status updates of their own projects" 
+CREATE POLICY IF NOT EXISTS "Users can view status updates of their own projects" 
 ON public.project_status_updates 
 FOR SELECT 
 USING (auth.uid() IN (
@@ -160,7 +160,7 @@ USING (auth.uid() IN (
 ) OR auth.uid() = created_by);
 
 -- Create policy to allow users to insert status updates to their own projects or by admins
-CREATE POLICY "Users can insert status updates" 
+CREATE POLICY IF NOT EXISTS "Users can insert status updates" 
 ON public.project_status_updates 
 FOR INSERT 
 WITH CHECK (auth.uid() IN (
@@ -189,13 +189,13 @@ CREATE TABLE IF NOT EXISTS public.portfolio_items (
 ALTER TABLE public.portfolio_items ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow all users to view portfolio items
-CREATE POLICY "All users can view portfolio items" 
+CREATE POLICY IF NOT EXISTS "All users can view portfolio items" 
 ON public.portfolio_items 
 FOR SELECT 
 USING (true);
 
 -- Create policy to allow only admins to insert portfolio items
-CREATE POLICY "Only admins can insert portfolio items" 
+CREATE POLICY IF NOT EXISTS "Only admins can insert portfolio items" 
 ON public.portfolio_items 
 FOR INSERT 
 WITH CHECK (auth.uid() IN (
@@ -203,7 +203,7 @@ WITH CHECK (auth.uid() IN (
 ));
 
 -- Create policy to allow only admins to update portfolio items
-CREATE POLICY "Only admins can update portfolio items" 
+CREATE POLICY IF NOT EXISTS "Only admins can update portfolio items" 
 ON public.portfolio_items 
 FOR UPDATE 
 USING (auth.uid() IN (
@@ -211,7 +211,7 @@ USING (auth.uid() IN (
 ));
 
 -- Create policy to allow only admins to delete portfolio items
-CREATE POLICY "Only admins can delete portfolio items" 
+CREATE POLICY IF NOT EXISTS "Only admins can delete portfolio items" 
 ON public.portfolio_items 
 FOR DELETE 
 USING (auth.uid() IN (
@@ -219,7 +219,7 @@ USING (auth.uid() IN (
 ));
 
 -- Create a trigger to automatically update the updated_at column
-CREATE TRIGGER update_portfolio_items_updated_at
+CREATE TRIGGER IF NOT EXISTS update_portfolio_items_updated_at
   BEFORE UPDATE ON public.portfolio_items
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
@@ -237,13 +237,13 @@ CREATE TABLE IF NOT EXISTS public.portfolio_images (
 ALTER TABLE public.portfolio_images ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow all users to view portfolio images
-CREATE POLICY "All users can view portfolio images" 
+CREATE POLICY IF NOT EXISTS "All users can view portfolio images" 
 ON public.portfolio_images 
 FOR SELECT 
 USING (true);
 
 -- Create policy to allow only admins to insert portfolio images
-CREATE POLICY "Only admins can insert portfolio images" 
+CREATE POLICY IF NOT EXISTS "Only admins can insert portfolio images" 
 ON public.portfolio_images 
 FOR INSERT 
 WITH CHECK (auth.uid() IN (
@@ -251,7 +251,7 @@ WITH CHECK (auth.uid() IN (
 ));
 
 -- Create policy to allow only admins to update portfolio images
-CREATE POLICY "Only admins can update portfolio images" 
+CREATE POLICY IF NOT EXISTS "Only admins can update portfolio images" 
 ON public.portfolio_images 
 FOR UPDATE 
 USING (auth.uid() IN (
@@ -259,7 +259,7 @@ USING (auth.uid() IN (
 ));
 
 -- Create policy to allow only admins to delete portfolio images
-CREATE POLICY "Only admins can delete portfolio images" 
+CREATE POLICY IF NOT EXISTS "Only admins can delete portfolio images" 
 ON public.portfolio_images 
 FOR DELETE 
 USING (auth.uid() IN (
@@ -284,13 +284,13 @@ CREATE TABLE IF NOT EXISTS public.testimonials (
 ALTER TABLE public.testimonials ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow all users to view testimonials
-CREATE POLICY "All users can view testimonials" 
+CREATE POLICY IF NOT EXISTS "All users can view testimonials" 
 ON public.testimonials 
 FOR SELECT 
 USING (true);
 
 -- Create policy to allow only admins to insert testimonials
-CREATE POLICY "Only admins can insert testimonials" 
+CREATE POLICY IF NOT EXISTS "Only admins can insert testimonials" 
 ON public.testimonials 
 FOR INSERT 
 WITH CHECK (auth.uid() IN (
@@ -298,7 +298,7 @@ WITH CHECK (auth.uid() IN (
 ));
 
 -- Create policy to allow only admins to update testimonials
-CREATE POLICY "Only admins can update testimonials" 
+CREATE POLICY IF NOT EXISTS "Only admins can update testimonials" 
 ON public.testimonials 
 FOR UPDATE 
 USING (auth.uid() IN (
@@ -306,7 +306,7 @@ USING (auth.uid() IN (
 ));
 
 -- Create policy to allow only admins to delete testimonials
-CREATE POLICY "Only admins can delete testimonials" 
+CREATE POLICY IF NOT EXISTS "Only admins can delete testimonials" 
 ON public.testimonials 
 FOR DELETE 
 USING (auth.uid() IN (
@@ -314,7 +314,7 @@ USING (auth.uid() IN (
 ));
 
 -- Create a trigger to automatically update the updated_at column
-CREATE TRIGGER update_testimonials_updated_at
+CREATE TRIGGER IF NOT EXISTS update_testimonials_updated_at
   BEFORE UPDATE ON public.testimonials
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
@@ -335,13 +335,13 @@ CREATE TABLE IF NOT EXISTS public.contact_messages (
 ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow any user to insert a contact message
-CREATE POLICY "Anyone can submit a contact message" 
+CREATE POLICY IF NOT EXISTS "Anyone can submit a contact message" 
 ON public.contact_messages 
 FOR INSERT 
 WITH CHECK (true);
 
 -- Create policy to allow only admins to view contact messages
-CREATE POLICY "Only admins can view contact messages" 
+CREATE POLICY IF NOT EXISTS "Only admins can view contact messages" 
 ON public.contact_messages 
 FOR SELECT 
 USING (auth.uid() IN (
@@ -349,7 +349,7 @@ USING (auth.uid() IN (
 ));
 
 -- Create policy to allow only admins to update contact messages
-CREATE POLICY "Only admins can update contact messages" 
+CREATE POLICY IF NOT EXISTS "Only admins can update contact messages" 
 ON public.contact_messages 
 FOR UPDATE 
 USING (auth.uid() IN (
@@ -357,6 +357,6 @@ USING (auth.uid() IN (
 ));
 
 -- Create a trigger to automatically update the updated_at column
-CREATE TRIGGER update_contact_messages_updated_at
+CREATE TRIGGER IF NOT EXISTS update_contact_messages_updated_at
   BEFORE UPDATE ON public.contact_messages
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
