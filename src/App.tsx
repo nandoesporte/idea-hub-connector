@@ -15,6 +15,10 @@ import ProjectDetails from "./pages/ProjectDetails";
 import AdminPanel from "./pages/AdminPanel";
 import Portfolio from "./pages/Portfolio";
 import PortfolioDetails from "./pages/PortfolioDetails";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { UserProvider } from "./contexts/UserContext";
 
 const queryClient = new QueryClient();
 
@@ -24,20 +28,34 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/submit-idea" element={<SubmitIdea />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/projects" element={<ProjectTracking />} />
-          <Route path="/projects/:id" element={<ProjectDetails />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/portfolio/:id" element={<PortfolioDetails />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <UserProvider>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/portfolio/:id" element={<PortfolioDetails />} />
+            
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/submit-idea" element={<SubmitIdea />} />
+              <Route path="/projects" element={<ProjectTracking />} />
+              <Route path="/projects/:id" element={<ProjectDetails />} />
+            </Route>
+            
+            {/* Admin routes (we could add another level of protection) */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/admin" element={<AdminPanel />} />
+            </Route>
+            
+            {/* Catch-all route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </UserProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

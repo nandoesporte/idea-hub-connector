@@ -1,51 +1,59 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { useUser } from '@/contexts/UserContext';
+import { supabase } from '@/lib/supabase';
 
-const Login = () => {
+const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const navigate = useNavigate();
-  const { signIn } = useUser();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  useEffect(() => {
+    // Check if we have the password recovery hash
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    
+    if (type !== 'recovery') {
+      toast.error("Link de recuperação inválido.");
+      navigate('/login');
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password) {
+    if (!password || !confirmPassword) {
       toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      toast.error("As senhas não coincidem.");
       return;
     }
     
     setIsLoading(true);
     
     try {
-      const { error } = await signIn(formData.email, formData.password);
+      const { error } = await supabase.auth.updateUser({ password });
       
       if (error) {
-        toast.error("Credenciais inválidas. Por favor, verifique seu email e senha.");
+        toast.error("Ocorreu um erro ao redefinir sua senha.");
         console.error(error);
         return;
       }
       
-      toast.success("Login realizado com sucesso!");
-      navigate('/dashboard');
+      toast.success("Senha redefinida com sucesso!");
+      navigate('/login');
       
     } catch (error) {
-      toast.error("Ocorreu um erro ao fazer login. Por favor, verifique suas credenciais.");
+      toast.error("Ocorreu um erro ao redefinir sua senha.");
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -56,41 +64,34 @@ const Login = () => {
     <MainLayout className="max-w-md mx-auto animate-fade-in">
       <div className="space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Bem-vindo de volta</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Redefinir Senha</h1>
           <p className="text-muted-foreground">
-            Entre com sua conta para acessar seus projetos
+            Crie uma nova senha para sua conta
           </p>
         </div>
         
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="password">Nova Senha</Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={formData.email}
-                onChange={handleChange}
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Senha</Label>
-                <Link to="/forgot-password" className="text-xs text-primary hover:text-primary/80 hover:underline">
-                  Esqueceu a senha?
-                </Link>
-              </div>
+              <Label htmlFor="confirmPassword">Confirme a Nova Senha</Label>
               <Input
-                id="password"
-                name="password"
+                id="confirmPassword"
                 type="password"
                 placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
             </div>
@@ -100,16 +101,16 @@ const Login = () => {
               className="w-full shadow-sm" 
               disabled={isLoading}
             >
-              {isLoading ? "Entrando..." : "Entrar"}
+              {isLoading ? "Redefinindo..." : "Redefinir Senha"}
             </Button>
           </form>
         </div>
         
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
-            Não tem uma conta?{" "}
-            <Link to="/register" className="text-primary hover:text-primary/80 hover:underline">
-              Crie uma agora
+            Lembrou sua senha?{" "}
+            <Link to="/login" className="text-primary hover:text-primary/80 hover:underline">
+              Voltar para login
             </Link>
           </p>
         </div>
@@ -118,4 +119,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default ResetPassword;

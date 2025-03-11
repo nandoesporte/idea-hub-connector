@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useUser } from '@/contexts/UserContext';
 
 const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -16,6 +17,7 @@ const Register = () => {
     confirmPassword: '',
   });
   const navigate = useNavigate();
+  const { signUp } = useUser();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -38,11 +40,19 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      // Here would be the API call to register
-      // For now we'll just simulate a delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const { error } = await signUp(formData.email, formData.password, formData.name);
       
-      toast.success("Conta criada com sucesso!");
+      if (error) {
+        if (error.message.includes('already registered')) {
+          toast.error("Email já registrado. Tente fazer login ou use outro email.");
+        } else {
+          toast.error("Ocorreu um erro ao criar sua conta. Por favor, tente novamente.");
+        }
+        console.error(error);
+        return;
+      }
+      
+      toast.success("Conta criada com sucesso! Verifique seu email para confirmar o cadastro.");
       navigate('/dashboard');
       
     } catch (error) {

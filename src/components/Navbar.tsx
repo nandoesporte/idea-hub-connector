@@ -4,6 +4,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { NavigationItem } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUser } from '@/contexts/UserContext';
+import UserProfile from './UserProfile';
 
 const navigationItems: NavigationItem[] = [
   { label: 'Início', href: '/' },
@@ -18,6 +20,7 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const isMobile = useIsMobile();
+  const { user } = useUser();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -63,12 +66,18 @@ const Navbar = () => {
             ))}
           </ul>
           <div className="flex items-center space-x-4">
-            <Link to="/login">
-              <Button variant="ghost" size="sm" className="hover:bg-primary/5 transition-colors duration-300">Entrar</Button>
-            </Link>
-            <Link to="/register">
-              <Button size="sm" className="shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">Criar Conta</Button>
-            </Link>
+            {user ? (
+              <UserProfile />
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="ghost" size="sm" className="hover:bg-primary/5 transition-colors duration-300">Entrar</Button>
+                </Link>
+                <Link to="/register">
+                  <Button size="sm" className="shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">Criar Conta</Button>
+                </Link>
+              </>
+            )}
           </div>
         </nav>
 
@@ -120,12 +129,20 @@ const Navbar = () => {
               ))}
             </nav>
             <div className="flex flex-col space-y-3 pt-4 border-t">
-              <Link to="/login">
-                <Button variant="ghost" size="sm" className="w-full justify-start">Entrar</Button>
-              </Link>
-              <Link to="/register">
-                <Button size="sm" className="w-full">Criar Conta</Button>
-              </Link>
+              {user ? (
+                <div className="py-2">
+                  <UserProfile />
+                </div>
+              ) : (
+                <>
+                  <Link to="/login">
+                    <Button variant="ghost" size="sm" className="w-full justify-start">Entrar</Button>
+                  </Link>
+                  <Link to="/register">
+                    <Button size="sm" className="w-full">Criar Conta</Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
