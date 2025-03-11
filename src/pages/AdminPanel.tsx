@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import MainLayout from '@/layouts/MainLayout';
 import { ProjectIdea } from '@/types';
@@ -289,7 +290,7 @@ const AdminPanel = () => {
           <div className="flex gap-2 items-center">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <Select 
-              onValueChange={(value) => setSelectedStatus(value || null)}
+              onValueChange={(value) => setSelectedStatus(value === "all" ? null : value)}
             >
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Filtrar por status" />
@@ -397,4 +398,3 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
-
