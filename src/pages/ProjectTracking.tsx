@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
@@ -101,11 +102,13 @@ const ProjectCard = ({ project }: { project: ProjectIdea }) => {
   };
 
   return (
-    <Card className="mb-4 hover:shadow-md transition-shadow">
+    <Card className="mb-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 border border-border/60 overflow-hidden group">
+      <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-primary/70 to-blue-400/70 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+      
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-xl">{project.title}</CardTitle>
+            <CardTitle className="text-xl group-hover:text-primary transition-colors duration-300">{project.title}</CardTitle>
             <CardDescription className="mt-1 text-sm text-gray-500">
               Criado em {formatDate(project.createdAt)}
             </CardDescription>
@@ -135,14 +138,14 @@ const ProjectCard = ({ project }: { project: ProjectIdea }) => {
           )}
         </div>
       </CardContent>
-      <CardFooter className="pt-0 justify-between">
+      <CardFooter className="pt-0 justify-between border-t border-border/40 mt-2 py-3">
         <div className="text-sm text-muted-foreground">
           {project.budget && <div>Orçamento: {project.budget}</div>}
           {project.timeline && <div>Prazo: {project.timeline}</div>}
         </div>
-        <Link to={`/projects/${project.id}`} className="flex items-center space-x-1 text-sm font-medium text-primary">
-          <span>Ver detalhes</span>
-          <ChevronRight className="h-4 w-4" />
+        <Link to={`/projects/${project.id}`} className="flex items-center space-x-1 text-sm font-medium text-primary group/link">
+          <span className="relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-primary after:origin-right after:scale-x-0 after:transition-transform after:duration-300 group-hover/link:after:origin-left group-hover/link:after:scale-x-100">Ver detalhes</span>
+          <ChevronRight className="h-4 w-4 transform transition-transform duration-300 group-hover/link:translate-x-0.5" />
         </Link>
       </CardFooter>
     </Card>
@@ -154,65 +157,67 @@ const ProjectTracking = () => {
 
   return (
     <MainLayout className="max-w-5xl mx-auto">
-      <div className="space-y-6 pb-10">
+      <div className="space-y-8 pb-10">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Meus Projetos</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            <span className="text-gradient">Meus Projetos</span>
+          </h1>
           <p className="text-muted-foreground">
             Acompanhe o status e detalhes dos seus projetos submetidos.
           </p>
         </div>
 
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="all">Todos</TabsTrigger>
-            <TabsTrigger value="pending">Pendentes</TabsTrigger>
-            <TabsTrigger value="active">Ativos</TabsTrigger>
-            <TabsTrigger value="completed">Concluídos</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 rounded-lg p-1 shadow-inner bg-muted/50">
+            <TabsTrigger value="all" className="rounded-md data-[state=active]:shadow-sm">Todos</TabsTrigger>
+            <TabsTrigger value="pending" className="rounded-md data-[state=active]:shadow-sm">Pendentes</TabsTrigger>
+            <TabsTrigger value="active" className="rounded-md data-[state=active]:shadow-sm">Ativos</TabsTrigger>
+            <TabsTrigger value="completed" className="rounded-md data-[state=active]:shadow-sm">Concluídos</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="all" className="mt-6">
+          <TabsContent value="all" className="mt-6 animate-fade-in">
             {projects.length > 0 ? (
               projects.map(project => (
                 <ProjectCard key={project.id} project={project} />
               ))
             ) : (
-              <div className="text-center py-12">
+              <div className="text-center py-12 rounded-lg border border-dashed animate-pulse">
                 <p className="text-muted-foreground">Você ainda não submeteu nenhum projeto.</p>
               </div>
             )}
           </TabsContent>
           
-          <TabsContent value="pending" className="mt-6">
+          <TabsContent value="pending" className="mt-6 animate-fade-in">
             {projects.filter(p => p.status === 'pending' || p.status === 'under-review').length > 0 ? (
               projects
                 .filter(p => p.status === 'pending' || p.status === 'under-review')
                 .map(project => <ProjectCard key={project.id} project={project} />)
             ) : (
-              <div className="text-center py-12">
+              <div className="text-center py-12 rounded-lg border border-dashed animate-pulse">
                 <p className="text-muted-foreground">Nenhum projeto pendente no momento.</p>
               </div>
             )}
           </TabsContent>
           
-          <TabsContent value="active" className="mt-6">
+          <TabsContent value="active" className="mt-6 animate-fade-in">
             {projects.filter(p => p.status === 'approved' || p.status === 'in-progress').length > 0 ? (
               projects
                 .filter(p => p.status === 'approved' || p.status === 'in-progress')
                 .map(project => <ProjectCard key={project.id} project={project} />)
             ) : (
-              <div className="text-center py-12">
+              <div className="text-center py-12 rounded-lg border border-dashed animate-pulse">
                 <p className="text-muted-foreground">Nenhum projeto ativo no momento.</p>
               </div>
             )}
           </TabsContent>
           
-          <TabsContent value="completed" className="mt-6">
+          <TabsContent value="completed" className="mt-6 animate-fade-in">
             {projects.filter(p => p.status === 'completed' || p.status === 'rejected').length > 0 ? (
               projects
                 .filter(p => p.status === 'completed' || p.status === 'rejected')
                 .map(project => <ProjectCard key={project.id} project={project} />)
             ) : (
-              <div className="text-center py-12">
+              <div className="text-center py-12 rounded-lg border border-dashed animate-pulse">
                 <p className="text-muted-foreground">Nenhum projeto concluído no momento.</p>
               </div>
             )}

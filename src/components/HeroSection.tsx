@@ -8,13 +8,13 @@ const HeroSection = () => {
     <section className="relative overflow-hidden">
       {/* Background elements */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-[30%] -right-[10%] h-[500px] w-[500px] rounded-full bg-primary/10 blur-[100px]" />
-        <div className="absolute -bottom-[20%] -left-[10%] h-[600px] w-[600px] rounded-full bg-blue-400/10 blur-[100px]" />
+        <div className="absolute -top-[30%] -right-[10%] h-[500px] w-[500px] rounded-full bg-primary/10 blur-[100px] animate-pulse-slow" />
+        <div className="absolute -bottom-[20%] -left-[10%] h-[600px] w-[600px] rounded-full bg-blue-400/10 blur-[100px] animate-pulse-slow" />
       </div>
       
       <div className="container flex flex-col items-center text-center py-16 md:py-24 space-y-10 max-w-4xl">
-        <div className="inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium bg-muted/50 backdrop-blur-sm animate-fade-in">
-          <span className="mr-1 h-2 w-2 rounded-full bg-primary"></span>
+        <div className="inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium bg-muted/50 backdrop-blur-sm animate-fade-in shadow-sm">
+          <span className="mr-1 h-2 w-2 rounded-full bg-primary animate-pulse"></span>
           <span>Transforme suas ideias em realidade digital</span>
         </div>
         
@@ -29,12 +29,12 @@ const HeroSection = () => {
         
         <div className="flex flex-col sm:flex-row gap-4 w-full justify-center animate-slide-up [animation-delay:600ms]">
           <Link to="/submit-idea">
-            <Button size="lg" className="w-full sm:w-auto px-8 shadow-md">
+            <Button size="lg" className="w-full sm:w-auto px-8 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
               Enviar minha ideia
             </Button>
           </Link>
           <Link to="/#how-it-works">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto px-8">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto px-8 hover:bg-secondary/80 transition-all duration-300">
               Como funciona
             </Button>
           </Link>
@@ -42,15 +42,15 @@ const HeroSection = () => {
         
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-8 w-full mt-16 animate-fade-in [animation-delay:800ms]">
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center p-4 rounded-lg bg-card/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
             <p className="text-3xl md:text-4xl font-bold text-gradient">100+</p>
             <p className="text-sm text-muted-foreground">Projetos Entregues</p>
           </div>
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center p-4 rounded-lg bg-card/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
             <p className="text-3xl md:text-4xl font-bold text-gradient">98%</p>
             <p className="text-sm text-muted-foreground">Clientes Satisfeitos</p>
           </div>
-          <div className="flex flex-col items-center col-span-2 md:col-span-1">
+          <div className="flex flex-col items-center p-4 rounded-lg bg-card/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 col-span-2 md:col-span-1">
             <p className="text-3xl md:text-4xl font-bold text-gradient">4.9/5</p>
             <p className="text-sm text-muted-foreground">Avaliação Média</p>
           </div>

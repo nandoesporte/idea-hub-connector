@@ -42,7 +42,7 @@ const Navbar = () => {
       <div className="container flex items-center justify-between h-16 md:h-20">
         <Link to="/" className="flex items-center space-x-2">
           <span className="text-xl font-bold tracking-tight text-foreground animate-fade-in">
-            IdeaHub<span className="text-primary">Connector</span>
+            Idea<span className="text-gradient">Hub</span>
           </span>
         </Link>
 
@@ -53,8 +53,8 @@ const Navbar = () => {
               <li key={item.href}>
                 <Link 
                   to={item.href}
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location.pathname === item.href ? 'text-primary' : 'text-muted-foreground'
+                  className={`text-sm font-medium transition-all duration-300 hover:text-primary relative after:absolute after:w-full after:h-0.5 after:bg-primary after:bottom-0 after:left-0 after:scale-x-0 after:origin-right after:transition-transform hover:after:scale-x-100 hover:after:origin-left ${
+                    location.pathname === item.href ? 'text-primary after:scale-x-100' : 'text-muted-foreground'
                   }`}
                 >
                   {item.label}
@@ -64,10 +64,10 @@ const Navbar = () => {
           </ul>
           <div className="flex items-center space-x-4">
             <Link to="/login">
-              <Button variant="ghost" size="sm">Entrar</Button>
+              <Button variant="ghost" size="sm" className="hover:bg-primary/5 transition-colors duration-300">Entrar</Button>
             </Link>
             <Link to="/register">
-              <Button size="sm" className="shadow-sm">Criar Conta</Button>
+              <Button size="sm" className="shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">Criar Conta</Button>
             </Link>
           </div>
         </nav>
