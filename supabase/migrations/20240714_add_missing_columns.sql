@@ -29,6 +29,21 @@ BEGIN
 END
 $$;
 
+-- Check if featured_image column exists in portfolio_items table, if not add it
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'portfolio_items' 
+        AND column_name = 'featured_image'
+    ) THEN
+        ALTER TABLE public.portfolio_items ADD COLUMN featured_image TEXT;
+    END IF;
+END
+$$;
+
 -- Verify and update any constraints or indexes related to category columns
 -- For projects table
 DO $$

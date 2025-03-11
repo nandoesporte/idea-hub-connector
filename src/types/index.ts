@@ -54,3 +54,17 @@ export interface Notification {
   isRead: boolean;
   createdAt: Date;
 }
+
+export interface PortfolioItem {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  client: string;
+  completed: Date;
+  technologies: string[];
+  featured: boolean;
+  featuredImage?: string;
+  images: string[];
+  link?: string;
+}

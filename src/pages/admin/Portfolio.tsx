@@ -14,23 +14,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { 
   Search, MoreHorizontal, Eye, Edit, Trash, 
-  Plus, ArrowUpDown, ExternalLink 
+  Plus, ArrowUpDown, ExternalLink, Image as ImageIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-interface PortfolioItem {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  client: string;
-  completed: Date;
-  technologies: string[];
-  featured: boolean;
-  images: string[];
-  link?: string;
-}
+import { PortfolioItem } from '@/types';
 
 // Mock data for portfolio items
 const mockPortfolioItems: PortfolioItem[] = [
@@ -43,6 +31,7 @@ const mockPortfolioItems: PortfolioItem[] = [
     completed: new Date('2023-02-15'),
     technologies: ['React', 'Node.js', 'MongoDB', 'Stripe'],
     featured: true,
+    featuredImage: '/portfolio/ecommerce1.jpg',
     images: ['/portfolio/ecommerce1.jpg', '/portfolio/ecommerce2.jpg'],
     link: 'https://ecofashion.com.br'
   },
@@ -55,6 +44,7 @@ const mockPortfolioItems: PortfolioItem[] = [
     completed: new Date('2023-04-10'),
     technologies: ['React Native', 'Firebase', 'Cloud Functions'],
     featured: true,
+    featuredImage: '/portfolio/finapp1.jpg',
     images: ['/portfolio/finapp1.jpg', '/portfolio/finapp2.jpg'],
     link: 'https://fincontrol.app'
   },
@@ -90,6 +80,7 @@ const mockPortfolioItems: PortfolioItem[] = [
     completed: new Date('2022-12-12'),
     technologies: ['Vue.js', 'Express', 'PostgreSQL', 'D3.js'],
     featured: true,
+    featuredImage: '/portfolio/dashboard1.jpg',
     images: ['/portfolio/dashboard1.jpg', '/portfolio/dashboard2.jpg']
   }
 ];
@@ -169,6 +160,50 @@ const AdminPortfolio = () => {
       setCurrentItem({
         ...currentItem,
         technologies: currentItem.technologies.filter(t => t !== tech)
+      });
+    }
+  };
+
+  const handleSetFeaturedImage = (imageUrl: string) => {
+    if (currentItem) {
+      setCurrentItem({
+        ...currentItem,
+        featuredImage: imageUrl
+      });
+      toast.success('Imagem de destaque definida.');
+    }
+  };
+
+  const handleAddImageUrl = () => {
+    if (currentItem) {
+      // This is a mock function. In a real app, you'd implement an image upload functionality
+      const mockImageUrl = `/portfolio/image-${Date.now()}.jpg`;
+      
+      setCurrentItem({
+        ...currentItem,
+        images: [...currentItem.images, mockImageUrl],
+        // If no featured image is set yet, make this the featured image
+        featuredImage: currentItem.featuredImage || mockImageUrl
+      });
+      
+      toast.success('Imagem adicionada.');
+    }
+  };
+
+  const removeImage = (imageUrl: string) => {
+    if (currentItem) {
+      const updatedImages = currentItem.images.filter(img => img !== imageUrl);
+      
+      // If we're removing the featured image, reset it
+      const updatedFeaturedImage = 
+        currentItem.featuredImage === imageUrl 
+          ? (updatedImages.length > 0 ? updatedImages[0] : undefined) 
+          : currentItem.featuredImage;
+      
+      setCurrentItem({
+        ...currentItem,
+        images: updatedImages,
+        featuredImage: updatedFeaturedImage
       });
     }
   };
@@ -260,6 +295,20 @@ const AdminPortfolio = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="pb-3">
+                  {item.featuredImage && (
+                    <div className="mb-4 relative aspect-video overflow-hidden rounded-md bg-muted">
+                      <img
+                        src={item.featuredImage}
+                        alt={item.title}
+                        className="object-cover w-full h-full"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="secondary" className="bg-background/70 backdrop-blur-sm">
+                          <ImageIcon className="h-3 w-3 mr-1" /> Imagem Destacada
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
                   <p className="text-sm line-clamp-2 mb-3">{item.description}</p>
                   <div className="space-y-3">
                     <div>
@@ -455,8 +504,77 @@ const AdminPortfolio = () => {
                     </Button>
                   </div>
                 </div>
-                
-                {/* Image upload section would go here in a real implementation */}
+
+                {/* Images Management Section */}
+                <div className="grid gap-2">
+                  <Label>Imagens do Projeto</Label>
+                  
+                  {/* Image Gallery */}
+                  {currentItem.images.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+                      {currentItem.images.map((img, i) => (
+                        <div key={i} className="relative group">
+                          <div className="relative aspect-video rounded-md overflow-hidden border bg-muted">
+                            <img 
+                              src={img} 
+                              alt={`Imagem ${i+1}`}
+                              className="object-cover w-full h-full"
+                            />
+                            {img === currentItem.featuredImage && (
+                              <div className="absolute bottom-1 left-1">
+                                <Badge size="sm" variant="secondary" className="text-xs bg-background/70 backdrop-blur-sm">
+                                  Destaque
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                          <div className="absolute inset-0 bg-background/70 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+                            {img !== currentItem.featuredImage && (
+                              <Button 
+                                size="sm" 
+                                variant="secondary" 
+                                className="h-8 px-2"
+                                onClick={() => handleSetFeaturedImage(img)}
+                              >
+                                <ImageIcon className="h-3.5 w-3.5 mr-1" /> Destacar
+                              </Button>
+                            )}
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              className="h-8 w-8 p-0"
+                              onClick={() => removeImage(img)}
+                            >
+                              <Trash className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 border rounded-md bg-muted/20">
+                      <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Nenhuma imagem adicionada
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Image Input (in a real app, this would be a file upload) */}
+                  <div className="mt-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleAddImageUrl}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> Adicionar Imagem
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1 text-center">
+                      Em um aplicativo real, este seria um controle para upload de imagens.
+                    </p>
+                  </div>
+                </div>
               </div>
               
               <DialogFooter>
