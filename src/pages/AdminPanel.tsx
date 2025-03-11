@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import MainLayout from '@/layouts/MainLayout';
 import { ProjectIdea } from '@/types';
@@ -20,7 +19,6 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-// Mock data for the admin panel
 const mockAdminProjects: ProjectIdea[] = [
   {
     id: '1',
@@ -94,7 +92,6 @@ const mockAdminProjects: ProjectIdea[] = [
   }
 ];
 
-// Component to render status icon
 const ProjectStatusIcon = ({ status }: { status: ProjectIdea['status'] }) => {
   switch (status) {
     case 'pending':
@@ -114,7 +111,6 @@ const ProjectStatusIcon = ({ status }: { status: ProjectIdea['status'] }) => {
   }
 };
 
-// Component to render status badge
 const ProjectStatusBadge = ({ status }: { status: ProjectIdea['status'] }) => {
   const statusMap = {
     'pending': { label: 'Pendente', variant: 'warning' as const },
@@ -249,14 +245,12 @@ const AdminPanel = () => {
   };
 
   const filteredProjects = projects.filter(project => {
-    // Filter by search query
     const matchesSearch = searchQuery.trim() === '' || 
       project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.userId.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Filter by status
     const matchesStatus = !selectedStatus || project.status === selectedStatus;
     
     return matchesSearch && matchesStatus;
@@ -301,7 +295,7 @@ const AdminPanel = () => {
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os status</SelectItem>
+                <SelectItem value="all">Todos os status</SelectItem>
                 <SelectItem value="pending">Pendente</SelectItem>
                 <SelectItem value="under-review">Em Análise</SelectItem>
                 <SelectItem value="approved">Aprovado</SelectItem>
@@ -403,3 +397,4 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
+
