@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import MainLayout from '@/layouts/MainLayout';
+import AdminLayout from '@/layouts/AdminLayout';
 import { ProjectIdea } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -258,7 +258,10 @@ const AdminPanel = () => {
   });
 
   return (
-    <MainLayout className="max-w-6xl mx-auto">
+    <AdminLayout
+      title="Painel Administrativo"
+      description="Gerencie e responda às solicitações de projetos."
+    >
       <div className="space-y-6 pb-10">
         <div className="flex justify-between items-center">
           <div className="space-y-1">
@@ -393,7 +396,7 @@ const AdminPanel = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </MainLayout>
+    </AdminLayout>
   );
 };
 
