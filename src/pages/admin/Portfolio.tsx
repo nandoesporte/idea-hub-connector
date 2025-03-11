@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -364,5 +365,200 @@ const AdminPortfolio = () => {
           )}
         </div>
 
-        {
+        {/* Project Modal */}
+        <Dialog open={showProjectModal} onOpenChange={setShowProjectModal}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {currentItem?.id.startsWith('portfolio-') ? 'Adicionar Projeto' : 'Editar Projeto'}
+              </DialogTitle>
+              <DialogDescription>
+                Preencha os detalhes do projeto para adicionar ao portfólio.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {currentItem && (
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Título do Projeto*</Label>
+                  <Input
+                    id="title"
+                    value={currentItem.title}
+                    onChange={(e) => setCurrentItem({...currentItem, title: e.target.value})}
+                    placeholder="Ex: E-commerce de Moda Sustentável"
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="client">Cliente*</Label>
+                  <Input
+                    id="client"
+                    value={currentItem.client}
+                    onChange={(e) => setCurrentItem({...currentItem, client: e.target.value})}
+                    placeholder="Ex: EcoFashion Brasil"
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea
+                    id="description"
+                    value={currentItem.description}
+                    onChange={(e) => setCurrentItem({...currentItem, description: e.target.value})}
+                    placeholder="Descreva o projeto e seus principais objetivos"
+                    className="resize-none"
+                    rows={4}
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="category">Categoria</Label>
+                  <Select
+                    value={currentItem.category}
+                    onValueChange={(value) => setCurrentItem({...currentItem, category: value as any})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="completed">Data de Conclusão</Label>
+                  <Input
+                    id="completed"
+                    type="date"
+                    value={currentItem.completed.toISOString().split('T')[0]}
+                    onChange={(e) => setCurrentItem({
+                      ...currentItem,
+                      completed: new Date(e.target.value)
+                    })}
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="link">Link do Projeto (opcional)</Label>
+                  <Input
+                    id="link"
+                    value={currentItem.link || ''}
+                    onChange={(e) => setCurrentItem({...currentItem, link: e.target.value})}
+                    placeholder="https://exemplo.com"
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label>Tecnologias</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newTech}
+                      onChange={(e) => setNewTech(e.target.value)}
+                      placeholder="Ex: React"
+                      className="flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addTechnology();
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="secondary" onClick={addTechnology}>
+                      Adicionar
+                    </Button>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {currentItem.technologies.map((tech, index) => (
+                      <Badge key={index} variant="secondary" className="px-3 py-1 cursor-pointer" onClick={() => removeTechnology(tech)}>
+                        {tech} <span className="ml-1 text-xs">✕</span>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label>Imagens</Label>
+                  <div className="flex justify-between items-center">
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddImageUrl}>
+                      <Plus className="h-4 w-4 mr-2" /> Adicionar Imagem
+                    </Button>
+                  </div>
+                  
+                  {currentItem.images.length > 0 && (
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      {currentItem.images.map((img, index) => (
+                        <div 
+                          key={index} 
+                          className={`relative aspect-video rounded-md overflow-hidden border-2 ${currentItem.featuredImage === img ? 'border-primary' : 'border-transparent'}`}
+                        >
+                          <img 
+                            src={img} 
+                            alt={`Imagem ${index + 1}`} 
+                            className="object-cover w-full h-full" 
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            {currentItem.featuredImage !== img && (
+                              <Button 
+                                size="sm" 
+                                variant="secondary" 
+                                className="h-8"
+                                onClick={() => handleSetFeaturedImage(img)}
+                              >
+                                <ImageIcon className="h-3.5 w-3.5 mr-1" /> Definir como destaque
+                              </Button>
+                            )}
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              className="h-8"
+                              onClick={() => removeImage(img)}
+                            >
+                              <Trash className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                          {currentItem.featuredImage === img && (
+                            <div className="absolute top-2 right-2">
+                              <Badge variant="secondary" className="bg-background/70 backdrop-blur-sm">
+                                <ImageIcon className="h-3 w-3 mr-1" /> Destaque
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="grid gap-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="featured"
+                      checked={currentItem.featured}
+                      onChange={(e) => setCurrentItem({...currentItem, featured: e.target.checked})}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="featured">Destacar este projeto no portfólio</Label>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowProjectModal(false)}>Cancelar</Button>
+              <Button onClick={handleSave}>Salvar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </AdminLayout>
+  );
+};
 
+export default AdminPortfolio;
