@@ -11,6 +11,7 @@ const navigationItems: NavigationItem[] = [
   { label: 'Início', href: '/' },
   { label: 'Como Funciona', href: '/#how-it-works' },
   { label: 'Projetos', href: '/projects' },
+  { label: 'Portfolio', href: '/portfolio' },
   { label: 'Preços', href: '/#pricing' },
   { label: 'Contato', href: '/#contact' },
 ];
