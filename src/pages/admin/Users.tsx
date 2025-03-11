@@ -36,59 +36,59 @@ interface User {
 }
 
 // Mock data for users
-const mockUsers = [
+const mockUsers: User[] = [
   { 
     id: '1', 
     name: 'João Silva', 
     email: 'joao.silva@example.com', 
-    role: 'user' as const,
-    status: 'active' as const,
+    role: 'user',
+    status: 'active',
     createdAt: new Date('2023-01-15')
   },
   { 
     id: '2', 
     name: 'Maria Oliveira', 
     email: 'maria.oliveira@example.com', 
-    role: 'admin' as const,
-    status: 'active' as const,
+    role: 'admin',
+    status: 'active',
     createdAt: new Date('2023-02-10')
   },
   { 
     id: '3', 
     name: 'Carlos Santos', 
     email: 'carlos.santos@example.com', 
-    role: 'user' as const,
-    status: 'inactive' as const,
+    role: 'user',
+    status: 'inactive',
     createdAt: new Date('2023-03-22')
   },
   { 
     id: '4', 
     name: 'Ana Pereira', 
     email: 'ana.pereira@example.com', 
-    role: 'user' as const,
-    status: 'active' as const,
+    role: 'user',
+    status: 'active',
     createdAt: new Date('2023-04-05')
   },
   { 
     id: '5', 
     name: 'Pedro Costa', 
     email: 'pedro.costa@example.com', 
-    role: 'user' as const,
-    status: 'active' as const,
+    role: 'user',
+    status: 'active',
     createdAt: new Date('2023-05-18')
   }
 ];
 
 const AdminUsers = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState<User[]>(mockUsers);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState({
+  const [userForm, setUserForm] = useState<Omit<User, 'id' | 'createdAt'>>({
     name: '',
     email: '',
-    role: 'user' as const,
-    status: 'active' as const
+    role: 'user',
+    status: 'active'
   });
 
   const filteredUsers = users.filter(user => 
