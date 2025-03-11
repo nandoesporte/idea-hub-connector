@@ -1,6 +1,7 @@
 
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
+import { toast } from 'sonner';
 
 interface ProtectedRouteProps {
   redirectPath?: string;
@@ -9,6 +10,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ redirectPath = '/login', requireAdmin = false }: ProtectedRouteProps) => {
   const { user, loading } = useUser();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -20,11 +22,12 @@ const ProtectedRoute = ({ redirectPath = '/login', requireAdmin = false }: Prote
 
   // If no user, redirect to login
   if (!user) {
-    return <Navigate to={redirectPath} replace />;
+    return <Navigate to={redirectPath} replace state={{ from: location }} />;
   }
 
   // Check for admin role if required
-  if (requireAdmin && user.user_metadata.role !== 'admin') {
+  if (requireAdmin && user.user_metadata?.role !== 'admin') {
+    toast.error('Acesso restrito a administradores');
     return <Navigate to="/dashboard" replace />;
   }
 
