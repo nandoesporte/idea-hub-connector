@@ -4,7 +4,10 @@ import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
   DropdownMenuTrigger 
@@ -14,6 +17,7 @@ import {
   Plus, ArrowUpDown, ExternalLink 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface PortfolioItem {
   id: string;
@@ -90,10 +94,24 @@ const mockPortfolioItems: PortfolioItem[] = [
   }
 ];
 
+const categoryOptions = [
+  { value: 'website', label: 'Website' },
+  { value: 'e-commerce', label: 'E-commerce' },
+  { value: 'web-app', label: 'Aplicação Web' },
+  { value: 'mobile-app', label: 'Aplicativo Móvel' },
+  { value: 'desktop-app', label: 'Aplicativo Desktop' },
+  { value: 'integration', label: 'Integração' },
+  { value: 'ai-solution', label: 'Solução IA' },
+  { value: 'other', label: 'Outro' }
+];
+
 const AdminPortfolio = () => {
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>(mockPortfolioItems);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [currentItem, setCurrentItem] = useState<PortfolioItem | null>(null);
+  const [newTech, setNewTech] = useState('');
 
   const handleToggleFeatured = (id: string) => {
     setPortfolioItems(portfolioItems.map(item => 
@@ -103,12 +121,85 @@ const AdminPortfolio = () => {
   };
 
   const handleDelete = (id: string) => {
-    setPortfolioItems(portfolioItems.filter(item => item.id !== id));
-    toast.success('Item removido do portfólio.');
+    if (window.confirm('Tem certeza que deseja excluir este item do portfólio?')) {
+      setPortfolioItems(portfolioItems.filter(item => item.id !== id));
+      toast.success('Item removido do portfólio.');
+    }
   };
 
   const toggleSortOrder = () => {
     setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
+  const openCreateModal = () => {
+    const newItem: PortfolioItem = {
+      id: `portfolio-${Date.now()}`,
+      title: '',
+      description: '',
+      category: 'website',
+      client: '',
+      completed: new Date(),
+      technologies: [],
+      featured: false,
+      images: []
+    };
+    setCurrentItem(newItem);
+    setShowProjectModal(true);
+  };
+
+  const openEditModal = (item: PortfolioItem) => {
+    setCurrentItem({...item});
+    setShowProjectModal(true);
+  };
+
+  const addTechnology = () => {
+    if (newTech.trim() && currentItem) {
+      if (!currentItem.technologies.includes(newTech.trim())) {
+        setCurrentItem({
+          ...currentItem, 
+          technologies: [...currentItem.technologies, newTech.trim()]
+        });
+      }
+      setNewTech('');
+    }
+  };
+
+  const removeTechnology = (tech: string) => {
+    if (currentItem) {
+      setCurrentItem({
+        ...currentItem,
+        technologies: currentItem.technologies.filter(t => t !== tech)
+      });
+    }
+  };
+
+  const handleSave = () => {
+    if (!currentItem) return;
+    
+    if (!currentItem.title.trim()) {
+      toast.error('O título é obrigatório');
+      return;
+    }
+    
+    if (!currentItem.client.trim()) {
+      toast.error('O nome do cliente é obrigatório');
+      return;
+    }
+
+    // If it's a new item
+    if (currentItem.id.startsWith('portfolio-')) {
+      setPortfolioItems([...portfolioItems, currentItem]);
+      toast.success('Novo projeto adicionado ao portfólio');
+    } else {
+      // Updating existing item
+      setPortfolioItems(portfolioItems.map(item => 
+        item.id === currentItem.id ? currentItem : item
+      ));
+      toast.success('Projeto atualizado com sucesso');
+    }
+    
+    setShowProjectModal(false);
+    setCurrentItem(null);
   };
 
   // Filter and sort portfolio items
@@ -129,20 +220,13 @@ const AdminPortfolio = () => {
     });
 
   return (
-    <AdminLayout>
+    <AdminLayout
+      title="Gerenciamento de Portfólio"
+      description="Adicione e gerencie projetos no portfólio da empresa."
+      actionLabel="Novo Projeto"
+      onAction={openCreateModal}
+    >
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gerenciamento de Portfólio</h1>
-            <p className="text-muted-foreground">
-              Adicione e gerencie projetos no portfólio da empresa.
-            </p>
-          </div>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" /> Novo Projeto
-          </Button>
-        </div>
-
         <div className="flex gap-4 items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -215,7 +299,7 @@ const AdminPortfolio = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => toast.info('Editando projeto...')}>
+                      <DropdownMenuItem onClick={() => openEditModal(item)}>
                         <Edit className="h-4 w-4 mr-2" /> Editar
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleToggleFeatured(item.id)}>
@@ -238,6 +322,154 @@ const AdminPortfolio = () => {
             </div>
           )}
         </div>
+
+        {/* Project Edit/Create Modal */}
+        {showProjectModal && currentItem && (
+          <Dialog open={showProjectModal} onOpenChange={setShowProjectModal}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {currentItem.id.startsWith('portfolio-') ? 'Adicionar Projeto' : 'Editar Projeto'}
+                </DialogTitle>
+                <DialogDescription>
+                  Preencha os detalhes do projeto para o portfólio.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Título do Projeto*</Label>
+                  <Input 
+                    id="title"
+                    value={currentItem.title}
+                    onChange={(e) => setCurrentItem({...currentItem, title: e.target.value})}
+                    placeholder="Ex: Website Corporativo"
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="client">Cliente*</Label>
+                  <Input 
+                    id="client"
+                    value={currentItem.client}
+                    onChange={(e) => setCurrentItem({...currentItem, client: e.target.value})}
+                    placeholder="Ex: Empresa XYZ"
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea 
+                    id="description"
+                    value={currentItem.description}
+                    onChange={(e) => setCurrentItem({...currentItem, description: e.target.value})}
+                    placeholder="Descreva o projeto e seus objetivos"
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="category">Categoria</Label>
+                    <Select
+                      value={currentItem.category}
+                      onValueChange={(value) => setCurrentItem({...currentItem, category: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="completed">Data de Conclusão</Label>
+                    <Input 
+                      id="completed"
+                      type="date"
+                      value={currentItem.completed.toISOString().split('T')[0]}
+                      onChange={(e) => setCurrentItem({
+                        ...currentItem, 
+                        completed: new Date(e.target.value)
+                      })}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="link">Link do Projeto (opcional)</Label>
+                  <Input 
+                    id="link"
+                    value={currentItem.link || ''}
+                    onChange={(e) => setCurrentItem({...currentItem, link: e.target.value})}
+                    placeholder="Ex: https://www.projeto.com.br"
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="featured">Destaque</Label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="featured"
+                      checked={currentItem.featured}
+                      onChange={(e) => setCurrentItem({...currentItem, featured: e.target.checked})}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="featured" className="text-sm font-normal">
+                      Mostrar este projeto em destaque no site
+                    </Label>
+                  </div>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label>Tecnologias</Label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {currentItem.technologies.map((tech, i) => (
+                      <Badge key={i} variant="secondary" className="flex items-center gap-1">
+                        {tech}
+                        <button 
+                          onClick={() => removeTechnology(tech)}
+                          className="ml-1 text-xs hover:text-destructive"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={newTech}
+                      onChange={(e) => setNewTech(e.target.value)}
+                      placeholder="Adicionar tecnologia"
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTechnology())}
+                    />
+                    <Button type="button" size="sm" onClick={addTechnology}>
+                      Adicionar
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Image upload section would go here in a real implementation */}
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowProjectModal(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSave}>
+                  {currentItem.id.startsWith('portfolio-') ? 'Criar Projeto' : 'Salvar Alterações'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </AdminLayout>
   );

@@ -1,16 +1,25 @@
-
 import React, { useState } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ProjectIdea } from '@/types';
+import { ProjectIdea, ProjectCategory } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Clock, CheckCircle, AlertCircle, PlayCircle, 
-  RotateCcw, XCircle, Search, Filter 
+  RotateCcw, XCircle, Search, Filter, Edit, Trash 
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   Select, 
   SelectContent, 
@@ -20,7 +29,6 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-// Mock data for the admin panel - reusing data from AdminPanel.tsx
 const mockAdminProjects: ProjectIdea[] = [
   {
     id: '1',
@@ -94,7 +102,6 @@ const mockAdminProjects: ProjectIdea[] = [
   }
 ];
 
-// Reusing components from AdminPanel.tsx
 const ProjectStatusIcon = ({ status }: { status: ProjectIdea['status'] }) => {
   switch (status) {
     case 'pending':
@@ -222,14 +229,12 @@ const AdminProjects = () => {
   };
 
   const filteredProjects = projects.filter(project => {
-    // Filter by search query
     const matchesSearch = searchQuery.trim() === '' || 
       project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.userId.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Filter by status
     const matchesStatus = !selectedStatus || project.status === selectedStatus;
     
     return matchesSearch && matchesStatus;
