@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -184,12 +185,14 @@ const PortfolioCard = ({ portfolioCase }: { portfolioCase: PortfolioCase }) => {
         )}
       </CardContent>
       <CardFooter className="p-4 pt-0 mt-auto">
-        <Button variant="outline" className="w-full justify-between">
-          <span>Ver detalhes</span>
-          {portfolioCase.projectUrl && (
-            <ExternalLink className="h-4 w-4 ml-2" />
-          )}
-        </Button>
+        <Link to={`/portfolio/${portfolioCase.id}`} className="w-full">
+          <Button variant="outline" className="w-full justify-between">
+            <span>Ver detalhes</span>
+            {portfolioCase.projectUrl && (
+              <ExternalLink className="h-4 w-4 ml-2" />
+            )}
+          </Button>
+        </Link>
       </CardFooter>
     </Card>
   );
