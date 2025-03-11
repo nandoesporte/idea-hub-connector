@@ -21,6 +21,8 @@ export interface ProjectIdea {
   status: 'pending' | 'under-review' | 'approved' | 'in-progress' | 'completed' | 'rejected';
   createdAt: Date;
   updatedAt: Date;
+  urgency?: 'baixa' | 'normal' | 'alta';
+  attachments?: string[];
 }
 
 export interface User {
