@@ -42,16 +42,16 @@ const Navbar = () => {
         scrolled ? 'backdrop-blur-md bg-background/70 shadow-sm' : 'bg-transparent'
       }`}
     >
-      <div className="container flex items-center justify-between h-16 md:h-20">
+      <div className="container flex items-center justify-between h-14 md:h-16">
         <Link to="/" className="flex items-center space-x-2">
-          <span className="text-xl font-bold tracking-tight text-foreground animate-fade-in">
+          <span className="text-lg font-bold tracking-tight text-foreground animate-fade-in">
             Idea<span className="text-gradient">Hub</span>
           </span>
         </Link>
 
         {/* Desktop Menu */}
-        <nav className="hidden md:flex items-center space-x-6">
-          <ul className="flex items-center space-x-6">
+        <nav className="hidden md:flex items-center space-x-4">
+          <ul className="flex items-center space-x-4">
             {navigationItems.map((item) => (
               <li key={item.href}>
                 <Link 
@@ -65,7 +65,7 @@ const Navbar = () => {
               </li>
             ))}
           </ul>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {user ? (
               <UserProfile />
             ) : (
@@ -87,10 +87,10 @@ const Navbar = () => {
           className="md:hidden p-2 rounded-md"
           aria-label="Toggle menu"
         >
-          <div className="flex flex-col space-y-1.5 w-6">
+          <div className="flex flex-col space-y-1 w-5">
             <span 
               className={`block h-0.5 bg-foreground transition-all duration-300 transform ${
-                mobileMenuOpen ? 'rotate-45 translate-y-2' : ''
+                mobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''
               }`}
             ></span>
             <span 
@@ -100,7 +100,7 @@ const Navbar = () => {
             ></span>
             <span 
               className={`block h-0.5 bg-foreground transition-all duration-300 transform ${
-                mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''
+                mobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''
               }`}
             ></span>
           </div>
@@ -114,8 +114,8 @@ const Navbar = () => {
             mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
           } overflow-hidden`}
         >
-          <div className="container py-4 space-y-4">
-            <nav className="flex flex-col space-y-4">
+          <div className="container py-3 space-y-3">
+            <nav className="flex flex-col space-y-2">
               {navigationItems.map((item) => (
                 <Link 
                   key={item.href}
@@ -128,9 +128,9 @@ const Navbar = () => {
                 </Link>
               ))}
             </nav>
-            <div className="flex flex-col space-y-3 pt-4 border-t">
+            <div className="flex flex-col space-y-2 pt-2 border-t">
               {user ? (
-                <div className="py-2">
+                <div className="py-1">
                   <UserProfile />
                 </div>
               ) : (
