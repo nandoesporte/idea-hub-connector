@@ -4,9 +4,10 @@ import { useUser } from '@/contexts/UserContext';
 
 interface ProtectedRouteProps {
   redirectPath?: string;
+  requireAdmin?: boolean;
 }
 
-const ProtectedRoute = ({ redirectPath = '/login' }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ redirectPath = '/login', requireAdmin = false }: ProtectedRouteProps) => {
   const { user, loading } = useUser();
 
   if (loading) {
@@ -17,8 +18,14 @@ const ProtectedRoute = ({ redirectPath = '/login' }: ProtectedRouteProps) => {
     );
   }
 
+  // If no user, redirect to login
   if (!user) {
     return <Navigate to={redirectPath} replace />;
+  }
+
+  // Check for admin role if required
+  if (requireAdmin && user.user_metadata.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;

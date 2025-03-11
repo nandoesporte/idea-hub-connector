@@ -20,6 +20,13 @@ import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { UserProvider } from "./contexts/UserContext";
 
+// Admin pages
+import AdminUsers from "./pages/admin/Users";
+import AdminProjects from "./pages/admin/Projects";
+import AdminMessages from "./pages/admin/Messages";
+import AdminPortfolio from "./pages/admin/Portfolio";
+import AdminSettings from "./pages/admin/Settings";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -47,9 +54,14 @@ const App = () => (
               <Route path="/projects/:id" element={<ProjectDetails />} />
             </Route>
             
-            {/* Admin routes (we could add another level of protection) */}
-            <Route element={<ProtectedRoute />}>
+            {/* Admin routes */}
+            <Route element={<ProtectedRoute requireAdmin={true} />}>
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/projects" element={<AdminProjects />} />
+              <Route path="/admin/messages" element={<AdminMessages />} />
+              <Route path="/admin/portfolio" element={<AdminPortfolio />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
             
             {/* Catch-all route */}
