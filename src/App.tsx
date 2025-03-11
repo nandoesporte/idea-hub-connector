@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 import ProjectTracking from "./pages/ProjectTracking";
+import ProjectDetails from "./pages/ProjectDetails";
 import AdminPanel from "./pages/AdminPanel";
 import Portfolio from "./pages/Portfolio";
 import PortfolioDetails from "./pages/PortfolioDetails";
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/projects" element={<ProjectTracking />} />
+          <Route path="/projects/:id" element={<ProjectDetails />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/portfolio/:id" element={<PortfolioDetails />} />

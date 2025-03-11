@@ -23,6 +23,11 @@ export interface ProjectIdea {
   updatedAt: Date;
   urgency?: 'baixa' | 'normal' | 'alta';
   attachments?: string[];
+  statusUpdates?: Array<{
+    date: Date;
+    status: 'pending' | 'under-review' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+    message: string;
+  }>;
 }
 
 export interface User {

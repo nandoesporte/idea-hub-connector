@@ -1,11 +1,11 @@
-
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
 import { ProjectIdea } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, CheckCircle, AlertCircle, PlayCircle, RotateCcw, XCircle } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, PlayCircle, RotateCcw, XCircle, ChevronRight } from 'lucide-react';
 
 // Mock data - would come from an API in a real app
 const mockProjects: ProjectIdea[] = [
@@ -140,9 +140,10 @@ const ProjectCard = ({ project }: { project: ProjectIdea }) => {
           {project.budget && <div>Orçamento: {project.budget}</div>}
           {project.timeline && <div>Prazo: {project.timeline}</div>}
         </div>
-        <div className="flex items-center space-x-1 text-sm font-medium text-primary">
+        <Link to={`/projects/${project.id}`} className="flex items-center space-x-1 text-sm font-medium text-primary">
           <span>Ver detalhes</span>
-        </div>
+          <ChevronRight className="h-4 w-4" />
+        </Link>
       </CardFooter>
     </Card>
   );
