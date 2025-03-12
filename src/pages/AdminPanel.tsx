@@ -1,26 +1,35 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
-import { ProjectIdea } from '@/types';
-import { Badge } from '@/components/ui/badge';
+import { 
+  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle 
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Clock, CheckCircle, AlertCircle, PlayCircle, 
-  RotateCcw, XCircle, Search, Filter 
+  Users, Briefcase, MessageSquare, FileText, 
+  TrendingUp, ArrowUpRight, Zap, BarChart3, Clock, AlertCircle
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import FeatureCard from '@/components/FeatureCard';
+import { ProjectIdea } from '@/types';
+import { Link } from 'react-router-dom';
 
-const mockAdminProjects: ProjectIdea[] = [
+// Sample data for analytics
+const analyticsData = {
+  totalUsers: 583,
+  totalProjects: 127,
+  pendingProjects: 15,
+  completedProjects: 78,
+  inProgressProjects: 34,
+  messagesCount: 42,
+  unreadMessagesCount: 8,
+  portfolioItemsCount: 22,
+  weeklyProjectsIncrease: 24,
+  revenueIncrease: 18
+};
+
+// Sample data for recent projects
+const recentProjects: ProjectIdea[] = [
   {
     id: '1',
     title: 'Website para loja de roupas',
@@ -58,343 +67,218 @@ const mockAdminProjects: ProjectIdea[] = [
     timeline: '2 meses',
     features: ['Login e perfil', 'Notificações', 'Sincronização em nuvem'],
     userId: 'user789',
-    status: 'approved',
+    status: 'in-progress',
     createdAt: new Date('2023-09-20'),
     updatedAt: new Date('2023-09-25'),
     urgency: 'baixa',
   },
-  {
-    id: '4',
-    title: 'Sistema de gestão financeira',
-    description: 'Sistema para controle financeiro pessoal com importação de extratos bancários e relatórios.',
-    category: 'desktop-app',
-    budget: 'R$ 8.000 - R$ 15.000',
-    timeline: '2 meses',
-    features: ['Importação de extratos', 'Gráficos e relatórios', 'Categorização automática'],
-    userId: 'user123',
-    status: 'in-progress',
-    createdAt: new Date('2023-08-10'),
-    updatedAt: new Date('2023-08-15'),
-    urgency: 'normal',
-  },
-  {
-    id: '5',
-    title: 'Automação de processos de RH',
-    description: 'Sistema de automação para processos de RH, incluindo recrutamento e gestão de funcionários.',
-    category: 'automation',
-    budget: 'R$ 15.000 - R$ 25.000',
-    timeline: '3 meses',
-    features: ['Recrutamento automatizado', 'Gestão de ponto', 'Avaliação de desempenho'],
-    userId: 'user456',
-    status: 'completed',
-    createdAt: new Date('2023-07-01'),
-    updatedAt: new Date('2023-07-05'),
-    urgency: 'normal',
-  }
 ];
 
-const ProjectStatusIcon = ({ status }: { status: ProjectIdea['status'] }) => {
-  switch (status) {
-    case 'pending':
-      return <Clock className="h-5 w-5 text-yellow-500" />;
-    case 'under-review':
-      return <RotateCcw className="h-5 w-5 text-blue-500" />;
-    case 'approved':
-      return <CheckCircle className="h-5 w-5 text-green-500" />;
-    case 'in-progress':
-      return <PlayCircle className="h-5 w-5 text-indigo-500" />;
-    case 'completed':
-      return <CheckCircle className="h-5 w-5 text-green-600" />;
-    case 'rejected':
-      return <XCircle className="h-5 w-5 text-red-500" />;
-    default:
-      return <AlertCircle className="h-5 w-5 text-gray-500" />;
-  }
+const statusColors = {
+  'pending': 'bg-yellow-500/10 text-yellow-500',
+  'under-review': 'bg-blue-500/10 text-blue-500',
+  'approved': 'bg-green-500/10 text-green-500',
+  'in-progress': 'bg-indigo-500/10 text-indigo-500',
+  'completed': 'bg-green-600/10 text-green-600',
+  'rejected': 'bg-red-500/10 text-red-500',
 };
 
-const ProjectStatusBadge = ({ status }: { status: ProjectIdea['status'] }) => {
+const getStatusLabel = (status: ProjectIdea['status']) => {
   const statusMap = {
-    'pending': { label: 'Pendente', variant: 'warning' as const },
-    'under-review': { label: 'Em Análise', variant: 'info' as const },
-    'approved': { label: 'Aprovado', variant: 'success' as const },
-    'in-progress': { label: 'Em Desenvolvimento', variant: 'secondary' as const },
-    'completed': { label: 'Concluído', variant: 'success' as const },
-    'rejected': { label: 'Rejeitado', variant: 'destructive' as const }
-  };
-
-  const statusInfo = statusMap[status] || { label: 'Desconhecido', variant: 'outline' as const };
-
-  return (
-    <Badge variant={statusInfo.variant === 'info' ? 'outline' : statusInfo.variant} 
-      className={statusInfo.variant === 'info' ? 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20' : ''}>
-      {statusInfo.label}
-    </Badge>
-  );
-};
-
-const AdminProjectCard = ({ project, onUpdateStatus }: { 
-  project: ProjectIdea; 
-  onUpdateStatus: (id: string, status: ProjectIdea['status']) => void;
-}) => {
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(date);
+    'pending': 'Pendente',
+    'under-review': 'Em Análise',
+    'approved': 'Aprovado',
+    'in-progress': 'Em Desenvolvimento',
+    'completed': 'Concluído',
+    'rejected': 'Rejeitado'
   };
   
-  const categoryLabels: Record<string, string> = {
-    'website': 'Website',
-    'e-commerce': 'E-commerce',
-    'mobile-app': 'App Mobile',
-    'desktop-app': 'App Desktop',
-    'automation': 'Automação',
-    'integration': 'Integração',
-    'ai-solution': 'Solução IA',
-    'other': 'Outro'
-  };
-
-  return (
-    <Card className="mb-4 hover:shadow-md transition-shadow">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-xl">{project.title}</CardTitle>
-            <div className="flex items-center gap-2 mt-1">
-              <ProjectStatusIcon status={project.status} />
-              <ProjectStatusBadge status={project.status} />
-              <span className="text-xs text-gray-500">
-                ID: {project.id} • Usuário: {project.userId}
-              </span>
-            </div>
-          </div>
-          <Badge variant="outline" className="bg-primary/5">
-            {categoryLabels[project.category] || 'Outro'}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="pb-3">
-        <p className="text-sm text-gray-700 mb-3">{project.description}</p>
-        
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="font-medium">Detalhes:</p>
-            <ul className="list-disc list-inside text-muted-foreground">
-              {project.budget && <li>Orçamento: {project.budget}</li>}
-              {project.timeline && <li>Prazo: {project.timeline}</li>}
-              {project.urgency && <li>Urgência: {project.urgency.charAt(0).toUpperCase() + project.urgency.slice(1)}</li>}
-            </ul>
-          </div>
-          <div>
-            <p className="font-medium">Funcionalidades:</p>
-            <ul className="list-disc list-inside text-muted-foreground">
-              {project.features && project.features.map((feature, index) => (
-                <li key={index} className="truncate">{feature}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        
-        <div className="text-xs text-gray-500 mt-3">
-          Criado em {formatDate(project.createdAt)} • Atualizado em {formatDate(project.updatedAt)}
-        </div>
-      </CardContent>
-      <CardFooter className="justify-between border-t pt-4">
-        <div>
-          <Select 
-            defaultValue={project.status}
-            onValueChange={(value) => {
-              onUpdateStatus(project.id, value as ProjectIdea['status']);
-            }}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Atualizar status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pending">Pendente</SelectItem>
-              <SelectItem value="under-review">Em Análise</SelectItem>
-              <SelectItem value="approved">Aprovado</SelectItem>
-              <SelectItem value="in-progress">Em Desenvolvimento</SelectItem>
-              <SelectItem value="completed">Concluído</SelectItem>
-              <SelectItem value="rejected">Rejeitado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline">Detalhes</Button>
-          <Button size="sm">Responder</Button>
-        </div>
-      </CardFooter>
-    </Card>
-  );
+  return statusMap[status] || 'Desconhecido';
 };
 
 const AdminPanel = () => {
-  const [projects, setProjects] = useState<ProjectIdea[]>(mockAdminProjects);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-
-  const handleUpdateStatus = (id: string, status: ProjectIdea['status']) => {
-    setProjects(projects.map(project => 
-      project.id === id 
-        ? { ...project, status, updatedAt: new Date() } 
-        : project
-    ));
-    
-    toast.success(`Status do projeto atualizado para "${status}"`);
-  };
-
-  const filteredProjects = projects.filter(project => {
-    const matchesSearch = searchQuery.trim() === '' || 
-      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.userId.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = !selectedStatus || project.status === selectedStatus;
-    
-    return matchesSearch && matchesStatus;
-  });
-
   return (
     <AdminLayout
       title="Painel Administrativo"
-      description="Gerencie e responda às solicitações de projetos."
+      description="Visão geral do sistema e atalhos importantes."
     >
       <div className="space-y-6 pb-10">
-        <div className="flex justify-between items-center">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">Painel Administrativo</h1>
-            <p className="text-muted-foreground">
-              Gerencie e responda às solicitações de projetos.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              Exportar CSV
-            </Button>
-            <Button size="sm">
-              Novo Projeto
-            </Button>
-          </div>
+        {/* Analytics summary cards */}
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analyticsData.totalUsers}</div>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center">
+                <span className="text-green-500 flex items-center mr-1">
+                  <TrendingUp className="h-3 w-3 mr-1" /> +12%
+                </span>
+                desde o mês passado
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium">Projetos</CardTitle>
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analyticsData.totalProjects}</div>
+              <div className="flex gap-2 mt-1">
+                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 text-xs">
+                  {analyticsData.pendingProjects} Pendentes
+                </Badge>
+                <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 text-xs">
+                  {analyticsData.inProgressProjects} Em Progresso
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium">Mensagens</CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analyticsData.messagesCount}</div>
+              {analyticsData.unreadMessagesCount > 0 && (
+                <Badge className="mt-1 text-xs bg-primary/20 text-primary hover:bg-primary/30">
+                  {analyticsData.unreadMessagesCount} não lidas
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium">Portfolio</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analyticsData.portfolioItemsCount}</div>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center">
+                <span className="text-green-500 flex items-center mr-1">
+                  <ArrowUpRight className="h-3 w-3 mr-1" /> +{analyticsData.weeklyProjectsIncrease}%
+                </span>
+                Crescimento semanal
+              </p>
+            </CardContent>
+          </Card>
         </div>
-
-        <div className="flex gap-4 items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por título, usuário ou ID..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2 items-center">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select 
-              onValueChange={(value) => setSelectedStatus(value === "all" ? null : value)}
-            >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Filtrar por status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                <SelectItem value="pending">Pendente</SelectItem>
-                <SelectItem value="under-review">Em Análise</SelectItem>
-                <SelectItem value="approved">Aprovado</SelectItem>
-                <SelectItem value="in-progress">Em Desenvolvimento</SelectItem>
-                <SelectItem value="completed">Concluído</SelectItem>
-                <SelectItem value="rejected">Rejeitado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        
+        {/* Quick access cards */}
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
+          <FeatureCard
+            title="Gerenciar Usuários"
+            description="Adicione, edite ou remova usuários do sistema."
+            icon={<Users size={24} />}
+            className="hover:border-blue-400"
+            iconClassName="bg-blue-500/10 text-blue-500"
+          />
+          <FeatureCard
+            title="Projetos Recentes"
+            description="Veja e gerencie os últimos projetos submetidos."
+            icon={<Briefcase size={24} />}
+            className="hover:border-indigo-400"
+            iconClassName="bg-indigo-500/10 text-indigo-500"
+          />
+          <FeatureCard
+            title="Mensagens"
+            description="Responda às mensagens dos clientes e usuários."
+            icon={<MessageSquare size={24} />}
+            className="hover:border-violet-400"
+            iconClassName="bg-violet-500/10 text-violet-500"
+          />
+          <FeatureCard
+            title="Portfólio"
+            description="Gerencie projetos no portfólio da empresa."
+            icon={<FileText size={24} />}
+            className="hover:border-emerald-400"
+            iconClassName="bg-emerald-500/10 text-emerald-500"
+          />
+          <FeatureCard
+            title="Relatórios"
+            description="Visualize e exporte relatórios de performance."
+            icon={<BarChart3 size={24} />}
+            className="hover:border-amber-400"
+            iconClassName="bg-amber-500/10 text-amber-500"
+          />
+          <FeatureCard
+            title="Configurações"
+            description="Configure preferências e ajustes do sistema."
+            icon={<Zap size={24} />}
+            className="hover:border-pink-400"
+            iconClassName="bg-pink-500/10 text-pink-500"
+          />
         </div>
-
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="all">Todos ({projects.length})</TabsTrigger>
-            <TabsTrigger value="new">
-              Novos ({projects.filter(p => p.status === 'pending' || p.status === 'under-review').length})
-            </TabsTrigger>
-            <TabsTrigger value="active">
-              Ativos ({projects.filter(p => p.status === 'approved' || p.status === 'in-progress').length})
-            </TabsTrigger>
-            <TabsTrigger value="closed">
-              Encerrados ({projects.filter(p => p.status === 'completed' || p.status === 'rejected').length})
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all" className="mt-6">
-            {filteredProjects.length > 0 ? (
-              filteredProjects.map(project => (
-                <AdminProjectCard 
-                  key={project.id} 
-                  project={project} 
-                  onUpdateStatus={handleUpdateStatus} 
-                />
-              ))
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum projeto encontrado com os filtros atuais.</p>
+        
+        {/* Recent projects */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Projetos Recentes</CardTitle>
+                <CardDescription>Últimos projetos submetidos no sistema</CardDescription>
               </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="new" className="mt-6">
-            {filteredProjects.filter(p => p.status === 'pending' || p.status === 'under-review').length > 0 ? (
-              filteredProjects
-                .filter(p => p.status === 'pending' || p.status === 'under-review')
-                .map(project => (
-                  <AdminProjectCard 
-                    key={project.id} 
-                    project={project} 
-                    onUpdateStatus={handleUpdateStatus} 
-                  />
-                ))
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum projeto novo encontrado.</p>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="active" className="mt-6">
-            {filteredProjects.filter(p => p.status === 'approved' || p.status === 'in-progress').length > 0 ? (
-              filteredProjects
-                .filter(p => p.status === 'approved' || p.status === 'in-progress')
-                .map(project => (
-                  <AdminProjectCard 
-                    key={project.id} 
-                    project={project} 
-                    onUpdateStatus={handleUpdateStatus} 
-                  />
-                ))
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum projeto ativo encontrado.</p>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="closed" className="mt-6">
-            {filteredProjects.filter(p => p.status === 'completed' || p.status === 'rejected').length > 0 ? (
-              filteredProjects
-                .filter(p => p.status === 'completed' || p.status === 'rejected')
-                .map(project => (
-                  <AdminProjectCard 
-                    key={project.id} 
-                    project={project} 
-                    onUpdateStatus={handleUpdateStatus} 
-                  />
-                ))
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum projeto encerrado encontrado.</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              <Button size="sm" variant="outline" asChild>
+                <Link to="https://idea-hub-connector.lovable.app/projects">
+                  Ver todos
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentProjects.map(project => (
+                <div key={project.id} className="flex items-start justify-between border-b pb-4 last:border-0 last:pb-0">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium">{project.title}</h4>
+                      <Badge 
+                        variant="outline" 
+                        className={statusColors[project.status]}
+                      >
+                        {getStatusLabel(project.status)}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{project.description}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>Categoria: {project.category}</span>
+                      <span>•</span>
+                      <span>Orçamento: {project.budget}</span>
+                      <span>•</span>
+                      <span className="flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {new Date(project.createdAt).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to={`/admin/projects/${project.id}`}>
+                      Detalhes
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+          <CardFooter className="border-t pt-4 flex justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <span>{analyticsData.pendingProjects} projetos pendentes aguardam análise</span>
+            </div>
+            <Button size="sm" asChild>
+              <Link to="https://idea-hub-connector.lovable.app/projects?status=pending">
+                Revisar pendentes
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </AdminLayout>
   );
