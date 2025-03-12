@@ -23,6 +23,7 @@ type NavItem = {
   title: string;
   href: string;
   icon: React.ElementType;
+  external?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -38,8 +39,9 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Projetos',
-    href: '/admin/projects',
+    href: 'https://idea-hub-connector.lovable.app/projects',
     icon: Briefcase,
+    external: true,
   },
   {
     title: 'Mensagens',
@@ -78,6 +80,46 @@ const AdminLayout = ({
     return null;
   }
 
+  const renderNavLink = (item: NavItem) => {
+    const isActive = pathname === item.href;
+    const linkContent = (
+      <>
+        <item.icon className={cn("h-4 w-4 shrink-0")} />
+        {!collapsed && <span>{item.title}</span>}
+      </>
+    );
+
+    if (item.external) {
+      return (
+        <a
+          href={item.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
+            isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground",
+            collapsed && "justify-center px-2"
+          )}
+        >
+          {linkContent}
+        </a>
+      );
+    }
+
+    return (
+      <Link
+        to={item.href}
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
+          isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground",
+          collapsed && "justify-center px-2"
+        )}
+      >
+        {linkContent}
+      </Link>
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col antialiased">
       <Navbar />
@@ -101,34 +143,20 @@ const AdminLayout = ({
               </Button>
             </div>
             <nav className="grid gap-1 px-2">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                
-                return (
-                  <TooltipProvider key={item.href} delayDuration={0}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Link
-                          to={item.href}
-                          className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
-                            isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground", 
-                            collapsed && "justify-center px-2"
-                          )}
-                        >
-                          <item.icon className={cn("h-4 w-4 shrink-0")} />
-                          {!collapsed && <span>{item.title}</span>}
-                        </Link>
-                      </TooltipTrigger>
-                      {collapsed && (
-                        <TooltipContent side="right">
-                          {item.title}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  </TooltipProvider>
-                );
-              })}
+              {navItems.map((item) => (
+                <TooltipProvider key={item.href} delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {renderNavLink(item)}
+                    </TooltipTrigger>
+                    {collapsed && (
+                      <TooltipContent side="right">
+                        {item.title}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
             </nav>
           </div>
         </aside>
