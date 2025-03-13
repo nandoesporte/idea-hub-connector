@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ interface Event {
   isGoogleEvent?: boolean;
 }
 
+// Initial events moved to a serializable form for localStorage
 const initialEvents: Event[] = [
   {
     id: '1',
@@ -72,9 +74,24 @@ const eventTypeLabels = {
   google: 'Google Agenda',
 };
 
+// Helper function to serialize/deserialize Date objects for localStorage
+const serializeEvents = (events: Event[]) => {
+  return events.map(event => ({
+    ...event,
+    date: event.date.toISOString(),
+  }));
+};
+
+const deserializeEvents = (serializedEvents: any[]) => {
+  return serializedEvents.map(event => ({
+    ...event,
+    date: new Date(event.date),
+  }));
+};
+
 const AdminAgenda = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [events, setEvents] = useState<Event[]>(initialEvents);
+  const [events, setEvents] = useState<Event[]>([]);
   const [googleEvents, setGoogleEvents] = useState<any[]>([]);
   const [newEvent, setNewEvent] = useState<{
     title: string;
@@ -100,6 +117,29 @@ const AdminAgenda = () => {
   const [activeTab, setActiveTab] = useState<string>("all");
   
   const isMobile = useIsMobile();
+
+  // Load events from localStorage on initial render
+  useEffect(() => {
+    const savedEvents = localStorage.getItem('adminAgendaEvents');
+    if (savedEvents) {
+      try {
+        const parsedEvents = JSON.parse(savedEvents);
+        setEvents(deserializeEvents(parsedEvents));
+      } catch (error) {
+        console.error('Error parsing saved events:', error);
+        setEvents(initialEvents);
+      }
+    } else {
+      setEvents(initialEvents);
+    }
+  }, []);
+
+  // Save events to localStorage whenever they change
+  useEffect(() => {
+    if (events.length > 0) {
+      localStorage.setItem('adminAgendaEvents', JSON.stringify(serializeEvents(events)));
+    }
+  }, [events]);
 
   const datesWithEvents = [...events.map(event => event.date), ...googleEvents.map(event => new Date(event.start.dateTime || event.start.date))];
 
