@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +19,19 @@ import { GoogleLogin } from '@react-oauth/google';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { sendEventReminder } from '@/lib/whatsappService';
 
-const initialEvents = [
+// Update the event type to include the contactPhone property
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  date: Date;
+  duration: number;
+  type: 'meeting' | 'deadline' | 'task' | 'other' | 'google';
+  contactPhone?: string;
+  isGoogleEvent?: boolean;
+}
+
+const initialEvents: Event[] = [
   {
     id: '1',
     title: 'Reunião com cliente ABC',
@@ -63,7 +76,7 @@ const eventTypeLabels = {
 
 const AdminAgenda = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [events, setEvents] = useState(initialEvents);
+  const [events, setEvents] = useState<Event[]>(initialEvents);
   const [googleEvents, setGoogleEvents] = useState<any[]>([]);
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -108,7 +121,7 @@ const AdminAgenda = () => {
       );
     });
     
-    const formattedGoogleEvents = gEvents.map(event => ({
+    const formattedGoogleEvents: Event[] = gEvents.map(event => ({
       id: event.id,
       title: event.summary,
       description: event.description || "Evento do Google Calendar",
@@ -183,13 +196,14 @@ const AdminAgenda = () => {
     const eventDate = new Date(newEvent.date);
     eventDate.setHours(hours, minutes);
 
-    const event = {
+    const event: Event = {
       id: Date.now().toString(),
       title: newEvent.title,
       description: newEvent.description,
       date: eventDate,
       duration: Number(newEvent.duration),
       type: newEvent.type as 'meeting' | 'deadline' | 'task' | 'other',
+      contactPhone: newEvent.contactPhone,
     };
 
     setEvents([...events, event]);
@@ -215,6 +229,7 @@ const AdminAgenda = () => {
             date: eventDate,
             duration: Number(newEvent.duration),
             type: newEvent.type as 'meeting' | 'deadline' | 'task' | 'other',
+            contactPhone: newEvent.contactPhone,
           }
         : event
     );
