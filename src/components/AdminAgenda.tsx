@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, Plus, Clock, User, Edit, Trash2, CalendarIcon, RefreshCw } from "lucide-react";
+import { CalendarDays, Plus, Clock, User, Edit, Trash2, CalendarIcon, RefreshCw, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +29,22 @@ interface Event {
   contactPhone?: string;
   isGoogleEvent?: boolean;
 }
+
+// Serialize events for localStorage (convert Date objects to ISO strings)
+const serializeEvents = (events: Event[]): any[] => {
+  return events.map(event => ({
+    ...event,
+    date: event.date.toISOString()
+  }));
+};
+
+// Deserialize events from localStorage (convert ISO strings back to Date objects)
+const deserializeEvents = (events: any[]): Event[] => {
+  return events.map(event => ({
+    ...event,
+    date: new Date(event.date)
+  }));
+};
 
 const initialEvents: Event[] = [
   {
@@ -682,4 +699,3 @@ const AdminAgenda = () => {
 };
 
 export default AdminAgenda;
-
