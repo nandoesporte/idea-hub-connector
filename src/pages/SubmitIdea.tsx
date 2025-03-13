@@ -3,6 +3,7 @@ import React from 'react';
 import MainLayout from '@/layouts/MainLayout';
 import ProjectForm from '@/components/ProjectForm';
 import { FileText, CheckSquare, MessageCircle, Clock } from 'lucide-react';
+import CategoryHelpDialog from '@/components/CategoryHelpDialog';
 
 const ProcessStep = ({ 
   icon, 
@@ -38,7 +39,10 @@ const SubmitIdea = () => {
     <MainLayout className="max-w-5xl mx-auto">
       <div className="space-y-6 pb-6">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Envie sua ideia</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold tracking-tight">Envie sua ideia</h1>
+            <CategoryHelpDialog />
+          </div>
           <p className="text-sm text-muted-foreground">
             Preencha o formulário abaixo com os detalhes da sua ideia e nossa equipe entrará em contato em breve.
           </p>
