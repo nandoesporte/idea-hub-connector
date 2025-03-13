@@ -78,7 +78,15 @@ const AdminAgenda = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [googleEvents, setGoogleEvents] = useState<any[]>([]);
-  const [newEvent, setNewEvent] = useState({
+  const [newEvent, setNewEvent] = useState<{
+    title: string;
+    description: string;
+    date: Date;
+    time: string;
+    duration: number;
+    type: string;
+    contactPhone: string;
+  }>({
     title: '',
     description: '',
     date: new Date(),
@@ -581,6 +589,128 @@ const AdminAgenda = () => {
           Exportar Agenda
         </Button>
       </CardFooter>
+      
+      <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingEvent ? 'Editar Evento' : 'Adicionar Novo Evento'}</DialogTitle>
+            <DialogDescription>
+              Preencha os detalhes do evento abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Título</Label>
+              <Input 
+                id="title" 
+                value={newEvent.title} 
+                onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
+                placeholder="Ex: Reunião com cliente"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea 
+                id="description" 
+                value={newEvent.description} 
+                onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
+                placeholder="Detalhes do evento"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="date">Data</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="justify-start text-left"
+                    >
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      {format(newEvent.date, "PPP", { locale: ptBR })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={newEvent.date}
+                      onSelect={handleDateSelect}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="time">Horário</Label>
+                <Input 
+                  id="time" 
+                  type="time"
+                  value={newEvent.time} 
+                  onChange={(e) => setNewEvent({...newEvent, time: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="duration">Duração (minutos)</Label>
+                <Input 
+                  id="duration" 
+                  type="number"
+                  min={15}
+                  step={15}
+                  value={newEvent.duration} 
+                  onChange={(e) => setNewEvent({...newEvent, duration: Number(e.target.value)})}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="type">Tipo</Label>
+                <select 
+                  id="type" 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={newEvent.type} 
+                  onChange={(e) => setNewEvent({...newEvent, type: e.target.value})}
+                >
+                  <option value="meeting">Reunião</option>
+                  <option value="deadline">Prazo</option>
+                  <option value="task">Tarefa</option>
+                  <option value="other">Outro</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="contactPhone">Telefone para Notificação (opcional)</Label>
+              <Input 
+                id="contactPhone" 
+                placeholder="Ex: (11) 98765-4321"
+                value={newEvent.contactPhone || ''}
+                onChange={(e) => setNewEvent({...newEvent, contactPhone: e.target.value})}
+              />
+              <p className="text-xs text-muted-foreground">
+                Adicione um número de telefone para enviar lembretes por WhatsApp
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              if (editingEvent) {
+                setEditingEvent(null);
+              } else {
+                setIsAddEventOpen(false);
+              }
+              resetNewEvent();
+            }}>Cancelar</Button>
+            <Button onClick={() => {
+              if (editingEvent) {
+                handleUpdateEvent(editingEvent);
+              } else {
+                handleAddEvent();
+              }
+            }}>
+              {editingEvent ? 'Atualizar' : 'Adicionar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
