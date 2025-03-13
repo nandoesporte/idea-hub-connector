@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,8 +16,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GoogleLogin } from '@react-oauth/google';
 import { useIsMobile } from "@/hooks/use-mobile";
+import { sendEventReminder } from '@/lib/whatsappService';
 
-// Mock data for events - in a real app this would come from your database
 const initialEvents = [
   {
     id: '1',
@@ -73,6 +72,7 @@ const AdminAgenda = () => {
     time: '10:00',
     duration: 60,
     type: 'meeting',
+    contactPhone: '',
   });
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<string | null>(null);
@@ -82,7 +82,6 @@ const AdminAgenda = () => {
   
   const isMobile = useIsMobile();
 
-  // Generate dates with events for the calendar
   const datesWithEvents = [...events.map(event => event.date), ...googleEvents.map(event => new Date(event.start.dateTime || event.start.date))];
 
   useEffect(() => {
@@ -91,7 +90,6 @@ const AdminAgenda = () => {
     }
   }, [googleAuthToken, selectedDate]);
 
-  // Filter events for the selected date
   const filteredEvents = () => {
     if (!selectedDate) return [];
     
@@ -110,7 +108,6 @@ const AdminAgenda = () => {
       );
     });
     
-    // Convert Google events to our format
     const formattedGoogleEvents = gEvents.map(event => ({
       id: event.id,
       title: event.summary,
@@ -125,7 +122,6 @@ const AdminAgenda = () => {
     if (activeTab === "local") return localEvents;
     if (activeTab === "google") return formattedGoogleEvents;
     
-    // Combine and sort both types of events
     const combinedEvents = [...localEvents, ...formattedGoogleEvents];
     return combinedEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
   };
@@ -137,11 +133,8 @@ const AdminAgenda = () => {
     
     setIsGoogleSyncing(true);
     try {
-      // In a real app, you would make an authenticated request to Google Calendar API
-      // This is a mock implementation
       console.log("Fetching Google Calendar events with token:", googleAuthToken);
       
-      // Mock response - in a real app, this would come from the Google Calendar API
       const mockEvents = [
         {
           id: 'google1',
@@ -159,7 +152,6 @@ const AdminAgenda = () => {
         },
       ];
       
-      // In a real app, set the events from the API response
       setGoogleEvents(mockEvents);
       toast.success("Calendário do Google sincronizado com sucesso!");
     } catch (error) {
@@ -249,6 +241,7 @@ const AdminAgenda = () => {
       time: `${eventToEdit.date.getHours().toString().padStart(2, '0')}:${eventToEdit.date.getMinutes().toString().padStart(2, '0')}`,
       duration: eventToEdit.duration,
       type: eventToEdit.type,
+      contactPhone: eventToEdit.contactPhone,
     });
 
     setEditingEvent(id);
@@ -262,7 +255,14 @@ const AdminAgenda = () => {
       time: '10:00',
       duration: 60,
       type: 'meeting',
+      contactPhone: '',
     });
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setNewEvent(prev => ({ ...prev, date }));
+    }
   };
 
   return (
@@ -363,7 +363,7 @@ const AdminAgenda = () => {
                           <Calendar
                             mode="single"
                             selected={newEvent.date}
-                            onSelect={(date) => date && setNewEvent({...newEvent, date})}
+                            onSelect={handleDateSelect}
                             initialFocus
                           />
                         </PopoverContent>
@@ -406,6 +406,18 @@ const AdminAgenda = () => {
                       </select>
                     </div>
                   </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="contactPhone">Telefone para Notificação (opcional)</Label>
+                    <Input 
+                      id="contactPhone" 
+                      placeholder="Ex: (11) 98765-4321"
+                      value={newEvent.contactPhone || ''}
+                      onChange={(e) => setNewEvent({...newEvent, contactPhone: e.target.value})}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Adicione um número de telefone para enviar lembretes por WhatsApp
+                    </p>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => {
@@ -433,7 +445,6 @@ const AdminAgenda = () => {
       </CardHeader>
       <CardContent className="pb-2">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-7 md:gap-6">
-          {/* Calendar */}
           <div className="rounded-lg border bg-card shadow-sm p-4 md:col-span-3">
             <Calendar
               mode="single"
@@ -459,7 +470,6 @@ const AdminAgenda = () => {
             )}
           </div>
           
-          {/* Events for selected date */}
           <div className="rounded-lg border bg-card shadow-sm p-4 md:col-span-4">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
