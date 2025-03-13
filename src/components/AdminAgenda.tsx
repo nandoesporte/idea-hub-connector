@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GoogleLogin } from '@react-oauth/google';
 import { useIsMobile } from "@/hooks/use-mobile";
-import { sendEventReminder } from '@/lib/whatsappService';
+import { sendEventReminder, setApiKey, isWhatsAppConfigured } from '@/lib/whatsappService';
 
 interface Event {
   id: string;
@@ -30,7 +29,6 @@ interface Event {
   isGoogleEvent?: boolean;
 }
 
-// Initial events moved to a serializable form for localStorage
 const initialEvents: Event[] = [
   {
     id: '1',
@@ -74,21 +72,6 @@ const eventTypeLabels = {
   google: 'Google Agenda',
 };
 
-// Helper function to serialize/deserialize Date objects for localStorage
-const serializeEvents = (events: Event[]) => {
-  return events.map(event => ({
-    ...event,
-    date: event.date.toISOString(),
-  }));
-};
-
-const deserializeEvents = (serializedEvents: any[]) => {
-  return serializedEvents.map(event => ({
-    ...event,
-    date: new Date(event.date),
-  }));
-};
-
 const AdminAgenda = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [events, setEvents] = useState<Event[]>([]);
@@ -115,10 +98,17 @@ const AdminAgenda = () => {
   const [googleAuthToken, setGoogleAuthToken] = useState<string | null>(localStorage.getItem('googleAuthToken'));
   const [isGoogleSyncing, setIsGoogleSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("all");
-  
+  const [apiKey, setApiKey] = useState<string | null>(localStorage.getItem('whatsapp_api_key'));
+
   const isMobile = useIsMobile();
 
-  // Load events from localStorage on initial render
+  useEffect(() => {
+    const apiKey = localStorage.getItem('whatsapp_api_key');
+    if (apiKey) {
+      setApiKey(apiKey);
+    }
+  }, []);
+
   useEffect(() => {
     const savedEvents = localStorage.getItem('adminAgendaEvents');
     if (savedEvents) {
@@ -134,7 +124,12 @@ const AdminAgenda = () => {
     }
   }, []);
 
-  // Save events to localStorage whenever they change
+  useEffect(() => {
+    if (googleAuthToken) {
+      fetchGoogleEvents();
+    }
+  }, [googleAuthToken, selectedDate]);
+
   useEffect(() => {
     if (events.length > 0) {
       localStorage.setItem('adminAgendaEvents', JSON.stringify(serializeEvents(events)));
@@ -142,12 +137,6 @@ const AdminAgenda = () => {
   }, [events]);
 
   const datesWithEvents = [...events.map(event => event.date), ...googleEvents.map(event => new Date(event.start.dateTime || event.start.date))];
-
-  useEffect(() => {
-    if (googleAuthToken) {
-      fetchGoogleEvents();
-    }
-  }, [googleAuthToken, selectedDate]);
 
   const filteredEvents = () => {
     if (!selectedDate) return [];
@@ -327,6 +316,37 @@ const AdminAgenda = () => {
       type: 'meeting',
       contactPhone: '',
     });
+  };
+
+  const handleSendWhatsAppReminder = async (event: Event) => {
+    if (!event.contactPhone) {
+      toast.error("Este evento não possui um número de telefone para notificação");
+      return;
+    }
+    
+    if (!isWhatsAppConfigured()) {
+      toast.error("Configure a API do WhatsApp primeiro nas configurações");
+      return;
+    }
+    
+    try {
+      const success = await sendEventReminder({
+        title: event.title,
+        date: event.date,
+        time: `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`,
+        duration: event.duration,
+        contactPhone: event.contactPhone
+      });
+      
+      if (success) {
+        toast.success(`Lembrete enviado para o evento "${event.title}"`);
+      } else {
+        toast.error(`Falha ao enviar lembrete para o evento "${event.title}"`);
+      }
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      toast.error("Erro ao enviar lembrete");
+    }
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -580,6 +600,11 @@ const AdminAgenda = () => {
                             <Badge variant="outline" className={eventTypeColors[event.type].badge}>
                               {eventTypeLabels[event.type]}
                             </Badge>
+                            {event.contactPhone && (
+                              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-200">
+                                WhatsApp
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm opacity-90">{event.description}</p>
                           <div className="flex flex-wrap gap-4 text-xs">
@@ -596,6 +621,17 @@ const AdminAgenda = () => {
                         </div>
                         {!event.isGoogleEvent && (
                           <div className="flex space-x-1">
+                            {event.contactPhone && isWhatsAppConfigured() && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-green-500 hover:text-green-600 hover:bg-green-50"
+                                onClick={() => handleSendWhatsAppReminder(event)}
+                                title="Enviar lembrete WhatsApp"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                              </Button>
+                            )}
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -646,3 +682,4 @@ const AdminAgenda = () => {
 };
 
 export default AdminAgenda;
+

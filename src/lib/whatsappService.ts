@@ -3,7 +3,7 @@ import { toast } from "sonner";
 
 // WhatsApp API configuration
 const WHATSGW_API_URL = "https://app.whatsgw.com.br/api/v1";
-const WHATSGW_API_KEY = "YOUR_API_KEY"; // This should be stored in environment variables
+let WHATSGW_API_KEY = ""; // This will be set dynamically
 
 interface WhatsAppMessage {
   phone: string;
@@ -20,9 +20,29 @@ export interface EventReminder {
 }
 
 /**
+ * Set WhatsApp API key
+ */
+export const setApiKey = (apiKey: string): void => {
+  WHATSGW_API_KEY = apiKey;
+  console.log("WhatsApp API key set successfully");
+};
+
+/**
+ * Check if WhatsApp is configured
+ */
+export const isWhatsAppConfigured = (): boolean => {
+  return !!WHATSGW_API_KEY;
+};
+
+/**
  * Send a message via WhatsApp API
  */
 export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: WhatsAppMessage): Promise<boolean> => {
+  if (!WHATSGW_API_KEY) {
+    console.error("WhatsApp API key not set");
+    return false;
+  }
+  
   try {
     // Format phone number (remove non-numeric characters and ensure it has country code)
     const formattedPhone = formatPhoneNumber(phone);
@@ -63,6 +83,11 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
  * Send an event reminder via WhatsApp
  */
 export const sendEventReminder = async (event: EventReminder): Promise<boolean> => {
+  if (!WHATSGW_API_KEY) {
+    console.error("WhatsApp API key not set");
+    return false;
+  }
+  
   const { title, date, time, duration, contactPhone } = event;
   
   const formattedDate = new Intl.DateTimeFormat('pt-BR', { 
@@ -110,6 +135,11 @@ export const formatPhoneNumber = (phone: string): string | null => {
  * This function can be called periodically to check for upcoming events and send reminders
  */
 export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 24): Promise<void> => {
+  if (!WHATSGW_API_KEY) {
+    console.error("WhatsApp API key not set");
+    return;
+  }
+  
   const now = new Date();
   const reminderThreshold = new Date(now.getTime() + (hoursBeforeEvent * 60 * 60 * 1000));
   
