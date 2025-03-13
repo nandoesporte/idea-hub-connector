@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { sendWhatsAppMessage, setApiKey } from "@/lib/whatsappService";
+import { sendWhatsAppMessage, setApiKey, getApiKey, isWhatsAppConfigured } from "@/lib/whatsappService";
 import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key } from "lucide-react";
 
 const AdminWhatsAppSettings = () => {
@@ -20,10 +20,9 @@ const AdminWhatsAppSettings = () => {
   
   // Carregar a API key do localStorage ao iniciar
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('whatsapp_api_key');
+    const savedApiKey = getApiKey();
     if (savedApiKey) {
       setApiKeyState(savedApiKey);
-      setApiKey(savedApiKey);
       setIsApiKeySet(true);
     }
     
@@ -55,7 +54,6 @@ const AdminWhatsAppSettings = () => {
     }
     
     // Salvar API key no localStorage e no serviço
-    localStorage.setItem('whatsapp_api_key', apiKey);
     setApiKey(apiKey);
     setIsApiKeySet(true);
     
@@ -135,7 +133,7 @@ const AdminWhatsAppSettings = () => {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Esta chave é necessária para enviar mensagens através da API do WhatsApp
+            Esta chave é necessária para enviar mensagens através da API do WhatsApp (app.whatsgw.com.br)
           </p>
           
           {isApiKeySet && (

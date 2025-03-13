@@ -24,22 +24,39 @@ export interface EventReminder {
  */
 export const setApiKey = (apiKey: string): void => {
   WHATSGW_API_KEY = apiKey;
+  localStorage.setItem('whatsapp_api_key', apiKey);
   console.log("WhatsApp API key set successfully");
+};
+
+/**
+ * Get the API key
+ */
+export const getApiKey = (): string => {
+  if (!WHATSGW_API_KEY) {
+    const savedKey = localStorage.getItem('whatsapp_api_key');
+    if (savedKey) {
+      WHATSGW_API_KEY = savedKey;
+    }
+  }
+  return WHATSGW_API_KEY;
 };
 
 /**
  * Check if WhatsApp is configured
  */
 export const isWhatsAppConfigured = (): boolean => {
-  return !!WHATSGW_API_KEY;
+  return !!getApiKey();
 };
 
 /**
  * Send a message via WhatsApp API
  */
 export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: WhatsAppMessage): Promise<boolean> => {
-  if (!WHATSGW_API_KEY) {
+  const apiKey = getApiKey();
+  
+  if (!apiKey) {
     console.error("WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
     return false;
   }
   
@@ -49,14 +66,17 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
     
     if (!formattedPhone) {
       console.error("Invalid phone number format");
+      toast.error("Formato de número de telefone inválido");
       return false;
     }
+    
+    console.log(`Sending WhatsApp message to ${formattedPhone} via ${WHATSGW_API_URL}`);
     
     const response = await fetch(`${WHATSGW_API_URL}/send-message`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${WHATSGW_API_KEY}`
+        "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         phone: formattedPhone,
@@ -75,6 +95,7 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
     return true;
   } catch (error) {
     console.error("Error sending WhatsApp message:", error);
+    toast.error(`Erro ao enviar mensagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     return false;
   }
 }
@@ -83,8 +104,9 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
  * Send an event reminder via WhatsApp
  */
 export const sendEventReminder = async (event: EventReminder): Promise<boolean> => {
-  if (!WHATSGW_API_KEY) {
+  if (!isWhatsAppConfigured()) {
     console.error("WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
     return false;
   }
   
@@ -135,7 +157,7 @@ export const formatPhoneNumber = (phone: string): string | null => {
  * This function can be called periodically to check for upcoming events and send reminders
  */
 export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 24): Promise<void> => {
-  if (!WHATSGW_API_KEY) {
+  if (!isWhatsAppConfigured()) {
     console.error("WhatsApp API key not set");
     return;
   }
