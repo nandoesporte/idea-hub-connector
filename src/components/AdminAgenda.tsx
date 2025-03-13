@@ -19,7 +19,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { sendEventReminder } from '@/lib/whatsappService';
 
-// Update the event type to include the contactPhone property
+// Define Event interface
 interface Event {
   id: string;
   title: string;
