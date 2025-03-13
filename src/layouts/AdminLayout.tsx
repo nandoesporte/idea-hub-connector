@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUser } from '@/contexts/UserContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -71,6 +72,7 @@ const AdminLayout = ({
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useUser();
+  const isMobile = useIsMobile();
 
   // Check if user is admin
   const isAdmin = user?.user_metadata?.role === 'admin';
@@ -120,49 +122,101 @@ const AdminLayout = ({
     );
   };
 
+  // Mobile Footer Navigation
+  const MobileFooterNav = () => (
+    <nav className="fixed bottom-0 left-0 z-50 w-full h-16 bg-card border-t flex items-center justify-around px-4">
+      {navItems.map((item) => {
+        const isActive = pathname === item.href;
+        
+        const FooterLink = ({ children }: { children: React.ReactNode }) => {
+          if (item.external) {
+            return (
+              <a
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center"
+              >
+                {children}
+              </a>
+            );
+          }
+          return (
+            <Link to={item.href} className="flex flex-col items-center">
+              {children}
+            </Link>
+          );
+        };
+        
+        return (
+          <FooterLink key={item.href}>
+            <item.icon 
+              className={cn(
+                "h-5 w-5 mb-1",
+                isActive ? "text-primary" : "text-muted-foreground"
+              )} 
+            />
+            <span className={cn(
+              "text-xs",
+              isActive ? "text-primary" : "text-muted-foreground"
+            )}>
+              {item.title}
+            </span>
+          </FooterLink>
+        );
+      })}
+    </nav>
+  );
+
   return (
     <div className="min-h-screen flex flex-col antialiased">
       <Navbar />
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside 
-          className={cn(
-            "bg-card border-r shrink-0 overflow-y-auto flex flex-col transition-all duration-300 h-[calc(100vh-4rem)]",
-            collapsed ? "w-[60px]" : "w-[220px]"
-          )}
-        >
-          <div className="flex-1 py-4">
-            <div className="px-2 mb-4 flex justify-end">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-7 w-7 p-0" 
-                onClick={() => setCollapsed(!collapsed)}
-              >
-                {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-              </Button>
+        {/* Desktop Sidebar - hidden on mobile */}
+        {!isMobile && (
+          <aside 
+            className={cn(
+              "bg-card border-r shrink-0 overflow-y-auto flex flex-col transition-all duration-300 h-[calc(100vh-4rem)]",
+              collapsed ? "w-[60px]" : "w-[220px]"
+            )}
+          >
+            <div className="flex-1 py-4">
+              <div className="px-2 mb-4 flex justify-end">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 w-7 p-0" 
+                  onClick={() => setCollapsed(!collapsed)}
+                >
+                  {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                </Button>
+              </div>
+              <nav className="grid gap-1 px-2">
+                {navItems.map((item) => (
+                  <TooltipProvider key={item.href} delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {renderNavLink(item)}
+                      </TooltipTrigger>
+                      {collapsed && (
+                        <TooltipContent side="right">
+                          {item.title}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                ))}
+              </nav>
             </div>
-            <nav className="grid gap-1 px-2">
-              {navItems.map((item) => (
-                <TooltipProvider key={item.href} delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      {renderNavLink(item)}
-                    </TooltipTrigger>
-                    {collapsed && (
-                      <TooltipContent side="right">
-                        {item.title}
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-            </nav>
-          </div>
-        </aside>
+          </aside>
+        )}
         
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto bg-background h-[calc(100vh-4rem)]">
+        <main className={cn(
+          "flex-1 overflow-y-auto bg-background",
+          isMobile ? "h-[calc(100vh-4rem-4rem)]" : "h-[calc(100vh-4rem)]",
+          isMobile && "pb-16" // Add padding at bottom for mobile to prevent content being hidden behind footer
+        )}>
           <div className="container py-4 px-4 lg:px-6">
             {/* Page header with title and action button */}
             {(title || onAction) && (
@@ -183,6 +237,9 @@ const AdminLayout = ({
           </div>
         </main>
       </div>
+      
+      {/* Mobile Footer Navigation */}
+      {isMobile && <MobileFooterNav />}
     </div>
   );
 };
