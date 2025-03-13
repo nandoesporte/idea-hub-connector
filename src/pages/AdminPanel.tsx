@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import FeatureCard from '@/components/FeatureCard';
 import { ProjectIdea } from '@/types';
 import { Link } from 'react-router-dom';
+import AdminAgenda from '@/components/AdminAgenda';
 
 // Sample data for analytics
 const analyticsData = {
@@ -103,6 +104,9 @@ const AdminPanel = () => {
       description="Visão geral do sistema e atalhos importantes."
     >
       <div className="space-y-6 pb-10">
+        {/* Admin Agenda - New component */}
+        <AdminAgenda />
+        
         {/* Analytics summary cards */}
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
