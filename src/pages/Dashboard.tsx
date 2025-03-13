@@ -103,6 +103,8 @@ const CategoryBadge = ({ category }: { category: string }) => {
 };
 
 const Dashboard = () => {
+  console.log('Dashboard rendering');
+  
   return (
     <MainLayout>
       <div className="space-y-8">

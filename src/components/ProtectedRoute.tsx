@@ -2,6 +2,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from 'sonner';
+import { Skeleton } from './ui/skeleton';
 
 interface ProtectedRouteProps {
   redirectPath?: string;
@@ -14,14 +15,17 @@ const ProtectedRoute = ({ redirectPath = '/login', requireAdmin = false }: Prote
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <Skeleton className="h-12 w-12 rounded-full mb-4" />
+        <Skeleton className="h-4 w-48 mb-2" />
+        <Skeleton className="h-4 w-32" />
       </div>
     );
   }
 
   // If no user, redirect to login
   if (!user) {
+    toast.error('Você precisa estar logado para acessar esta página');
     return <Navigate to={redirectPath} replace state={{ from: location }} />;
   }
 
@@ -31,6 +35,7 @@ const ProtectedRoute = ({ redirectPath = '/login', requireAdmin = false }: Prote
     return <Navigate to="/dashboard" replace />;
   }
 
+  // If we got here, it means the user is authenticated and has the right permissions
   return <Outlet />;
 };
 
