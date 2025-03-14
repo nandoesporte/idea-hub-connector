@@ -3,7 +3,7 @@ import React from 'react';
 import { VoiceCommandEvent } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarCheck, Clock, Trash2, MessageSquare } from 'lucide-react';
+import { CalendarCheck, Clock, Trash2, MessageSquare, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { sendEventReminder, isWhatsAppConfigured } from '@/lib/whatsappService';
@@ -64,6 +64,57 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
     }
   };
 
+  const handleSendToAllSystemNumbers = async (event: VoiceCommandEvent) => {
+    if (!isWhatsAppConfigured()) {
+      toast.error("Configure a API do WhatsApp primeiro nas configurações");
+      return;
+    }
+    
+    try {
+      // Get system notification numbers from localStorage
+      const savedNumbersStr = localStorage.getItem('whatsapp_notification_numbers');
+      if (!savedNumbersStr) {
+        toast.error("Configure os números de notificação do sistema nas configurações");
+        return;
+      }
+      
+      const savedNumbers = JSON.parse(savedNumbersStr);
+      if (!Array.isArray(savedNumbers) || savedNumbers.length === 0) {
+        toast.error("Nenhum número de notificação do sistema configurado");
+        return;
+      }
+      
+      let successCount = 0;
+      
+      for (const phone of savedNumbers) {
+        if (!phone || phone.trim() === '') continue;
+        
+        try {
+          const success = await sendEventReminder({
+            title: event.title,
+            date: event.date,
+            time: `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`,
+            duration: event.duration || 60,
+            contactPhone: phone
+          });
+          
+          if (success) successCount++;
+        } catch (error) {
+          console.error(`Failed to send notification to ${phone}:`, error);
+        }
+      }
+      
+      if (successCount > 0) {
+        toast.success(`Lembrete enviado para ${successCount} número(s) de notificação do sistema`);
+      } else {
+        toast.error("Falha ao enviar lembretes para os números do sistema");
+      }
+    } catch (error) {
+      console.error("Error sending system reminders:", error);
+      toast.error("Erro ao enviar lembretes para os números do sistema");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {events.map((event) => (
@@ -96,11 +147,20 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
                   size="icon"
                   className="h-6 w-6 text-green-500 hover:text-green-600 hover:bg-green-50"
                   onClick={() => handleSendWhatsAppReminder(event)}
-                  title="Enviar notificação WhatsApp"
+                  title="Enviar notificação WhatsApp para o contato do evento"
                 >
                   <MessageSquare className="h-3 w-3" />
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-amber-500 hover:text-amber-600 hover:bg-amber-50"
+                onClick={() => handleSendToAllSystemNumbers(event)}
+                title="Enviar notificação para todos os números do sistema"
+              >
+                <Bell className="h-3 w-3" />
+              </Button>
               {onDelete && (
                 <Button 
                   variant="ghost" 

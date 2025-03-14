@@ -43,6 +43,50 @@ export function useVoiceCommandEvents() {
     setRefreshKey(prev => prev + 1);
   };
 
+  const sendWhatsAppNotificationsToAllNumbers = async (event: VoiceCommandEvent) => {
+    if (!isWhatsAppConfigured()) {
+      console.log('WhatsApp not configured, skipping notifications');
+      return;
+    }
+    
+    try {
+      // Get system notification numbers from localStorage
+      const savedNumbersStr = localStorage.getItem('whatsapp_notification_numbers');
+      if (!savedNumbersStr) return;
+      
+      const savedNumbers = JSON.parse(savedNumbersStr);
+      if (!Array.isArray(savedNumbers) || savedNumbers.length === 0) return;
+      
+      console.log('Sending WhatsApp notifications to system numbers:', savedNumbers);
+      
+      // Send notification to each saved number
+      const successfulNotifications = [];
+      
+      for (const phone of savedNumbers) {
+        if (!phone || phone.trim() === '') continue;
+        
+        try {
+          await sendEventReminder({
+            title: event.title,
+            date: event.date,
+            time: `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`,
+            duration: event.duration || 60,
+            contactPhone: phone
+          });
+          successfulNotifications.push(phone);
+        } catch (error) {
+          console.error(`Failed to send notification to ${phone}:`, error);
+        }
+      }
+      
+      if (successfulNotifications.length > 0) {
+        toast.success(`${successfulNotifications.length} notificações de sistema enviadas via WhatsApp`);
+      }
+    } catch (error) {
+      console.error('Error sending system WhatsApp notifications:', error);
+    }
+  };
+
   const createEventFromVoiceCommand = async (transcript: string) => {
     // Don't process if empty or already processing
     if (!transcript || transcript.trim() === '' || processingCommand) {
@@ -79,7 +123,18 @@ export function useVoiceCommandEvents() {
       console.log('Voice command event saved successfully');
       toast.success('Evento criado com sucesso!');
 
-      // Send WhatsApp notification if possible
+      // Format the event for notifications
+      const eventForNotification: VoiceCommandEvent = {
+        id: saveResult.id || '',
+        title: result.title,
+        description: result.description || '',
+        date: result.date,
+        duration: result.duration || 60,
+        contactPhone: result.contactPhone,
+        created_at: new Date()
+      };
+
+      // Send WhatsApp notification to the event contact if specified
       if (result.contactPhone && isWhatsAppConfigured()) {
         try {
           await sendEventReminder({
@@ -95,6 +150,9 @@ export function useVoiceCommandEvents() {
           // Don't show error to user here as the event was still created successfully
         }
       }
+      
+      // Send notifications to all system notification numbers
+      await sendWhatsAppNotificationsToAllNumbers(eventForNotification);
       
       refreshEvents();
       return true;

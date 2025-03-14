@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -9,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { Phone, MessageSquare, Bell } from 'lucide-react';
+import { setApiKey, isWhatsAppConfigured } from '@/lib/whatsappService';
 
 interface SiteSettings {
   siteName: string;
@@ -70,6 +71,28 @@ const AdminSettings = () => {
   const [isSocialFormDirty, setIsSocialFormDirty] = useState(false);
   const [isFeaturesFormDirty, setIsFeaturesFormDirty] = useState(false);
   const [isSeoFormDirty, setIsSeoFormDirty] = useState(false);
+  const [whatsAppApiKey, setWhatsAppApiKey] = useState<string>('');
+  const [notificationNumbers, setNotificationNumbers] = useState<string[]>(['', '', '']);
+  const [isNotificationsFormDirty, setIsNotificationsFormDirty] = useState(false);
+
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('whatsapp_api_key') || '';
+    setWhatsAppApiKey(savedApiKey);
+    
+    const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');
+    if (savedNumbers) {
+      try {
+        const parsedNumbers = JSON.parse(savedNumbers);
+        const normalizedNumbers = Array.isArray(parsedNumbers) && parsedNumbers.length <= 3 
+          ? [...parsedNumbers, ...Array(3 - parsedNumbers.length).fill('')]
+          : ['', '', ''];
+        setNotificationNumbers(normalizedNumbers);
+      } catch (error) {
+        console.error('Error parsing notification numbers:', error);
+        setNotificationNumbers(['', '', '']);
+      }
+    }
+  }, []);
 
   const handleGeneralChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -112,6 +135,13 @@ const AdminSettings = () => {
     setIsSeoFormDirty(true);
   };
 
+  const handleNotificationsChange = (index: number, value: string) => {
+    const updatedNumbers = [...notificationNumbers];
+    updatedNumbers[index] = value;
+    setNotificationNumbers(updatedNumbers);
+    setIsNotificationsFormDirty(true);
+  };
+
   const saveGeneralSettings = () => {
     toast.success('Configurações gerais salvas com sucesso!');
     setIsGeneralFormDirty(false);
@@ -132,6 +162,17 @@ const AdminSettings = () => {
     setIsSeoFormDirty(false);
   };
 
+  const saveNotificationSettings = () => {
+    localStorage.setItem('whatsapp_api_key', whatsAppApiKey);
+    setApiKey(whatsAppApiKey);
+    
+    const filteredNumbers = notificationNumbers.filter(num => num.trim() !== '');
+    localStorage.setItem('whatsapp_notification_numbers', JSON.stringify(filteredNumbers));
+    
+    toast.success('Configurações de notificação salvas com sucesso!');
+    setIsNotificationsFormDirty(false);
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -143,10 +184,11 @@ const AdminSettings = () => {
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="social">Redes Sociais</TabsTrigger>
             <TabsTrigger value="features">Funcionalidades</TabsTrigger>
+            <TabsTrigger value="notifications">Notificações</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
           </TabsList>
           
@@ -360,6 +402,73 @@ const AdminSettings = () => {
                   disabled={!isFeaturesFormDirty}
                 >
                   Salvar Configurações
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="notifications" className="space-y-4 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Configurações de Notificação
+                </CardTitle>
+                <CardDescription>
+                  Configure a integração com WhatsApp e números para notificações do sistema.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="whatsAppApiKey" className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    API Key do WhatsApp
+                  </Label>
+                  <Input 
+                    id="whatsAppApiKey" 
+                    value={whatsAppApiKey} 
+                    onChange={(e) => {
+                      setWhatsAppApiKey(e.target.value);
+                      setIsNotificationsFormDirty(true);
+                    }}
+                    placeholder="Insira sua chave de API do WhatsApp"
+                    type="password"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Esta chave é necessária para enviar notificações via WhatsApp.
+                  </p>
+                </div>
+                
+                <div className="space-y-4">
+                  <Label className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Números para Notificações do Sistema
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Insira até 3 números que receberão notificações de todo o sistema.
+                  </p>
+                  
+                  {notificationNumbers.map((number, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground min-w-[20px]">
+                        {index + 1}.
+                      </span>
+                      <Input 
+                        value={number} 
+                        onChange={(e) => handleNotificationsChange(index, e.target.value)}
+                        placeholder={`Número ${index + 1} (ex: 5511987654321)`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                
+                <Button 
+                  onClick={saveNotificationSettings} 
+                  disabled={!isNotificationsFormDirty}
+                  className="flex items-center gap-2"
+                >
+                  <Bell className="h-4 w-4" />
+                  Salvar Configurações de Notificação
                 </Button>
               </CardContent>
             </Card>
