@@ -388,7 +388,7 @@ const AdminAgenda = () => {
     }
 
     // Create a speech recognition instance
-    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognitionRef.current = new SpeechRecognition();
     
     // Configure speech recognition
