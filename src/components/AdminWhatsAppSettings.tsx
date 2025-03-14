@@ -12,10 +12,10 @@ import {
   getApiKey, 
   isWhatsAppConfigured,
   sendTestMessage,
-  sendTestToSpecificNumber,
-  testApiConnection
+  sendTestToSpecificNumber 
 } from "@/lib/whatsgwService";
 import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone, Zap, ShieldAlert } from "lucide-react";
+import WhatsAppLogs from './WhatsAppLogs';
 
 const AdminWhatsAppSettings = () => {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -24,15 +24,13 @@ const AdminWhatsAppSettings = () => {
   const [isSending, setIsSending] = useState(false);
   const [apiKey, setApiKeyState] = useState('');
   const [isApiKeySet, setIsApiKeySet] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'failed'>('unknown');
+  const [showLogs, setShowLogs] = useState(false);
   
   useEffect(() => {
     const savedApiKey = getApiKey();
     if (savedApiKey) {
       setApiKeyState(savedApiKey);
       setIsApiKeySet(true);
-      checkConnection(savedApiKey);
     }
     
     const savedEnabled = localStorage.getItem('whatsapp_enabled');
@@ -46,22 +44,6 @@ const AdminWhatsAppSettings = () => {
     }
   }, []);
   
-  const checkConnection = async (key?: string) => {
-    setIsTesting(true);
-    try {
-      if (key) {
-        setApiKey(key);
-      }
-      const success = await testApiConnection();
-      setConnectionStatus(success ? 'success' : 'failed');
-    } catch (error) {
-      console.error("Error testing connection:", error);
-      setConnectionStatus('failed');
-    } finally {
-      setIsTesting(false);
-    }
-  };
-  
   const handleToggleEnable = (checked: boolean) => {
     setIsEnabled(checked);
     localStorage.setItem('whatsapp_enabled', checked.toString());
@@ -72,7 +54,7 @@ const AdminWhatsAppSettings = () => {
     );
   };
   
-  const handleSaveApiKey = async () => {
+  const handleSaveApiKey = () => {
     if (!apiKey.trim()) {
       toast.error("Por favor, insira uma chave de API válida");
       return;
@@ -80,9 +62,6 @@ const AdminWhatsAppSettings = () => {
     
     setApiKey(apiKey);
     setIsApiKeySet(true);
-    
-    // Testa conexão com a nova chave
-    await checkConnection(apiKey);
     
     toast.success("Chave de API do WhatsApp salva com sucesso!");
   };
@@ -149,15 +128,6 @@ const AdminWhatsAppSettings = () => {
     }
   };
   
-  const handleViewLogs = () => {
-    const tabsElement = document.querySelector('[role="tablist"]');
-    const logsTab = tabsElement?.querySelector('[value="logs"]') as HTMLElement;
-    
-    if (logsTab) {
-      logsTab.click();
-    }
-  };
-  
   return (
     <div className="space-y-6">
       <Card className="w-full shadow-sm">
@@ -167,7 +137,7 @@ const AdminWhatsAppSettings = () => {
             Notificações via WhatsApp
           </CardTitle>
           <CardDescription>
-            Configure o envio automático de lembretes de agenda via WhatsApp usando a API WhatsGW
+            Configure o envio automático de lembretes de agenda via WhatsApp
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -188,38 +158,21 @@ const AdminWhatsAppSettings = () => {
               <Button 
                 onClick={handleSaveApiKey} 
                 variant="secondary"
-                disabled={!apiKey.trim() || isTesting}
+                disabled={!apiKey.trim()}
               >
-                {isTesting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Testando...
-                  </>
-                ) : (
-                  "Salvar e Testar"
-                )}
+                Salvar
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               Esta chave é necessária para enviar mensagens através da API do WhatsApp (app.whatsgw.com.br)
             </p>
             
-            {connectionStatus === 'success' && (
+            {isApiKeySet && (
               <Alert className="mt-2 bg-green-500/10 text-green-600 border-green-200">
                 <CheckCircle className="h-4 w-4" />
-                <AlertTitle>API configurada e conectada</AlertTitle>
+                <AlertTitle>API configurada</AlertTitle>
                 <AlertDescription>
-                  Sua chave de API foi configurada e a conexão com o serviço WhatsGW está funcionando
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {connectionStatus === 'failed' && (
-              <Alert className="mt-2 bg-red-500/10 text-red-600 border-red-200">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Falha na conexão</AlertTitle>
-                <AlertDescription>
-                  Não foi possível conectar ao serviço WhatsGW. Verifique se a chave de API está correta e tente novamente.
+                  Sua chave de API foi configurada e está pronta para uso
                 </AlertDescription>
               </Alert>
             )}
@@ -230,12 +183,12 @@ const AdminWhatsAppSettings = () => {
             <AlertTitle>Documentação API</AlertTitle>
             <AlertDescription>
               <a 
-                href="https://app.whatsgw.com.br/APIDocs" 
+                href="https://documenter.getpostman.com/view/3741041/SztBa7ku" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="underline hover:text-blue-700"
               >
-                Consulte a documentação oficial da API WhatsGW para mais informações
+                Consulte a documentação da API para mais informações
               </a>
             </AlertDescription>
           </Alert>
@@ -248,7 +201,7 @@ const AdminWhatsAppSettings = () => {
             <div className="flex items-center gap-2">
               <Button 
                 onClick={handleDirectTest} 
-                disabled={isSending || !isApiKeySet || connectionStatus !== 'success'}
+                disabled={isSending || !isApiKeySet}
                 className="bg-amber-500 hover:bg-amber-600 text-white"
               >
                 {isSending ? (
@@ -280,7 +233,7 @@ const AdminWhatsAppSettings = () => {
               id="whatsapp-notifications"
               checked={isEnabled}
               onCheckedChange={handleToggleEnable}
-              disabled={!isApiKeySet || connectionStatus !== 'success'}
+              disabled={!isApiKeySet}
             />
           </div>
           
@@ -326,7 +279,7 @@ const AdminWhatsAppSettings = () => {
                   />
                   <Button 
                     onClick={handleSendTest} 
-                    disabled={isSending || !testPhone || !isApiKeySet || connectionStatus !== 'success'}
+                    disabled={isSending || !testPhone || !isApiKeySet}
                   >
                     {isSending ? (
                       <>
@@ -355,37 +308,26 @@ const AdminWhatsAppSettings = () => {
           <div className="mt-6 pt-4 border-t">
             <Button
               variant="outline"
-              onClick={handleViewLogs}
-              className="w-full flex items-center justify-center gap-2"
+              onClick={() => setShowLogs(!showLogs)}
+              className="w-full"
             >
-              <AlertCircle className="h-4 w-4 text-amber-500" />
-              Visualizar logs de erros e operações
+              {showLogs ? "Ocultar logs" : "Mostrar logs de erros e operações"}
             </Button>
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              Os logs ajudam a identificar problemas de conexão com a API do WhatsApp
-            </p>
           </div>
           
         </CardContent>
         <CardFooter className="border-t pt-4">
           <div className="flex items-center text-sm">
             {isApiKeySet ? (
-              connectionStatus === 'success' ? (
-                isEnabled ? (
-                  <div className="flex items-center text-green-500">
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Notificações WhatsApp ativadas e conectadas
-                  </div>
-                ) : (
-                  <div className="flex items-center text-yellow-500">
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    API conectada, mas notificações desativadas
-                  </div>
-                )
+              isEnabled ? (
+                <div className="flex items-center text-green-500">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Notificações WhatsApp ativadas
+                </div>
               ) : (
-                <div className="flex items-center text-red-500">
+                <div className="flex items-center text-yellow-500">
                   <AlertCircle className="h-4 w-4 mr-2" />
-                  Falha na conexão com a API
+                  API configurada, mas notificações desativadas
                 </div>
               )
             ) : (
@@ -397,6 +339,8 @@ const AdminWhatsAppSettings = () => {
           </div>
         </CardFooter>
       </Card>
+      
+      {showLogs && <WhatsAppLogs />}
     </div>
   );
 };

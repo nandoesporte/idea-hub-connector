@@ -47,12 +47,6 @@ export function useVoiceCommandEvents() {
   // Function to send daily events to admin numbers
   const sendDailyEventsToAdmins = async () => {
     try {
-      // Check if WhatsApp is configured
-      if (!isWhatsAppConfigured()) {
-        toast.warning('WhatsApp não está configurado. Configure nas configurações de administração.');
-        return false;
-      }
-      
       // Get today's events
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -136,37 +130,31 @@ export function useVoiceCommandEvents() {
         createdAt: new Date() // Fixed: Using createdAt instead of created_at
       };
 
-      // Check if WhatsApp is configured before sending notifications
-      if (isWhatsAppConfigured()) {
-        // Send WhatsApp notification to the event contact if specified
-        if (result.contactPhone) {
-          try {
-            await sendEventReminder({
-              title: result.title,
-              date: result.date,
-              time: `${result.date.getHours().toString().padStart(2, '0')}:${result.date.getMinutes().toString().padStart(2, '0')}`,
-              duration: result.duration || 60,
-              contactPhone: result.contactPhone
-            });
-            toast.success('Notificação enviada via WhatsApp!');
-          } catch (error) {
-            console.error('Error sending WhatsApp notification:', error);
-            // Don't show error to user here as the event was still created successfully
-          }
-        }
-        
-        // Send notifications to all admin numbers about the new event
+      // Send WhatsApp notification to the event contact if specified
+      if (result.contactPhone && isWhatsAppConfigured()) {
         try {
-          const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
-          if (adminNotifications > 0) {
-            toast.success(`Notificação enviada para ${adminNotifications} administrador(es)`);
-          }
+          await sendEventReminder({
+            title: result.title,
+            date: result.date,
+            time: `${result.date.getHours().toString().padStart(2, '0')}:${result.date.getMinutes().toString().padStart(2, '0')}`,
+            duration: result.duration || 60,
+            contactPhone: result.contactPhone
+          });
+          toast.success('Notificação enviada via WhatsApp!');
         } catch (error) {
-          console.error('Error sending admin notifications:', error);
-          toast.warning('Não foi possível enviar notificações aos administradores');
+          console.error('Error sending WhatsApp notification:', error);
+          // Don't show error to user here as the event was still created successfully
         }
-      } else {
-        toast.info('WhatsApp não está configurado. Configure nas configurações de administração para ativar notificações.');
+      }
+      
+      // Send notifications to all admin numbers about the new event
+      try {
+        const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
+        if (adminNotifications > 0) {
+          toast.success(`Notificação enviada para ${adminNotifications} administrador(es)`);
+        }
+      } catch (error) {
+        console.error('Error sending admin notifications:', error);
       }
       
       refreshEvents();
@@ -185,19 +173,6 @@ export function useVoiceCommandEvents() {
       const result = await deleteVoiceCommandEvent(id);
       if (result.success) {
         toast.success('Evento excluído com sucesso!');
-        
-        // Notify admins about deleted event if WhatsApp is configured
-        if (isWhatsAppConfigured()) {
-          try {
-            const deletedEvent = events.find(event => event.id === id);
-            if (deletedEvent) {
-              await notifyAdminsAboutSystemEvent('event-deleted', { event: deletedEvent });
-            }
-          } catch (error) {
-            console.error('Error notifying admins about deleted event:', error);
-          }
-        }
-        
         refreshEvents();
         return true;
       } else {
