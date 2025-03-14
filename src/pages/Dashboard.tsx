@@ -1,3 +1,4 @@
+
 import React from 'react';
 import VoiceCommandsSection from '@/components/VoiceCommandsSection';
 import { useUser } from '@/contexts/UserContext';
@@ -12,7 +13,7 @@ import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
 export default function Dashboard() {
   const { user } = useUser();
   const navigate = useNavigate();
-  const { events, loading } = useVoiceCommandEvents();
+  const { events, loading, deleteEvent } = useVoiceCommandEvents();
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -55,7 +56,7 @@ export default function Dashboard() {
               </TabsList>
               
               <TabsContent value="events">
-                <EventsList events={events} loading={loading} />
+                <EventsList events={events} loading={loading} onDelete={deleteEvent} />
               </TabsContent>
               
               <TabsContent value="ideas">

@@ -6,12 +6,26 @@ import { ptBR } from 'date-fns/locale';
 import { CalendarCheck, Clock, Trash2, MessageSquare, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { sendEventReminder, isWhatsAppConfigured } from '@/lib/whatsappService';
+import { 
+  isWhatsAppConfigured, 
+  sendWhatsAppMessage 
+} from '@/lib/whatsgwService';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface EventsListProps {
   events: VoiceCommandEvent[];
   loading: boolean;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => Promise<boolean>;
 }
 
 const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
@@ -33,6 +47,15 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
     );
   }
 
+  const handleDeleteEvent = async (id: string) => {
+    if (onDelete) {
+      const success = await onDelete(id);
+      if (success) {
+        toast.success("Evento excluído com sucesso");
+      }
+    }
+  };
+
   const handleSendWhatsAppReminder = async (event: VoiceCommandEvent) => {
     if (!event.contactPhone) {
       toast.error("Este evento não possui um número de telefone para notificação");
@@ -45,12 +68,20 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
     }
     
     try {
-      const success = await sendEventReminder({
-        title: event.title,
-        date: event.date,
-        time: `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`,
-        duration: event.duration || 60,
-        contactPhone: event.contactPhone
+      const formattedDate = format(event.date, "dd/MM/yyyy", { locale: ptBR });
+      const formattedTime = format(event.date, "HH:mm", { locale: ptBR });
+      
+      const message = `🗓️ *Lembrete de Compromisso*\n\n` +
+        `Olá! Este é um lembrete para o seu compromisso:\n\n` +
+        `*${event.title}*\n` +
+        `📅 Data: ${formattedDate}\n` +
+        `⏰ Horário: ${formattedTime}\n` +
+        `⏱️ Duração: ${event.duration || 60} minutos\n\n` +
+        `Para remarcar ou cancelar, entre em contato conosco.`;
+      
+      const success = await sendWhatsAppMessage({
+        phone: event.contactPhone,
+        message: message
       });
       
       if (success) {
@@ -84,18 +115,25 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
         return;
       }
       
+      const formattedDate = format(event.date, "dd/MM/yyyy", { locale: ptBR });
+      const formattedTime = format(event.date, "HH:mm", { locale: ptBR });
+      
+      const message = `🗓️ *Lembrete de Compromisso*\n\n` +
+        `Um evento foi agendado:\n\n` +
+        `*${event.title}*\n` +
+        `📅 Data: ${formattedDate}\n` +
+        `⏰ Horário: ${formattedTime}\n` +
+        `⏱️ Duração: ${event.duration || 60} minutos\n\n`;
+      
       let successCount = 0;
       
       for (const phone of savedNumbers) {
         if (!phone || phone.trim() === '') continue;
         
         try {
-          const success = await sendEventReminder({
-            title: event.title,
-            date: event.date,
-            time: `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`,
-            duration: event.duration || 60,
-            contactPhone: phone
+          const success = await sendWhatsAppMessage({
+            phone: phone,
+            message: message
           });
           
           if (success) successCount++;
@@ -162,14 +200,36 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
                 <Bell className="h-3 w-3" />
               </Button>
               {onDelete && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 text-destructive hover:text-destructive/90"
-                  onClick={() => onDelete(event.id)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-destructive hover:text-destructive/90 hover:bg-red-50"
+                      title="Excluir evento"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir o evento "{event.title}"? 
+                        Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => handleDeleteEvent(event.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
           </div>
