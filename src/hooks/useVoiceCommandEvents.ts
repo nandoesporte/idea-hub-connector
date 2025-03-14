@@ -20,6 +20,7 @@ export function useVoiceCommandEvents() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [processingCommand, setProcessingCommand] = useState(false);
+  const [notificationSending, setNotificationSending] = useState(false);
 
   useEffect(() => {
     async function loadEvents() {
@@ -47,6 +48,7 @@ export function useVoiceCommandEvents() {
   // Function to send daily events to admin numbers
   const sendDailyEventsToAdmins = async () => {
     try {
+      setNotificationSending(true);
       // Get today's events
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -74,6 +76,122 @@ export function useVoiceCommandEvents() {
       console.error('Error sending daily events to admins:', error);
       toast.error('Erro ao enviar agenda do dia para administradores');
       return false;
+    } finally {
+      setNotificationSending(false);
+    }
+  };
+
+  // Function to send system notifications to all admin numbers
+  const sendSystemNotification = async (messageType: string, content: string) => {
+    try {
+      setNotificationSending(true);
+      
+      if (!isWhatsAppConfigured()) {
+        toast.error('WhatsApp não configurado. Configure nas configurações do sistema.');
+        return false;
+      }
+      
+      const sent = await notifyAdminsAboutSystemEvent('custom-message', { 
+        title: messageType,
+        message: content
+      });
+      
+      if (sent > 0) {
+        toast.success(`Notificação enviada para ${sent} número(s) de administrador`);
+        return true;
+      } else {
+        toast.warning('Não foi possível enviar a notificação para administradores');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error sending system notification:', error);
+      toast.error('Erro ao enviar notificação para administradores');
+      return false;
+    } finally {
+      setNotificationSending(false);
+    }
+  };
+  
+  // Function to send week's upcoming events to admin numbers
+  const sendWeekEventsToAdmins = async () => {
+    try {
+      setNotificationSending(true);
+      // Get current date
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Get date 7 days from now
+      const nextWeek = new Date(today);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      
+      // Filter events occurring in the next 7 days
+      const weekEvents = events.filter(event => {
+        const eventDate = new Date(event.date);
+        eventDate.setHours(0, 0, 0, 0);
+        return eventDate >= today && eventDate < nextWeek;
+      });
+      
+      if (weekEvents.length === 0) {
+        toast.info('Não há eventos para os próximos 7 dias');
+        return false;
+      }
+      
+      // Send notification to admin numbers
+      const sent = await notifyAdminsAboutSystemEvent('weekly-events', { events: weekEvents });
+      
+      if (sent > 0) {
+        toast.success(`Agenda da semana enviada para ${sent} número(s) de administrador`);
+        return true;
+      } else {
+        toast.warning('Não foi possível enviar a agenda da semana para administradores');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error sending weekly events to admins:', error);
+      toast.error('Erro ao enviar agenda da semana para administradores');
+      return false;
+    } finally {
+      setNotificationSending(false);
+    }
+  };
+
+  // Function to send reminder to a specific event participant
+  const sendEventReminderManually = async (eventId: string) => {
+    try {
+      setNotificationSending(true);
+      
+      const event = events.find(e => e.id === eventId);
+      if (!event) {
+        toast.error('Evento não encontrado');
+        return false;
+      }
+      
+      if (!event.contactPhone) {
+        toast.warning('Este evento não possui número de telefone para contato');
+        return false;
+      }
+      
+      const result = await sendEventReminder({
+        title: event.title,
+        date: event.date,
+        time: `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`,
+        duration: event.duration || 60,
+        contactPhone: event.contactPhone
+      });
+      
+      if (result) {
+        toast.success('Lembrete enviado com sucesso!');
+        return true;
+      } else {
+        toast.error('Falha ao enviar lembrete');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error sending reminder manually:', error);
+      toast.error('Erro ao enviar lembrete manualmente');
+      return false;
+    } finally {
+      setNotificationSending(false);
     }
   };
 
@@ -193,6 +311,10 @@ export function useVoiceCommandEvents() {
     createEventFromVoiceCommand,
     processingCommand,
     deleteEvent,
-    sendDailyEventsToAdmins
+    sendDailyEventsToAdmins,
+    sendWeekEventsToAdmins,
+    sendSystemNotification,
+    sendEventReminderManually,
+    notificationSending
   };
 }
