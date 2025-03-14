@@ -209,6 +209,12 @@ function processDateTimeInfo(dateInfo: string, timeInfo: string): Date {
 function simulateGpt4Response(transcript: string): any {
   console.log('Simulating response for:', transcript);
   
+  // Remove common prefixes that might be added by the voice recognition system
+  let cleanedTranscript = transcript.trim();
+  if (cleanedTranscript.toLowerCase().startsWith('guardando ')) {
+    cleanedTranscript = cleanedTranscript.substring('guardando '.length);
+  }
+  
   const now = new Date();
   
   // Basic parsing logic to extract information
@@ -221,43 +227,65 @@ function simulateGpt4Response(transcript: string): any {
   let contactPhone = '';
   
   // Extract event type
-  if (transcript.toLowerCase().includes('reunião') || transcript.toLowerCase().includes('meeting')) {
+  if (cleanedTranscript.toLowerCase().includes('reunião') || cleanedTranscript.toLowerCase().includes('meeting')) {
     type = 'meeting';
-    title = transcript.toLowerCase().includes('reunião com') ? 
-      'Reunião com ' + transcript.split('reunião com')[1].split(' às')[0].trim() :
+    title = cleanedTranscript.toLowerCase().includes('reunião com') ? 
+      'Reunião com ' + cleanedTranscript.split('reunião com')[1].split(' às')[0].trim() :
       'Reunião';
-  } else if (transcript.toLowerCase().includes('prazo') || transcript.toLowerCase().includes('deadline')) {
+  } else if (cleanedTranscript.toLowerCase().includes('prazo') || cleanedTranscript.toLowerCase().includes('deadline')) {
     type = 'deadline';
-    title = transcript.toLowerCase().includes('prazo para') ? 
-      'Prazo: ' + transcript.split('prazo para')[1].split(' em')[0].trim() :
+    title = cleanedTranscript.toLowerCase().includes('prazo para') ? 
+      'Prazo: ' + cleanedTranscript.split('prazo para')[1].split(' em')[0].trim() :
       'Prazo de entrega';
-  } else if (transcript.toLowerCase().includes('tarefa') || transcript.toLowerCase().includes('task')) {
+  } else if (cleanedTranscript.toLowerCase().includes('tarefa') || cleanedTranscript.toLowerCase().includes('task')) {
     type = 'task';
-    title = transcript.toLowerCase().includes('tarefa de') ? 
-      'Tarefa: ' + transcript.split('tarefa de')[1].split(' para')[0].trim() :
+    title = cleanedTranscript.toLowerCase().includes('tarefa de') ? 
+      'Tarefa: ' + cleanedTranscript.split('tarefa de')[1].split(' para')[0].trim() :
       'Nova tarefa';
+  } else if (cleanedTranscript.toLowerCase().includes('agendar')) {
+    // Handle "agendar" command format
+    if (cleanedTranscript.toLowerCase().includes('agendar reunião')) {
+      type = 'meeting';
+      title = 'Reunião';
+      // Try to extract title after "agendar reunião"
+      const afterAgendar = cleanedTranscript.toLowerCase().split('agendar reunião')[1];
+      if (afterAgendar && afterAgendar.includes('para')) {
+        const titlePart = afterAgendar.split('para')[0].trim();
+        if (titlePart) {
+          title = 'Reunião: ' + titlePart;
+        }
+      }
+    } else {
+      // Generic "agendar" command
+      const afterAgendar = cleanedTranscript.toLowerCase().split('agendar')[1];
+      if (afterAgendar && afterAgendar.trim()) {
+        title = 'Evento: ' + afterAgendar.split('para')[0].trim();
+      } else {
+        title = 'Novo evento agendado';
+      }
+    }
   } else {
     // If no specific type is mentioned, try to extract a title from the beginning of the transcript
-    const potentialTitle = transcript.split(' para ')[0].split(' às ')[0].split(' em ')[0];
+    const potentialTitle = cleanedTranscript.split(' para ')[0].split(' às ')[0].split(' em ')[0];
     title = potentialTitle || 'Novo evento';
     
     // Try to guess the type based on other keywords
-    if (transcript.toLowerCase().includes('conversar') || transcript.toLowerCase().includes('encontro') || 
-        transcript.toLowerCase().includes('call') || transcript.toLowerCase().includes('entrevista')) {
+    if (cleanedTranscript.toLowerCase().includes('conversar') || cleanedTranscript.toLowerCase().includes('encontro') || 
+        cleanedTranscript.toLowerCase().includes('call') || cleanedTranscript.toLowerCase().includes('entrevista')) {
       type = 'meeting';
-    } else if (transcript.toLowerCase().includes('entregar') || transcript.toLowerCase().includes('finalizar') ||
-               transcript.toLowerCase().includes('completar')) {
+    } else if (cleanedTranscript.toLowerCase().includes('entregar') || cleanedTranscript.toLowerCase().includes('finalizar') ||
+               cleanedTranscript.toLowerCase().includes('completar')) {
       type = 'deadline';
-    } else if (transcript.toLowerCase().includes('fazer') || transcript.toLowerCase().includes('completar') ||
-               transcript.toLowerCase().includes('revisar')) {
+    } else if (cleanedTranscript.toLowerCase().includes('fazer') || cleanedTranscript.toLowerCase().includes('completar') ||
+               cleanedTranscript.toLowerCase().includes('revisar')) {
       type = 'task';
     }
   }
   
   // If no title was extracted, create a basic one based on the transcript
-  if (!title && transcript) {
+  if (!title && cleanedTranscript) {
     // Take first 5 words as title
-    const words = transcript.split(' ');
+    const words = cleanedTranscript.split(' ');
     title = words.slice(0, Math.min(5, words.length)).join(' ');
     if (title.length > 30) {
       title = title.substring(0, 30) + '...';
@@ -265,48 +293,82 @@ function simulateGpt4Response(transcript: string): any {
   }
   
   // Extract date
-  if (transcript.toLowerCase().includes('amanhã') || transcript.toLowerCase().includes('amanha')) {
+  if (cleanedTranscript.toLowerCase().includes('amanhã') || cleanedTranscript.toLowerCase().includes('amanha')) {
     dateInfo = 'amanhã';
-  } else if (transcript.match(/\d{1,2}\/\d{1,2}(\/\d{2,4})?/)) {
+  } else if (cleanedTranscript.match(/\d{1,2}\/\d{1,2}(\/\d{2,4})?/)) {
     // Match DD/MM or DD/MM/YYYY format
-    dateInfo = transcript.match(/\d{1,2}\/\d{1,2}(\/\d{2,4})?/)[0];
-  } else if (transcript.toLowerCase().includes('segunda')) {
+    const dateMatch = cleanedTranscript.match(/\d{1,2}\/\d{1,2}(\/\d{2,4})?/);
+    if (dateMatch) {
+      dateInfo = dateMatch[0];
+    }
+  } else if (cleanedTranscript.toLowerCase().includes('segunda')) {
     dateInfo = 'próxima segunda';
-  } else if (transcript.toLowerCase().includes('terça')) {
+  } else if (cleanedTranscript.toLowerCase().includes('terça')) {
     dateInfo = 'próxima terça';
-  } else if (transcript.toLowerCase().includes('quarta')) {
+  } else if (cleanedTranscript.toLowerCase().includes('quarta')) {
     dateInfo = 'próxima quarta';
-  } else if (transcript.toLowerCase().includes('quinta')) {
+  } else if (cleanedTranscript.toLowerCase().includes('quinta')) {
     dateInfo = 'próxima quinta';
-  } else if (transcript.toLowerCase().includes('sexta')) {
+  } else if (cleanedTranscript.toLowerCase().includes('sexta')) {
     dateInfo = 'próxima sexta';
-  } else if (transcript.toLowerCase().includes('sábado') || transcript.toLowerCase().includes('sabado')) {
+  } else if (cleanedTranscript.toLowerCase().includes('sábado') || cleanedTranscript.toLowerCase().includes('sabado')) {
     dateInfo = 'próximo sábado';
-  } else if (transcript.toLowerCase().includes('domingo')) {
+  } else if (cleanedTranscript.toLowerCase().includes('domingo')) {
     dateInfo = 'próximo domingo';
+  } else if (cleanedTranscript.toLowerCase().includes(' dia ')) {
+    // Try to extract "dia XX" format
+    const dayMatch = cleanedTranscript.match(/ dia (\d{1,2})/i);
+    if (dayMatch && dayMatch[1]) {
+      const day = parseInt(dayMatch[1]);
+      const currentDay = now.getDate();
+      const currentMonth = now.getMonth();
+      let month = currentMonth;
+      
+      // If the day has passed this month, assume next month
+      if (day < currentDay) {
+        month = (currentMonth + 1) % 12;
+      }
+      
+      dateInfo = `${day}/${month + 1}`;
+    }
   }
   
   // Extract time
   const timeRegex = /\d{1,2}[hH:](\d{1,2})?/;
-  const timeMatch = transcript.match(timeRegex);
+  const timeMatch = cleanedTranscript.match(timeRegex);
   if (timeMatch) {
     timeInfo = timeMatch[0];
-  } else if (transcript.toLowerCase().includes('manhã')) {
+  } else if (cleanedTranscript.toLowerCase().includes(' às ')) {
+    // Try to extract time after "às"
+    const afterAs = cleanedTranscript.split(' às ')[1];
+    if (afterAs) {
+      const hourMatch = afterAs.match(/(\d{1,2})/);
+      if (hourMatch && hourMatch[1]) {
+        timeInfo = hourMatch[1] + 'h';
+      } else if (afterAs.includes('manhã') || afterAs.includes('manha')) {
+        timeInfo = 'manhã';
+      } else if (afterAs.includes('tarde')) {
+        timeInfo = 'tarde';
+      } else if (afterAs.includes('noite')) {
+        timeInfo = 'noite';
+      }
+    }
+  } else if (cleanedTranscript.toLowerCase().includes('manhã')) {
     timeInfo = 'manhã';
-  } else if (transcript.toLowerCase().includes('tarde')) {
+  } else if (cleanedTranscript.toLowerCase().includes('tarde')) {
     timeInfo = 'tarde';
-  } else if (transcript.toLowerCase().includes('noite')) {
+  } else if (cleanedTranscript.toLowerCase().includes('noite')) {
     timeInfo = 'noite';
   } else {
     // Look for hour numbers followed by "horas"
-    const hoursMatch = transcript.match(/(\d{1,2})\s*horas?/i);
+    const hoursMatch = cleanedTranscript.match(/(\d{1,2})\s*horas?/i);
     if (hoursMatch) {
       timeInfo = hoursMatch[1] + 'h';
     }
   }
   
   // Extract duration
-  const durationMatch = transcript.match(/duração de (\d+) (hora|minuto)/);
+  const durationMatch = cleanedTranscript.match(/duração de (\d+) (hora|minuto)/);
   if (durationMatch) {
     const durationValue = parseInt(durationMatch[1]);
     const durationUnit = durationMatch[2];
@@ -320,7 +382,7 @@ function simulateGpt4Response(transcript: string): any {
   
   // Extract phone number
   const phoneRegex = /(\d{2})?[\s-]?(\d{8,9})|(\d{2})?[\s-]?(\d{4,5})[\s-]?(\d{4})/;
-  const phoneMatch = transcript.match(phoneRegex);
+  const phoneMatch = cleanedTranscript.match(phoneRegex);
   if (phoneMatch) {
     // Clean up and format the phone number
     contactPhone = phoneMatch[0].replace(/\D/g, '');
@@ -331,7 +393,7 @@ function simulateGpt4Response(transcript: string): any {
   }
   
   // Create description from the transcript
-  description = transcript;
+  description = cleanedTranscript;
   
   return {
     title,
