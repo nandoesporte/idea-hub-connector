@@ -397,17 +397,20 @@ const AdminAgenda = () => {
     recognitionRef.current.lang = 'pt-BR';
 
     // Set up event handlers
-    recognitionRef.current.onresult = (event: any) => {
+    recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = Array.from(event.results)
-        .map((result: any) => result[0])
-        .map((result: any) => result.transcript)
+        .map((result) => result[0])
+        .map((result) => result.transcript)
         .join('');
       
+      console.log("Speech recognition result:", transcript);
       setTranscript(transcript);
     };
 
     recognitionRef.current.onend = () => {
+      console.log("Speech recognition ended, isListening:", isListening);
       if (isListening) {
+        console.log("Final transcript:", transcript);
         handleVoiceCommand();
         setIsListening(false);
       }
@@ -444,29 +447,35 @@ const AdminAgenda = () => {
   };
 
   const handleVoiceCommand = async () => {
-    if (!transcript.trim()) {
+    console.log("Handling voice command with transcript:", transcript);
+    
+    if (!transcript || !transcript.trim()) {
       toast.error('Nenhum comando detectado. Tente novamente.');
       return;
     }
 
     setIsProcessingVoice(true);
     try {
+      console.log("Processing voice command:", transcript);
       const result = await processVoiceCommand(transcript);
+      console.log("Voice command processing result:", result);
       
       if (result.success) {
         // Create a new event with parsed data
         const eventDate = new Date(result.date);
+        console.log("Creating event with date:", eventDate);
         
-        const event: Event = {
+        const event = {
           id: Date.now().toString(),
-          title: result.title,
+          title: result.title || 'Novo evento',
           description: result.description || '',
           date: eventDate,
           duration: result.duration || 60,
-          type: result.type as 'meeting' | 'deadline' | 'task' | 'other',
+          type: result.type || 'other',
           contactPhone: result.contactPhone || '',
         };
 
+        console.log("Adding new event:", event);
         const updatedEvents = [...events, event];
         setEvents(updatedEvents);
         setSelectedDate(eventDate);
@@ -475,6 +484,7 @@ const AdminAgenda = () => {
           description: `"${result.title}" agendado para ${format(eventDate, 'PPP', { locale: ptBR })} às ${format(eventDate, 'HH:mm')}`
         });
       } else {
+        console.error("Voice command processing failed:", result);
         toast.error('Não foi possível processar o comando de voz. Tente novamente com mais detalhes.');
       }
     } catch (error) {
@@ -482,7 +492,6 @@ const AdminAgenda = () => {
       toast.error('Erro ao processar comando de voz');
     } finally {
       setIsProcessingVoice(false);
-      setTranscript('');
     }
   };
 
