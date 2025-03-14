@@ -125,13 +125,15 @@ export function useVoiceCommandEvents() {
 
       // Format the event for notifications
       const eventForNotification: VoiceCommandEvent = {
-        id: saveResult.id || '',
+        id: '', // We don't need the actual ID for notification purposes
+        userId: '', // This will be filled by the backend
         title: result.title,
         description: result.description || '',
         date: result.date,
         duration: result.duration || 60,
+        type: result.type,
         contactPhone: result.contactPhone,
-        created_at: new Date()
+        createdAt: new Date() // Fixed property name from created_at to createdAt
       };
 
       // Send WhatsApp notification to the event contact if specified
