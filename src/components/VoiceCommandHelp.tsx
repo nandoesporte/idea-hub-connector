@@ -18,8 +18,8 @@ const VoiceCommandHelp = () => {
           <div>
             <h3 className="font-medium text-sm">Como funciona:</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Clique no botão "Comando de Voz", diga "Hub" seguido do evento que deseja agendar, 
-              e os detalhes serão processados automaticamente.
+              Clique no botão "Comando de Voz" e fale diretamente o evento que deseja agendar. 
+              Os detalhes serão processados automaticamente.
             </p>
           </div>
           
@@ -27,19 +27,19 @@ const VoiceCommandHelp = () => {
             <h3 className="font-medium text-sm">Exemplos de comandos:</h3>
             <ul className="mt-1 space-y-2">
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Hub, agendar uma reunião com a equipe de design amanhã às 14h com duração de 1 hora"
+                "Agendar uma reunião com a equipe de design amanhã às 14h com duração de 1 hora"
               </li>
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Hub, marcar prazo de entrega para o projeto X na próxima segunda-feira"
+                "Marcar prazo de entrega para o projeto X na próxima segunda-feira"
               </li>
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Hub, criar tarefa de revisão do portfólio hoje à tarde"
+                "Criar tarefa de revisão do portfólio hoje à tarde"
               </li>
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Hub, agendar call com cliente para dia 15 de dezembro às 10 horas da manhã"
+                "Agendar call com cliente para dia 15 de dezembro às 10 horas da manhã"
               </li>
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Hub, reunião com João da empresa ABC na quinta-feira às 9h, telefone 11987654321"
+                "Reunião com João da empresa ABC na quinta-feira às 9h, telefone 11987654321"
               </li>
             </ul>
           </div>

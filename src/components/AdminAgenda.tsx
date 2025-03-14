@@ -122,7 +122,6 @@ const AdminAgenda = () => {
   const [transcript, setTranscript] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [showVoiceCommandHelp, setShowVoiceCommandHelp] = useState(false);
-  const [keywordDetected, setKeywordDetected] = useState(false);
   const recognitionRef = useRef<any>(null);
   const activationKeyword = 'hub';
 
@@ -406,25 +405,14 @@ const AdminAgenda = () => {
         .join('');
       
       setTranscript(currentTranscript);
-      
-      // Check for activation keyword
-      if (!keywordDetected && currentTranscript.toLowerCase().includes(activationKeyword)) {
-        setKeywordDetected(true);
-        // Clear previous transcript to only capture the command after the keyword
-        setTranscript('');
-        toast.info(`Palavra-chave "${activationKeyword}" detectada! O que você deseja agendar?`, {
-          duration: 3000,
-        });
-      }
     };
 
     recognitionRef.current.onend = () => {
       if (isListening) {
-        if (keywordDetected && transcript.trim()) {
+        if (transcript.trim()) {
           handleVoiceCommand();
         }
         setIsListening(false);
-        setKeywordDetected(false);
       }
     };
 
@@ -432,7 +420,6 @@ const AdminAgenda = () => {
       console.error('Speech recognition error', event.error);
       toast.error('Erro no reconhecimento de voz. Tente novamente.');
       setIsListening(false);
-      setKeywordDetected(false);
     };
 
     return () => {
@@ -440,15 +427,14 @@ const AdminAgenda = () => {
         recognitionRef.current.stop();
       }
     };
-  }, [isListening, keywordDetected, transcript]);
+  }, [isListening, transcript]);
 
   const startListening = () => {
     setTranscript('');
-    setKeywordDetected(false);
     setIsListening(true);
     if (recognitionRef.current) {
       recognitionRef.current.start();
-      toast.info(`Escutando... Diga "${activationKeyword}" seguido do evento que deseja agendar.`);
+      toast.info("Escutando... Diga o evento que deseja agendar.");
     } else {
       toast.error('Reconhecimento de voz não suportado neste navegador.');
     }
@@ -492,7 +478,7 @@ const AdminAgenda = () => {
           description: `"${result.title}" agendado para ${format(eventDate, 'PPP', { locale: ptBR })} às ${format(eventDate, 'HH:mm')}`
         });
         
-        // Automatically open the event form with pre-filled data for review
+        // Automatically fill the event form with pre-filled data for review
         setNewEvent({
           title: result.title,
           description: result.description || '',
@@ -735,11 +721,7 @@ const AdminAgenda = () => {
         {isListening && (
           <Alert className="mt-2 bg-blue-50 border-blue-200">
             <Mic className="h-4 w-4 text-blue-500" />
-            <AlertTitle>
-              {keywordDetected 
-                ? "Processando comando..." 
-                : `Diga "${activationKeyword}" para iniciar o comando de voz`}
-            </AlertTitle>
+            <AlertTitle>Processando comando...</AlertTitle>
             <AlertDescription className="text-sm italic">
               "{transcript || 'Aguardando comando...'}"
             </AlertDescription>
