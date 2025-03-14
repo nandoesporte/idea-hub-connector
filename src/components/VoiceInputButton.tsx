@@ -5,10 +5,13 @@ import { Mic, Square } from 'lucide-react';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
 import { toast } from 'sonner';
 
+// Properly define the SpeechRecognition type to fix the error
+type SpeechRecognitionType = typeof window.SpeechRecognition | typeof window.webkitSpeechRecognition;
+
 const VoiceInputButton = () => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<InstanceType<SpeechRecognitionType> | null>(null);
   const finalTranscriptRef = useRef('');
   const { createEventFromVoiceCommand, processingCommand } = useVoiceCommandEvents();
 
