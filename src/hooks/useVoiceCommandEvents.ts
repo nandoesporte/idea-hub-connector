@@ -12,8 +12,9 @@ import {
   sendEventReminder, 
   isWhatsAppConfigured, 
   notifyAdminsAboutEvent,
-  notifyAdminsAboutSystemEvent
-} from '@/lib/whatsappService';
+  notifyAdminsAboutSystemEvent,
+  testApiConnection
+} from '@/lib/whatsgwService';
 
 export function useVoiceCommandEvents() {
   const [events, setEvents] = useState<VoiceCommandEvent[]>([]);
@@ -21,6 +22,7 @@ export function useVoiceCommandEvents() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [processingCommand, setProcessingCommand] = useState(false);
   const [notificationSending, setNotificationSending] = useState(false);
+  const [apiConnected, setApiConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
     async function loadEvents() {
@@ -43,7 +45,29 @@ export function useVoiceCommandEvents() {
     }
 
     loadEvents();
+
+    // Check WhatsApp API connection if configured
+    if (isWhatsAppConfigured()) {
+      checkApiConnection();
+    }
   }, [refreshKey]);
+
+  // Function to check WhatsApp API connection
+  const checkApiConnection = async () => {
+    try {
+      const connected = await testApiConnection();
+      setApiConnected(connected);
+      if (connected) {
+        toast.success('Conexão com a API do WhatsApp estabelecida com sucesso');
+      } else {
+        toast.error('Falha na conexão com a API do WhatsApp. Verifique a chave e as configurações.');
+      }
+    } catch (error) {
+      console.error('Error checking API connection:', error);
+      setApiConnected(false);
+      toast.error('Erro ao verificar conexão com a API do WhatsApp');
+    }
+  };
 
   // Function to send daily events to admin numbers
   const sendDailyEventsToAdmins = async () => {
@@ -89,6 +113,16 @@ export function useVoiceCommandEvents() {
       if (!isWhatsAppConfigured()) {
         toast.error('WhatsApp não configurado. Configure nas configurações do sistema.');
         return false;
+      }
+      
+      if (apiConnected === false) {
+        // Try to reconnect first
+        const connected = await testApiConnection();
+        if (!connected) {
+          toast.error('Falha na conexão com a API do WhatsApp. Verifique a chave e as configurações.');
+          return false;
+        }
+        setApiConnected(true);
       }
       
       const sent = await notifyAdminsAboutSystemEvent('custom-message', { 
@@ -171,6 +205,16 @@ export function useVoiceCommandEvents() {
         return false;
       }
       
+      if (apiConnected === false) {
+        // Try to reconnect first
+        const connected = await testApiConnection();
+        if (!connected) {
+          toast.error('Falha na conexão com a API do WhatsApp. Verifique a chave e as configurações.');
+          return false;
+        }
+        setApiConnected(true);
+      }
+      
       const result = await sendEventReminder({
         title: event.title,
         date: event.date,
@@ -237,19 +281,30 @@ export function useVoiceCommandEvents() {
 
       // Format the event for notifications - using empty string for id since it's not returned from saveVoiceCommandEvent
       const eventForNotification: VoiceCommandEvent = {
-        id: '', // Fixed: Using empty string instead of saveResult.id which doesn't exist
-        userId: '', // This will be filled by the backend
+        id: '', 
+        userId: '', 
         title: result.title,
         description: result.description || '',
         date: result.date,
         duration: result.duration || 60,
         type: result.type,
         contactPhone: result.contactPhone,
-        createdAt: new Date() // Fixed: Using createdAt instead of created_at
+        createdAt: new Date()
       };
 
+      // Check WhatsApp connection before sending notifications
+      if (isWhatsAppConfigured()) {
+        if (apiConnected === null) {
+          const connected = await testApiConnection();
+          setApiConnected(connected);
+          if (!connected) {
+            toast.warning('WhatsApp configurado, mas a conexão falhou. Verifique as configurações.');
+          }
+        }
+      }
+
       // Send WhatsApp notification to the event contact if specified
-      if (result.contactPhone && isWhatsAppConfigured()) {
+      if (result.contactPhone && isWhatsAppConfigured() && apiConnected !== false) {
         try {
           await sendEventReminder({
             title: result.title,
@@ -266,13 +321,15 @@ export function useVoiceCommandEvents() {
       }
       
       // Send notifications to all admin numbers about the new event
-      try {
-        const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
-        if (adminNotifications > 0) {
-          toast.success(`Notificação enviada para ${adminNotifications} administrador(es)`);
+      if (isWhatsAppConfigured() && apiConnected !== false) {
+        try {
+          const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
+          if (adminNotifications > 0) {
+            toast.success(`Notificação enviada para ${adminNotifications} administrador(es)`);
+          }
+        } catch (error) {
+          console.error('Error sending admin notifications:', error);
         }
-      } catch (error) {
-        console.error('Error sending admin notifications:', error);
       }
       
       refreshEvents();
@@ -315,6 +372,8 @@ export function useVoiceCommandEvents() {
     sendWeekEventsToAdmins,
     sendSystemNotification,
     sendEventReminderManually,
-    notificationSending
+    notificationSending,
+    apiConnected,
+    checkApiConnection
   };
 }
