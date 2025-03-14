@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { sendWhatsAppMessage, setApiKey, getApiKey, isWhatsAppConfigured } from "@/lib/whatsappService";
-import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink } from "lucide-react";
+import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone } from "lucide-react";
 
 const AdminWhatsAppSettings = () => {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -63,6 +63,10 @@ const AdminWhatsAppSettings = () => {
   const handleRemindBeforeChange = (value: number) => {
     setRemindBefore(value);
     localStorage.setItem('whatsapp_remind_before', value.toString());
+  };
+  
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTestPhone(e.target.value);
   };
   
   const handleSendTest = async () => {
@@ -212,14 +216,17 @@ const AdminWhatsAppSettings = () => {
             </Alert>
             
             <div className="mt-6 space-y-2 border-t pt-4">
-              <Label htmlFor="test-phone">Testar integração</Label>
+              <Label htmlFor="test-phone" className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Testar integração
+              </Label>
               <div className="flex items-center gap-2">
                 <Input
                   id="test-phone"
                   type="tel"
                   placeholder="Ex: (11) 98765-4321"
                   value={testPhone}
-                  onChange={(e) => setTestPhone(e.target.value)}
+                  onChange={handlePhoneChange}
                   className="flex-1"
                 />
                 <Button 
@@ -237,8 +244,15 @@ const AdminWhatsAppSettings = () => {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Envie uma mensagem de teste para verificar a integração com o WhatsApp
+                Digite um número completo com DDD, ex: 11987654321 (sem parênteses ou traços)
               </p>
+              <Alert className="mt-2 bg-blue-500/10 text-blue-600 border-blue-200">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Formato de telefone</AlertTitle>
+                <AlertDescription>
+                  Para números brasileiros, certifique-se de incluir o DDD. O código do país (55) será adicionado automaticamente se necessário.
+                </AlertDescription>
+              </Alert>
             </div>
           </>
         )}

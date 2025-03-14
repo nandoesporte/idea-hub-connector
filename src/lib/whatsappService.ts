@@ -168,15 +168,43 @@ export const sendEventReminder = async (event: EventReminder): Promise<boolean> 
  */
 export const formatPhoneNumber = (phone: string): string | null => {
   // Remove non-numeric characters
-  const numericOnly = phone.replace(/\D/g, '');
+  let numericOnly = phone.replace(/\D/g, '');
   
   if (numericOnly.length < 8) {
     return null; // Invalid phone number
   }
   
-  // Check if country code is present, if not add Brazil's country code (55)
-  if (numericOnly.length <= 11) {
-    return `55${numericOnly}`;
+  // Handle Brazilian phone numbers specifically:
+  
+  // If it has 8-9 digits, it's likely missing the area code and country code
+  if (numericOnly.length >= 8 && numericOnly.length <= 9) {
+    // Add default Brazilian country code (55) and assume area code is missing
+    // This is just a fallback - proper phone numbers should include area code
+    console.log("Warning: Phone number missing area code, cannot automatically determine it");
+    toast.warning("Número de telefone sem código de área (DDD). Por favor, inclua o DDD.");
+    return null;
+  }
+  
+  // If it has 10-11 digits (with area code but no country code)
+  // Brazilian numbers are typically 11 digits (with 9th digit) or 10 digits (without 9th digit)
+  if (numericOnly.length >= 10 && numericOnly.length <= 11) {
+    // Add Brazilian country code
+    numericOnly = `55${numericOnly}`;
+    console.log("Added Brazilian country code to phone number:", numericOnly);
+  }
+  
+  // If number doesn't start with country code 55 (Brazil), add it
+  // This assumes all numbers are from Brazil
+  if (numericOnly.length >= 12 && !numericOnly.startsWith('55')) {
+    console.log("Phone number doesn't start with Brazilian country code, adding it");
+    numericOnly = `55${numericOnly}`;
+  }
+  
+  // Final validation - proper Brazilian numbers with country code should be 12-13 digits
+  // (55 + 2 digit area code + 8-9 digit phone number)
+  if (numericOnly.length < 12 || numericOnly.length > 13) {
+    console.error("Invalid Brazilian phone number format:", numericOnly);
+    return null;
   }
   
   return numericOnly;
