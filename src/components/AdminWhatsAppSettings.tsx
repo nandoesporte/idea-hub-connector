@@ -198,10 +198,16 @@ const AdminWhatsAppSettings = () => {
           
           <Alert className="mt-2 bg-amber-500/10 text-amber-600 border-amber-200">
             <ShieldAlert className="h-4 w-4" />
-            <AlertTitle>Problemas de CORS</AlertTitle>
+            <AlertTitle>Problemas de CORS e Erro 403</AlertTitle>
             <AlertDescription className="text-sm">
-              Se você encontrar erros de conexão, o sistema tentará automaticamente superar 
-              limitações de CORS usando vários métodos. Os logs abaixo mostrarão detalhes de qualquer problema.
+              <p className="mb-1">
+                Se você encontrar erros de conexão ou erros 403 (Forbidden), verifique:
+              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Se o domínio da aplicação está autorizado no painel da WhatsGW</li>
+                <li>Se a chave API está correta e ativa</li>
+                <li>Se sua conta tem permissões suficientes para enviar mensagens</li>
+              </ul>
             </AlertDescription>
           </Alert>
           

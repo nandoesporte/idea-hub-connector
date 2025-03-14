@@ -118,6 +118,35 @@ export const isWhatsAppConfigured = (): boolean => {
 };
 
 /**
+ * Handle specific API error responses
+ */
+const handleApiError = (status: number, operation: string, responseData?: any): string => {
+  switch (status) {
+    case 401:
+      addLogEntry('error', operation, "API authentication failed - invalid API key", responseData);
+      return "Autenticação falhou. Verifique se sua chave de API está correta.";
+    case 403:
+      addLogEntry('error', operation, "API access forbidden - your account may not have permission or the API key is wrong", responseData);
+      return "Acesso negado (403). Você precisa autorizar o domínio no painel da WhatsGW ou sua chave de API pode estar incorreta.";
+    case 404:
+      addLogEntry('error', operation, "API endpoint not found", responseData);
+      return "Endpoint da API não encontrado.";
+    case 429:
+      addLogEntry('error', operation, "Rate limit exceeded", responseData);
+      return "Limite de requisições excedido. Tente novamente em alguns minutos.";
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      addLogEntry('error', operation, `Server error (${status})`, responseData);
+      return `Erro no servidor WhatsApp (${status}). Tente novamente mais tarde.`;
+    default:
+      addLogEntry('error', operation, `HTTP error ${status}`, responseData);
+      return `Erro na API (${status}). Verifique os logs para mais detalhes.`;
+  }
+};
+
+/**
  * Attempts to send a request with different proxies if the first one fails
  */
 const sendWithFallbackProxies = async (url: string, options: RequestInit): Promise<Response> => {
@@ -224,8 +253,9 @@ export const sendTestToSpecificNumber = async (): Promise<boolean> => {
           errorData = { message: `HTTP error ${response.status}` };
         }
         
-        addLogEntry('error', 'direct-test', `HTTP error ${response.status}`, errorData);
-        throw new Error(errorData.message || `HTTP error ${response.status}`);
+        // Use the specific error handler
+        const errorMessage = handleApiError(response.status, 'direct-test', errorData);
+        throw new Error(errorMessage);
       }
       
       let data;
@@ -258,10 +288,16 @@ export const sendTestToSpecificNumber = async (): Promise<boolean> => {
     });
     
     // More user-friendly error message
-    if (error instanceof Error && error.message.includes("Failed to fetch")) {
-      toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
+    if (error instanceof Error) {
+      if (error.message.includes("Failed to fetch")) {
+        toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
+      } else if (error.message.includes("403")) {
+        toast.error("Acesso negado (403). Verifique se o domínio está autorizado no painel da WhatsGW e se a chave de API está correta.");
+      } else {
+        toast.error(`Erro ao enviar mensagem de teste: ${error.message}`);
+      }
     } else {
-      toast.error(`Erro ao enviar mensagem de teste direto: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      toast.error("Erro desconhecido ao enviar mensagem de teste");
     }
     
     return false;
@@ -332,8 +368,9 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
           errorData = { message: `HTTP error ${response.status}` };
         }
         
-        addLogEntry('error', 'send-message', `HTTP error ${response.status}`, errorData);
-        throw new Error(errorData.message || `HTTP error ${response.status}`);
+        // Use the specific error handler
+        const errorMessage = handleApiError(response.status, 'send-message', errorData);
+        throw new Error(errorMessage);
       }
       
       let data;
@@ -365,10 +402,16 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
     });
     
     // More user-friendly error message
-    if (error instanceof Error && error.message.includes("Failed to fetch")) {
-      toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
+    if (error instanceof Error) {
+      if (error.message.includes("Failed to fetch")) {
+        toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
+      } else if (error.message.includes("403")) {
+        toast.error("Acesso negado (403). Verifique se o domínio está autorizado no painel da WhatsGW e se a chave de API está correta.");
+      } else {
+        toast.error(`Erro ao enviar mensagem: ${error.message}`);
+      }
     } else {
-      toast.error(`Erro ao enviar mensagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      toast.error("Erro desconhecido ao enviar mensagem");
     }
     
     return false;
