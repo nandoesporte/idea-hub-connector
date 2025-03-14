@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -13,7 +12,8 @@ import {
   isWhatsAppConfigured, 
   notifyAdminsAboutEvent,
   notifyAdminsAboutSystemEvent,
-  testApiConnection
+  testApiConnection,
+  sendWhatsAppMessage
 } from '@/lib/whatsgwService';
 
 export function useVoiceCommandEvents() {
@@ -29,7 +29,6 @@ export function useVoiceCommandEvents() {
       setLoading(true);
       try {
         const fetchedEvents = await fetchVoiceCommandEvents();
-        // Convert date strings to Date objects
         const formattedEvents = fetchedEvents.map(event => ({
           ...event,
           date: new Date(event.date),
@@ -46,13 +45,11 @@ export function useVoiceCommandEvents() {
 
     loadEvents();
 
-    // Check WhatsApp API connection if configured
     if (isWhatsAppConfigured()) {
       checkApiConnection();
     }
   }, [refreshKey]);
 
-  // Function to check WhatsApp API connection
   const checkApiConnection = async () => {
     try {
       const connected = await testApiConnection();
@@ -69,11 +66,9 @@ export function useVoiceCommandEvents() {
     }
   };
 
-  // Function to send daily events to admin numbers
   const sendDailyEventsToAdmins = async () => {
     try {
       setNotificationSending(true);
-      // Get today's events
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -86,11 +81,52 @@ export function useVoiceCommandEvents() {
         return eventDate.getTime() === today.getTime();
       });
       
-      // Send notification to admin numbers
-      const sent = await notifyAdminsAboutSystemEvent('daily-events', { events: todaysEvents });
+      const formattedDate = new Intl.DateTimeFormat('pt-BR', { 
+        day: '2-digit', month: '2-digit', year: 'numeric'
+      }).format(today);
       
-      if (sent > 0) {
-        toast.success(`Agenda do dia enviada para ${sent} número(s) de administrador`);
+      let message = `🗓️ *Agenda do Dia - ${formattedDate}*\n\n`;
+      
+      if (todaysEvents.length === 0) {
+        message += "Não há eventos programados para hoje.";
+      } else {
+        todaysEvents.forEach((event, index) => {
+          const time = new Intl.DateTimeFormat('pt-BR', { 
+            hour: '2-digit', minute: '2-digit'
+          }).format(new Date(event.date));
+          
+          message += `${index + 1}. *${event.title}*\n`;
+          message += `⏰ ${time} - ${event.duration || 60} min\n`;
+          
+          if (event.description) {
+            message += `📝 ${event.description}\n`;
+          }
+          
+          message += `📞 ${event.contactPhone || 'Sem contato'}\n\n`;
+        });
+      }
+      
+      const adminNumbers = getAdminNumbers();
+      if (adminNumbers.length === 0) {
+        toast.warning('Não há números de administradores configurados');
+        setNotificationSending(false);
+        return false;
+      }
+      
+      let successCount = 0;
+      for (const number of adminNumbers) {
+        const success = await sendWhatsAppMessage({
+          phone: number,
+          message: message
+        });
+        
+        if (success) {
+          successCount++;
+        }
+      }
+      
+      if (successCount > 0) {
+        toast.success(`Agenda do dia enviada para ${successCount} número(s) de administrador`);
         return true;
       } else {
         toast.warning('Não foi possível enviar a agenda do dia para administradores');
@@ -105,7 +141,6 @@ export function useVoiceCommandEvents() {
     }
   };
 
-  // Function to send system notifications to all admin numbers
   const sendSystemNotification = async (messageType: string, content: string) => {
     try {
       setNotificationSending(true);
@@ -116,7 +151,6 @@ export function useVoiceCommandEvents() {
       }
       
       if (apiConnected === false) {
-        // Try to reconnect first
         const connected = await testApiConnection();
         if (!connected) {
           toast.error('Falha na conexão com a API do WhatsApp. Verifique a chave e as configurações.');
@@ -125,13 +159,34 @@ export function useVoiceCommandEvents() {
         setApiConnected(true);
       }
       
-      const sent = await notifyAdminsAboutSystemEvent('custom-message', { 
-        title: messageType,
-        message: content
-      });
+      const now = new Intl.DateTimeFormat('pt-BR', { 
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }).format(new Date());
       
-      if (sent > 0) {
-        toast.success(`Notificação enviada para ${sent} número(s) de administrador`);
+      const message = `🔔 *${messageType || 'Notificação do Sistema'}*\n\n${content}\n\n⏱️ ${now}`;
+      
+      const adminNumbers = getAdminNumbers();
+      if (adminNumbers.length === 0) {
+        toast.warning('Não há números de administradores configurados');
+        setNotificationSending(false);
+        return false;
+      }
+      
+      let successCount = 0;
+      for (const number of adminNumbers) {
+        const success = await sendWhatsAppMessage({
+          phone: number,
+          message: message
+        });
+        
+        if (success) {
+          successCount++;
+        }
+      }
+      
+      if (successCount > 0) {
+        toast.success(`Notificação enviada para ${successCount} número(s) de administrador`);
         return true;
       } else {
         toast.warning('Não foi possível enviar a notificação para administradores');
@@ -145,36 +200,77 @@ export function useVoiceCommandEvents() {
       setNotificationSending(false);
     }
   };
-  
-  // Function to send week's upcoming events to admin numbers
+
   const sendWeekEventsToAdmins = async () => {
     try {
       setNotificationSending(true);
-      // Get current date
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Get date 7 days from now
       const nextWeek = new Date(today);
       nextWeek.setDate(nextWeek.getDate() + 7);
       
-      // Filter events occurring in the next 7 days
       const weekEvents = events.filter(event => {
         const eventDate = new Date(event.date);
         eventDate.setHours(0, 0, 0, 0);
         return eventDate >= today && eventDate < nextWeek;
       });
       
+      let message = `🗓��� *Agenda da Semana*\n\n`;
+      
       if (weekEvents.length === 0) {
-        toast.info('Não há eventos para os próximos 7 dias');
+        message += "Não há eventos programados para a próxima semana.";
+      } else {
+        const eventsByDate: Record<string, any[]> = {};
+        
+        weekEvents.forEach(event => {
+          const dateKey = new Intl.DateTimeFormat('pt-BR', { 
+            day: '2-digit', month: '2-digit', year: 'numeric'
+          }).format(new Date(event.date));
+          
+          if (!eventsByDate[dateKey]) {
+            eventsByDate[dateKey] = [];
+          }
+          
+          eventsByDate[dateKey].push(event);
+        });
+        
+        Object.entries(eventsByDate).forEach(([date, dateEvents]) => {
+          message += `*${date}*\n`;
+          
+          dateEvents.forEach((event, index) => {
+            const time = new Intl.DateTimeFormat('pt-BR', { 
+              hour: '2-digit', minute: '2-digit'
+            }).format(new Date(event.date));
+            
+            message += `${index + 1}. *${event.title}* - ⏰ ${time}\n`;
+          });
+          
+          message += '\n';
+        });
+      }
+      
+      const adminNumbers = getAdminNumbers();
+      if (adminNumbers.length === 0) {
+        toast.warning('Não há números de administradores configurados');
+        setNotificationSending(false);
         return false;
       }
       
-      // Send notification to admin numbers
-      const sent = await notifyAdminsAboutSystemEvent('weekly-events', { events: weekEvents });
+      let successCount = 0;
+      for (const number of adminNumbers) {
+        const success = await sendWhatsAppMessage({
+          phone: number,
+          message: message
+        });
+        
+        if (success) {
+          successCount++;
+        }
+      }
       
-      if (sent > 0) {
-        toast.success(`Agenda da semana enviada para ${sent} número(s) de administrador`);
+      if (successCount > 0) {
+        toast.success(`Agenda da semana enviada para ${successCount} número(s) de administrador`);
         return true;
       } else {
         toast.warning('Não foi possível enviar a agenda da semana para administradores');
@@ -189,7 +285,6 @@ export function useVoiceCommandEvents() {
     }
   };
 
-  // Function to send reminder to a specific event participant
   const sendEventReminderManually = async (eventId: string) => {
     try {
       setNotificationSending(true);
@@ -206,7 +301,6 @@ export function useVoiceCommandEvents() {
       }
       
       if (apiConnected === false) {
-        // Try to reconnect first
         const connected = await testApiConnection();
         if (!connected) {
           toast.error('Falha na conexão com a API do WhatsApp. Verifique a chave e as configurações.');
@@ -215,12 +309,23 @@ export function useVoiceCommandEvents() {
         setApiConnected(true);
       }
       
-      const result = await sendEventReminder({
-        title: event.title,
-        date: event.date,
-        time: `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`,
-        duration: event.duration || 60,
-        contactPhone: event.contactPhone
+      const formattedDate = new Intl.DateTimeFormat('pt-BR', { 
+        day: '2-digit', month: '2-digit', year: 'numeric' 
+      }).format(event.date);
+      
+      const time = `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`;
+      
+      const message = `🗓️ *Lembrete de Compromisso*\n\n` +
+        `Olá! Este é um lembrete para o seu compromisso:\n\n` +
+        `*${event.title}*\n` +
+        `📅 Data: ${formattedDate}\n` +
+        `⏰ Horário: ${time}\n` +
+        `⏱️ Duração: ${event.duration || 60} minutos\n\n` +
+        `Para remarcar ou cancelar, entre em contato conosco.`;
+      
+      const result = await sendWhatsAppMessage({
+        phone: event.contactPhone,
+        message: message
       });
       
       if (result) {
@@ -239,12 +344,24 @@ export function useVoiceCommandEvents() {
     }
   };
 
+  const getAdminNumbers = (): string[] => {
+    try {
+      const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');
+      if (savedNumbers) {
+        const parsedNumbers = JSON.parse(savedNumbers);
+        return Array.isArray(parsedNumbers) ? parsedNumbers.filter(num => num && num.trim() !== '') : [];
+      }
+    } catch (error) {
+      console.error('Error parsing admin numbers from localStorage:', error);
+    }
+    return [];
+  };
+
   const refreshEvents = () => {
     setRefreshKey(prev => prev + 1);
   };
 
   const createEventFromVoiceCommand = async (transcript: string) => {
-    // Don't process if empty or already processing
     if (!transcript || transcript.trim() === '' || processingCommand) {
       return false;
     }
@@ -262,7 +379,6 @@ export function useVoiceCommandEvents() {
       
       console.log('Voice command processed:', result);
       
-      // Use default phone number if available and no phone is specified in the command
       const defaultPhone = localStorage.getItem('default_whatsapp_number');
       if (!result.contactPhone && defaultPhone) {
         result.contactPhone = defaultPhone;
@@ -279,7 +395,6 @@ export function useVoiceCommandEvents() {
       console.log('Voice command event saved successfully');
       toast.success('Evento criado com sucesso!');
 
-      // Format the event for notifications - using empty string for id since it's not returned from saveVoiceCommandEvent
       const eventForNotification: VoiceCommandEvent = {
         id: '', 
         userId: '', 
@@ -292,7 +407,6 @@ export function useVoiceCommandEvents() {
         createdAt: new Date()
       };
 
-      // Check WhatsApp connection before sending notifications
       if (isWhatsAppConfigured()) {
         if (apiConnected === null) {
           const connected = await testApiConnection();
@@ -303,7 +417,6 @@ export function useVoiceCommandEvents() {
         }
       }
 
-      // Send WhatsApp notification to the event contact if specified
       if (result.contactPhone && isWhatsAppConfigured() && apiConnected !== false) {
         try {
           await sendEventReminder({
@@ -316,11 +429,9 @@ export function useVoiceCommandEvents() {
           toast.success('Notificação enviada via WhatsApp!');
         } catch (error) {
           console.error('Error sending WhatsApp notification:', error);
-          // Don't show error to user here as the event was still created successfully
         }
       }
       
-      // Send notifications to all admin numbers about the new event
       if (isWhatsAppConfigured() && apiConnected !== false) {
         try {
           const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
