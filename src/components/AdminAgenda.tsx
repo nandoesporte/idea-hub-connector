@@ -411,7 +411,9 @@ const AdminAgenda = () => {
       console.log("Speech recognition ended, isListening:", isListening);
       if (isListening) {
         console.log("Final transcript:", transcript);
-        handleVoiceCommand();
+        // Store the transcript in a local variable to ensure we have the final value
+        const finalTranscript = transcript;
+        handleVoiceCommand(finalTranscript);
         setIsListening(false);
       }
     };
@@ -446,18 +448,18 @@ const AdminAgenda = () => {
     }
   };
 
-  const handleVoiceCommand = async () => {
-    console.log("Handling voice command with transcript:", transcript);
+  const handleVoiceCommand = async (finalTranscript: string) => {
+    console.log("Handling voice command with transcript:", finalTranscript);
     
-    if (!transcript || !transcript.trim()) {
+    if (!finalTranscript || !finalTranscript.trim()) {
       toast.error('Nenhum comando detectado. Tente novamente.');
       return;
     }
 
     setIsProcessingVoice(true);
     try {
-      console.log("Processing voice command:", transcript);
-      const result = await processVoiceCommand(transcript);
+      console.log("Processing voice command:", finalTranscript);
+      const result = await processVoiceCommand(finalTranscript);
       console.log("Voice command processing result:", result);
       
       if (result.success) {

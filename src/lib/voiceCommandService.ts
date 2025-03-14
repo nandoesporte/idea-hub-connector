@@ -13,36 +13,15 @@ interface VoiceCommandResult {
 }
 
 /**
- * Processes a voice command using GPT-4 to extract event details
+ * Processes a voice command to extract event details
  */
 export async function processVoiceCommand(transcript: string): Promise<VoiceCommandResult> {
   try {
     console.log('Processing voice command:', transcript);
     
-    // Prepare prompt for GPT-4
-    const prompt = `
-      Extraia as informações de evento a partir do seguinte comando de voz em português:
-      "${transcript}"
-      
-      Retorne apenas um objeto JSON com os seguintes campos:
-      - title: título do evento
-      - description: descrição do evento (opcional)
-      - dateInfo: informações sobre a data (como "hoje", "amanhã", "próxima segunda", ou data específica)
-      - timeInfo: horário do evento (como "9h", "14:30", "manhã", "tarde")
-      - duration: duração em minutos (padrão: 60 se não especificado)
-      - type: tipo do evento ("meeting" para reunião, "deadline" para prazo, "task" para tarefa, "other" para outros)
-      - contactPhone: número de telefone mencionado, se houver (formato: apenas números)
-      
-      Não inclua explicações, apenas o objeto JSON.
-    `;
-
-    // For simulating GPT-4 response in this demo
-    // In a real implementation, we would make an API call to GPT-4
-    const fakeGptResponse = simulateGpt4Response(transcript);
-    console.log("Simulated GPT response:", fakeGptResponse);
-    
-    // Parse the GPT response
-    const parsedResult = fakeGptResponse;
+    // Simulate GPT-4 response for demo purposes
+    const parsedResult = simulateGpt4Response(transcript);
+    console.log("Parsed voice command result:", parsedResult);
     
     // Process the date and time information
     const eventDate = processDateTimeInfo(
@@ -113,7 +92,8 @@ function processDateTimeInfo(dateInfo: string, timeInfo: string): Date {
   } else if (dateInfo.toLowerCase().includes('amanhã') || dateInfo.toLowerCase().includes('amanha')) {
     console.log("Date info indicates tomorrow");
     eventDate = addDays(now, 1);
-  } else if (dateInfo.toLowerCase().includes('próxima') || dateInfo.toLowerCase().includes('proxima')) {
+  } else if (dateInfo.toLowerCase().includes('próxima') || dateInfo.toLowerCase().includes('proxima') || 
+             dateInfo.toLowerCase().includes('próximo') || dateInfo.toLowerCase().includes('proximo')) {
     // Handle "próxima [day of week]"
     console.log("Date info indicates next week");
     const weekdays = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
@@ -134,9 +114,10 @@ function processDateTimeInfo(dateInfo: string, timeInfo: string): Date {
     if (dateParts && dateParts.length >= 2) {
       const day = dateParts[0];
       const month = dateParts[1] - 1; // Month is 0-indexed in Date
-      const year = dateParts[2] || now.getFullYear();
-      eventDate = new Date(year, month, day);
-      console.log(`Parsed date parts: day=${day}, month=${month}, year=${year}`);
+      const year = dateParts.length > 2 ? dateParts[2] : now.getFullYear();
+      const fullYear = year < 100 ? 2000 + year : year;
+      eventDate = new Date(fullYear, month, day);
+      console.log(`Parsed date parts: day=${day}, month=${month}, year=${fullYear}`);
     }
   } else if (dateInfo.match(/\d{1,2} de [a-zç]+( de \d{2,4})?/i)) {
     // Handle date in format "DD de Month [de YYYY]"
@@ -212,14 +193,12 @@ function processDateTimeInfo(dateInfo: string, timeInfo: string): Date {
 }
 
 /**
- * Simulates a GPT-4 response for demo purposes
- * In a real implementation, this would be replaced with an actual API call to GPT-4
+ * Simulates a response for demo purposes
  */
 function simulateGpt4Response(transcript: string): any {
-  console.log('Simulating GPT-4 response for:', transcript);
+  console.log('Simulating response for:', transcript);
   
   const now = new Date();
-  const tomorrow = addDays(now, 1);
   
   // Basic parsing logic to extract information
   let title = '';
@@ -277,6 +256,9 @@ function simulateGpt4Response(transcript: string): any {
   // Extract date
   if (transcript.toLowerCase().includes('amanhã') || transcript.toLowerCase().includes('amanha')) {
     dateInfo = 'amanhã';
+  } else if (transcript.match(/\d{1,2}\/\d{1,2}(\/\d{2,4})?/)) {
+    // Match DD/MM or DD/MM/YYYY format
+    dateInfo = transcript.match(/\d{1,2}\/\d{1,2}(\/\d{2,4})?/)[0];
   } else if (transcript.toLowerCase().includes('segunda')) {
     dateInfo = 'próxima segunda';
   } else if (transcript.toLowerCase().includes('terça')) {
@@ -288,9 +270,9 @@ function simulateGpt4Response(transcript: string): any {
   } else if (transcript.toLowerCase().includes('sexta')) {
     dateInfo = 'próxima sexta';
   } else if (transcript.toLowerCase().includes('sábado') || transcript.toLowerCase().includes('sabado')) {
-    dateInfo = 'próxima sábado';
+    dateInfo = 'próximo sábado';
   } else if (transcript.toLowerCase().includes('domingo')) {
-    dateInfo = 'próxima domingo';
+    dateInfo = 'próximo domingo';
   }
   
   // Extract time
