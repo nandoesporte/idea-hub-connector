@@ -123,9 +123,9 @@ export function useVoiceCommandEvents() {
       console.log('Voice command event saved successfully');
       toast.success('Evento criado com sucesso!');
 
-      // Format the event for notifications
+      // Format the event for notifications - using empty string for id since it's not returned from saveVoiceCommandEvent
       const eventForNotification: VoiceCommandEvent = {
-        id: '', // We don't need the actual ID for notification purposes
+        id: '', // Fixed: Using empty string instead of saveResult.id which doesn't exist
         userId: '', // This will be filled by the backend
         title: result.title,
         description: result.description || '',
@@ -133,7 +133,7 @@ export function useVoiceCommandEvents() {
         duration: result.duration || 60,
         type: result.type,
         contactPhone: result.contactPhone,
-        createdAt: new Date() // Fixed property name from created_at to createdAt
+        createdAt: new Date() // Fixed: Using createdAt instead of created_at
       };
 
       // Send WhatsApp notification to the event contact if specified
