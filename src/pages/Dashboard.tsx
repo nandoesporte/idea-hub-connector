@@ -1,258 +1,264 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import MainLayout from '@/layouts/MainLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Calendar, 
-  MessageSquare, 
-  Plus, 
-  Settings,
-  Check,
-  X
-} from 'lucide-react';
-
-// Mock project data
-const mockProjects = [
-  {
-    id: '1',
-    title: 'Site para minha loja de roupas',
-    category: 'website',
-    status: 'under-review',
-    createdAt: new Date('2023-09-15'),
-    updatedAt: new Date('2023-09-16'),
-  },
-  {
-    id: '2',
-    title: 'Aplicativo de delivery para restaurante',
-    category: 'mobile-app',
-    status: 'approved',
-    createdAt: new Date('2023-08-20'),
-    updatedAt: new Date('2023-09-01'),
-  },
-  {
-    id: '3',
-    title: 'Sistema de agendamento para clínica',
-    category: 'desktop-app',
-    status: 'in-progress',
-    createdAt: new Date('2023-07-10'),
-    updatedAt: new Date('2023-09-10'),
-  },
-];
-
-// Status badge component
-const StatusBadge = ({ status }: { status: string }) => {
-  const getStatusDetails = () => {
-    switch (status) {
-      case 'pending':
-        return { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
-      case 'under-review':
-        return { label: 'Em Análise', color: 'bg-blue-100 text-blue-800 border-blue-200' };
-      case 'approved':
-        return { label: 'Aprovado', color: 'bg-green-100 text-green-800 border-green-200' };
-      case 'in-progress':
-        return { label: 'Em Desenvolvimento', color: 'bg-purple-100 text-purple-800 border-purple-200' };
-      case 'completed':
-        return { label: 'Concluído', color: 'bg-green-100 text-green-800 border-green-200' };
-      case 'rejected':
-        return { label: 'Rejeitado', color: 'bg-red-100 text-red-800 border-red-200' };
-      default:
-        return { label: 'Desconhecido', color: 'bg-gray-100 text-gray-800 border-gray-200' };
-    }
-  };
-
-  const { label, color } = getStatusDetails();
-
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${color}`}>
-      {label}
-    </span>
-  );
-};
-
-// Category badge component
-const CategoryBadge = ({ category }: { category: string }) => {
-  const getCategoryDetails = () => {
-    switch (category) {
-      case 'website':
-        return { label: 'Website', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' };
-      case 'e-commerce':
-        return { label: 'E-commerce', color: 'bg-pink-100 text-pink-800 border-pink-200' };
-      case 'mobile-app':
-        return { label: 'App Móvel', color: 'bg-orange-100 text-orange-800 border-orange-200' };
-      case 'desktop-app':
-        return { label: 'App Desktop', color: 'bg-teal-100 text-teal-800 border-teal-200' };
-      case 'automation':
-        return { label: 'Automação', color: 'bg-blue-100 text-blue-800 border-blue-200' };
-      case 'integration':
-        return { label: 'Integração', color: 'bg-violet-100 text-violet-800 border-violet-200' };
-      case 'ai-solution':
-        return { label: 'Solução IA', color: 'bg-green-100 text-green-800 border-green-200' };
-      default:
-        return { label: 'Outro', color: 'bg-gray-100 text-gray-800 border-gray-200' };
-    }
-  };
-
-  const { label, color } = getCategoryDetails();
-
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${color}`}>
-      {label}
-    </span>
-  );
-};
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUser } from '@/contexts/UserContext';
+import { Link } from 'react-router-dom';
+import { CalendarPlus, Plus, Shield } from 'lucide-react';
+import AdminAgenda from '@/components/AdminAgenda';
 
 const Dashboard = () => {
-  console.log('Dashboard rendering');
-  
+  const { user } = useUser();
+  const isAdmin = user?.user_metadata?.role === 'admin';
+
   return (
-    <MainLayout>
-      <div className="space-y-8">
-        <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">Meus Projetos</h1>
-            <p className="text-muted-foreground">
-              Gerencie e acompanhe seus projetos em um só lugar
-            </p>
-          </div>
-          
-          <Link to="/submit-idea">
-            <Button className="w-full sm:w-auto shadow-sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Projeto
-            </Button>
-          </Link>
+    <div className="container mx-auto py-6 px-4 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Olá, {user?.user_metadata?.name || 'usuário'}
+            {isAdmin && <Shield className="inline-block ml-2 text-primary h-5 w-5" />}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Bem-vindo ao seu painel de controle
+          </p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
-            <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-              <div className="p-6 border-b">
-                <h2 className="text-xl font-semibold">Projetos Recentes</h2>
-              </div>
-              
-              <div className="divide-y">
-                {mockProjects.length > 0 ? (
-                  mockProjects.map((project) => (
-                    <div key={project.id} className="p-6 hover:bg-muted/50 transition-colors">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div className="space-y-1">
-                          <h3 className="font-medium">{project.title}</h3>
-                          <div className="flex flex-wrap gap-2">
-                            <CategoryBadge category={project.category} />
-                            <StatusBadge status={project.status} />
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
-                            <MessageSquare className="h-4 w-4 mr-1" />
-                            Mensagens
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            Detalhes
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-6 text-center">
-                    <p className="text-muted-foreground">Você ainda não possui projetos.</p>
-                    <Link to="/submit-idea" className="mt-2 inline-block text-primary hover:underline">
-                      Envie sua primeira ideia
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="space-y-6">
-            <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-              <div className="p-6 border-b">
-                <h2 className="text-xl font-semibold">Status</h2>
-              </div>
-              
-              <div className="p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Projetos Ativos</span>
-                  <span className="font-medium">3</span>
-                </div>
-                
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">Em análise</span>
-                    <span className="text-xs text-muted-foreground">1</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: '33%' }}></div>
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">Aprovados</span>
-                    <span className="text-xs text-muted-foreground">1</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div className="bg-green-500 h-1.5 rounded-full" style={{ width: '33%' }}></div>
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">Em desenvolvimento</span>
-                    <span className="text-xs text-muted-foreground">1</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: '33%' }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-              <div className="p-6 border-b">
-                <h2 className="text-xl font-semibold">Próximos passos</h2>
-              </div>
-              
-              <div className="p-6 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="h-3.5 w-3.5 text-yellow-800" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Reunião de alinhamento</p>
-                    <p className="text-xs text-muted-foreground">20 de setembro, 15:00</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                    <Check className="h-3.5 w-3.5 text-green-800" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Aprovação do layout</p>
-                    <p className="text-xs text-muted-foreground">25 de setembro, 10:00</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <Settings className="h-3.5 w-3.5 text-blue-800" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Início do desenvolvimento</p>
-                    <p className="text-xs text-muted-foreground">01 de outubro</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button asChild className="w-full sm:w-auto">
+            <Link to="/submit-idea">
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Ideia
+            </Link>
+          </Button>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
+            <Link to="/projects">
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Meus Projetos
+            </Link>
+          </Button>
         </div>
       </div>
-    </MainLayout>
+
+      {/* Admin Agenda - Only visible for admins */}
+      {isAdmin && (
+        <div className="mb-6">
+          <AdminAgenda />
+        </div>
+      )}
+
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="projects">Projetos</TabsTrigger>
+          <TabsTrigger value="profile">Perfil</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total de Projetos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">3</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  +2 desde o último mês
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Status Atual
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">Ativo</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sua conta está em dia
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Notificações
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">7</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  4 novas desde sua última visita
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="col-span-3">
+            <CardHeader>
+              <CardTitle>Atividade Recente</CardTitle>
+              <CardDescription>
+                Veja suas últimas interações na plataforma
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-4">
+                  <div>
+                    <p className="font-medium">Ideia de projeto enviada</p>
+                    <p className="text-sm text-muted-foreground">
+                      Seu projeto "Aplicativo de Entrega" foi enviado para análise
+                    </p>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Há 2 dias
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border-b pb-4">
+                  <div>
+                    <p className="font-medium">Atualização de status</p>
+                    <p className="text-sm text-muted-foreground">
+                      O projeto "Website Corporativo" foi aprovado!
+                    </p>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Há 5 dias
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Perfil atualizado</p>
+                    <p className="text-sm text-muted-foreground">
+                      Você atualizou suas informações de perfil
+                    </p>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Há 1 semana
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="projects" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meus Projetos</CardTitle>
+              <CardDescription>
+                Veja o status de todos os seus projetos
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-4">
+                  <div>
+                    <p className="font-medium">Aplicativo de Entrega</p>
+                    <p className="text-sm text-muted-foreground">
+                      Em análise
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/projects/1">Ver Detalhes</Link>
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between border-b pb-4">
+                  <div>
+                    <p className="font-medium">Website Corporativo</p>
+                    <p className="text-sm text-muted-foreground">
+                      Aprovado
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/projects/2">Ver Detalhes</Link>
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">E-commerce</p>
+                    <p className="text-sm text-muted-foreground">
+                      Em desenvolvimento
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/projects/3">Ver Detalhes</Link>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Projetos Sugeridos</CardTitle>
+              <CardDescription>
+                Baseado no seu perfil e histórico
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Aplicativo Mobile</p>
+                    <p className="text-sm text-muted-foreground">
+                      Uma solução completa para sua empresa
+                    </p>
+                  </div>
+                  <Button size="sm" asChild>
+                    <Link to="/submit-idea">Solicitar</Link>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="profile" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meu Perfil</CardTitle>
+              <CardDescription>
+                Gerencie suas informações pessoais
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <h3 className="font-semibold">Email</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {user?.email}
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <h3 className="font-semibold">Nome</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {user?.user_metadata?.name || 'Não configurado'}
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <h3 className="font-semibold">Conta criada em</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {user?.created_at 
+                      ? new Date(user.created_at).toLocaleDateString('pt-BR', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        })
+                      : 'Indisponível'}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6">
+                <Button variant="outline">Editar Perfil</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 
