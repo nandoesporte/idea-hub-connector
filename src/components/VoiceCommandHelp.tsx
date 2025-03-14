@@ -18,8 +18,8 @@ const VoiceCommandHelp = () => {
           <div>
             <h3 className="font-medium text-sm">Como funciona:</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Clique no botão "Comando de Voz", fale o evento que deseja agendar e os detalhes serão 
-              processados automaticamente.
+              Clique no botão "Comando de Voz", diga "Hub" seguido do evento que deseja agendar, 
+              e os detalhes serão processados automaticamente.
             </p>
           </div>
           
@@ -27,19 +27,19 @@ const VoiceCommandHelp = () => {
             <h3 className="font-medium text-sm">Exemplos de comandos:</h3>
             <ul className="mt-1 space-y-2">
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Agendar uma reunião com a equipe de design amanhã às 14h com duração de 1 hora"
+                "Hub, agendar uma reunião com a equipe de design amanhã às 14h com duração de 1 hora"
               </li>
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Marcar prazo de entrega para o projeto X na próxima segunda-feira"
+                "Hub, marcar prazo de entrega para o projeto X na próxima segunda-feira"
               </li>
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Criar tarefa de revisão do portfólio hoje à tarde"
+                "Hub, criar tarefa de revisão do portfólio hoje à tarde"
               </li>
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Agendar call com cliente para dia 15 de dezembro às 10 horas da manhã"
+                "Hub, agendar call com cliente para dia 15 de dezembro às 10 horas da manhã"
               </li>
               <li className="text-sm border-l-2 border-primary pl-3 py-1">
-                "Reunião com João da empresa ABC na quinta-feira às 9h, telefone 11987654321"
+                "Hub, reunião com João da empresa ABC na quinta-feira às 9h, telefone 11987654321"
               </li>
             </ul>
           </div>
