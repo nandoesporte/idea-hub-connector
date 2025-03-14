@@ -1,4 +1,3 @@
-
 import { addDays, setHours, setMinutes, parse, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from './supabase';
@@ -135,6 +134,41 @@ export async function fetchVoiceCommandEvents(): Promise<any[]> {
   } catch (error) {
     console.error('Error in fetchVoiceCommandEvents:', error);
     return [];
+  }
+}
+
+/**
+ * Deletes a voice command event
+ */
+export async function deleteVoiceCommandEvent(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get the current user
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session || !session.user) {
+      console.error('No authenticated user found');
+      return { success: false, error: 'Usuário não autenticado' };
+    }
+    
+    console.log('Deleting voice command event:', id);
+    
+    // Delete the event from the voice_command_events table
+    const { error } = await supabase
+      .from('voice_command_events')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', session.user.id); // Ensure the user can only delete their own events
+    
+    if (error) {
+      console.error('Error deleting voice command event:', error);
+      return { success: false, error: error.message };
+    }
+    
+    console.log('Voice command event deleted successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Error in deleteVoiceCommandEvent:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 

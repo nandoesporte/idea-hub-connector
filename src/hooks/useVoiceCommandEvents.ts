@@ -4,9 +4,11 @@ import { toast } from 'sonner';
 import { 
   processVoiceCommand, 
   saveVoiceCommandEvent, 
-  fetchVoiceCommandEvents 
+  fetchVoiceCommandEvents,
+  deleteVoiceCommandEvent
 } from '@/lib/voiceCommandService';
 import { VoiceCommandEvent } from '@/types';
+import { sendEventReminder, isWhatsAppConfigured } from '@/lib/whatsappService';
 
 export function useVoiceCommandEvents() {
   const [events, setEvents] = useState<VoiceCommandEvent[]>([]);
@@ -69,6 +71,24 @@ export function useVoiceCommandEvents() {
       
       console.log('Voice command event saved successfully');
       toast.success('Evento criado com sucesso!');
+
+      // Send WhatsApp notification if possible
+      if (result.contactPhone && isWhatsAppConfigured()) {
+        try {
+          await sendEventReminder({
+            title: result.title,
+            date: result.date,
+            time: `${result.date.getHours().toString().padStart(2, '0')}:${result.date.getMinutes().toString().padStart(2, '0')}`,
+            duration: result.duration || 60,
+            contactPhone: result.contactPhone
+          });
+          toast.success('Notificação enviada via WhatsApp!');
+        } catch (error) {
+          console.error('Error sending WhatsApp notification:', error);
+          // Don't show error to user here as the event was still created successfully
+        }
+      }
+      
       refreshEvents();
       return true;
     } catch (error) {
@@ -80,11 +100,30 @@ export function useVoiceCommandEvents() {
     }
   };
 
+  const deleteEvent = async (id: string) => {
+    try {
+      const result = await deleteVoiceCommandEvent(id);
+      if (result.success) {
+        toast.success('Evento excluído com sucesso!');
+        refreshEvents();
+        return true;
+      } else {
+        toast.error(`Erro ao excluir evento: ${result.error}`);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      toast.error('Erro ao excluir evento');
+      return false;
+    }
+  };
+
   return {
     events,
     loading,
     refreshEvents,
     createEventFromVoiceCommand,
-    processingCommand
+    processingCommand,
+    deleteEvent
   };
 }
