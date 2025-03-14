@@ -72,33 +72,57 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
     
     console.log(`Sending WhatsApp message to ${formattedPhone} via ${WHATSGW_API_URL}`);
     
+    // Using a more permissive fetch configuration to handle CORS
     const response = await fetch(`${WHATSGW_API_URL}/send-message`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
+        "Authorization": `Bearer ${apiKey}`,
+        "Accept": "application/json"
       },
+      mode: "cors", // Explicitly set CORS mode
       body: JSON.stringify({
         phone: formattedPhone,
         message,
         isGroup
       })
+    }).catch(error => {
+      // Handle network errors specifically
+      console.error("Network error when sending WhatsApp message:", error);
+      
+      // If we get a failed to fetch error, it's likely a CORS issue
+      if (error.message === "Failed to fetch") {
+        toast.error(
+          "Erro de CORS ao enviar mensagem. Você precisa configurar um proxy para a API do WhatsApp ou usar um plugin CORS no seu navegador."
+        );
+        return null;
+      }
+      
+      throw error; // Re-throw other errors
     });
     
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to send WhatsApp message");
+    // If response is null (network error was caught)
+    if (!response) {
+      return false;
     }
     
+    // Check if the response was successful
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+      throw new Error(errorData.message || `HTTP error ${response.status}`);
+    }
+    
+    const data = await response.json().catch(() => ({ success: true }));
+    
     console.log("WhatsApp message sent successfully:", data);
+    toast.success("Mensagem enviada com sucesso!");
     return true;
   } catch (error) {
     console.error("Error sending WhatsApp message:", error);
     toast.error(`Erro ao enviar mensagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     return false;
   }
-}
+};
 
 /**
  * Send an event reminder via WhatsApp
