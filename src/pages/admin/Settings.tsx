@@ -7,9 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Phone, MessageSquare, Bell } from 'lucide-react';
+import { Phone, MessageSquare, Bell, Clock, Users, Briefcase, FileBarChart, Calendar } from 'lucide-react';
 import { setApiKey, isWhatsAppConfigured } from '@/lib/whatsappService';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface SiteSettings {
   siteName: string;
@@ -35,6 +40,24 @@ interface SiteSettings {
     metaDescription: string;
     ogImage: string;
     keywords: string;
+  };
+}
+
+interface NotificationSettings {
+  enabled: boolean;
+  types: {
+    events: boolean;
+    newProjects: boolean;
+    newUsers: boolean;
+    dailyReport: boolean;
+  };
+  channels: {
+    email: boolean;
+    whatsapp: boolean;
+    inApp: boolean;
+  };
+  schedule: {
+    dailyReportTime: string;
   };
 }
 
@@ -65,6 +88,24 @@ const initialSettings: SiteSettings = {
   }
 };
 
+const initialNotificationSettings: NotificationSettings = {
+  enabled: true,
+  types: {
+    events: true,
+    newProjects: true,
+    newUsers: true,
+    dailyReport: false,
+  },
+  channels: {
+    email: true,
+    whatsapp: false,
+    inApp: true,
+  },
+  schedule: {
+    dailyReportTime: '08:00',
+  },
+};
+
 const AdminSettings = () => {
   const [settings, setSettings] = useState<SiteSettings>(initialSettings);
   const [isGeneralFormDirty, setIsGeneralFormDirty] = useState(false);
@@ -74,6 +115,8 @@ const AdminSettings = () => {
   const [whatsAppApiKey, setWhatsAppApiKey] = useState<string>('');
   const [notificationNumbers, setNotificationNumbers] = useState<string[]>(['', '', '']);
   const [isNotificationsFormDirty, setIsNotificationsFormDirty] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(initialNotificationSettings);
+  const [isSystemNotificationsFormDirty, setIsSystemNotificationsFormDirty] = useState(false);
 
   useEffect(() => {
     const savedApiKey = localStorage.getItem('whatsapp_api_key') || '';
@@ -90,6 +133,16 @@ const AdminSettings = () => {
       } catch (error) {
         console.error('Error parsing notification numbers:', error);
         setNotificationNumbers(['', '', '']);
+      }
+    }
+    
+    const savedNotificationSettings = localStorage.getItem('system_notification_settings');
+    if (savedNotificationSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedNotificationSettings);
+        setNotificationSettings(parsedSettings);
+      } catch (error) {
+        console.error('Error parsing notification settings:', error);
       }
     }
   }, []);
@@ -142,6 +195,47 @@ const AdminSettings = () => {
     setIsNotificationsFormDirty(true);
   };
 
+  const handleSystemNotificationsToggle = (enabled: boolean) => {
+    setNotificationSettings(prev => ({
+      ...prev,
+      enabled
+    }));
+    setIsSystemNotificationsFormDirty(true);
+  };
+
+  const handleNotificationTypeToggle = (type: keyof NotificationSettings['types']) => {
+    setNotificationSettings(prev => ({
+      ...prev,
+      types: {
+        ...prev.types,
+        [type]: !prev.types[type]
+      }
+    }));
+    setIsSystemNotificationsFormDirty(true);
+  };
+
+  const handleNotificationChannelToggle = (channel: keyof NotificationSettings['channels']) => {
+    setNotificationSettings(prev => ({
+      ...prev,
+      channels: {
+        ...prev.channels,
+        [channel]: !prev.channels[channel]
+      }
+    }));
+    setIsSystemNotificationsFormDirty(true);
+  };
+
+  const handleReportTimeChange = (time: string) => {
+    setNotificationSettings(prev => ({
+      ...prev,
+      schedule: {
+        ...prev.schedule,
+        dailyReportTime: time
+      }
+    }));
+    setIsSystemNotificationsFormDirty(true);
+  };
+
   const saveGeneralSettings = () => {
     toast.success('Configurações gerais salvas com sucesso!');
     setIsGeneralFormDirty(false);
@@ -173,6 +267,12 @@ const AdminSettings = () => {
     setIsNotificationsFormDirty(false);
   };
 
+  const saveSystemNotificationSettings = () => {
+    localStorage.setItem('system_notification_settings', JSON.stringify(notificationSettings));
+    toast.success('Configurações de notificações do sistema salvas com sucesso!');
+    setIsSystemNotificationsFormDirty(false);
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -184,11 +284,12 @@ const AdminSettings = () => {
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="social">Redes Sociais</TabsTrigger>
             <TabsTrigger value="features">Funcionalidades</TabsTrigger>
-            <TabsTrigger value="notifications">Notificações</TabsTrigger>
+            <TabsTrigger value="notifications">Notificações WhatsApp</TabsTrigger>
+            <TabsTrigger value="system-notifications">Notificações Sistema</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
           </TabsList>
           
@@ -373,7 +474,7 @@ const AdminSettings = () => {
                   <div className="space-y-0.5">
                     <Label htmlFor="enableNewsletter">Newsletter</Label>
                     <p className="text-sm text-muted-foreground">
-                      Adiciona um formulário de inscrição para newsletter.
+                      Adiciona um formulário de inscri��ão para newsletter.
                     </p>
                   </div>
                   <Switch 
@@ -412,7 +513,7 @@ const AdminSettings = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bell className="h-5 w-5" />
-                  Configurações de Notificação
+                  Configurações de Notificações WhatsApp
                 </CardTitle>
                 <CardDescription>
                   Configure a integração com WhatsApp e números para notificações do sistema.
@@ -469,6 +570,179 @@ const AdminSettings = () => {
                 >
                   <Bell className="h-4 w-4" />
                   Salvar Configurações de Notificação
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="system-notifications" className="space-y-4 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Configurações de Notificações do Sistema
+                </CardTitle>
+                <CardDescription>
+                  Gerencie as notificações do sistema e defina quando e como você deseja recebê-las.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="enableAllNotifications">Ativar Notificações do Sistema</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Ativa ou desativa todas as notificações do sistema
+                    </p>
+                  </div>
+                  <Switch 
+                    id="enableAllNotifications" 
+                    checked={notificationSettings.enabled}
+                    onCheckedChange={handleSystemNotificationsToggle}
+                  />
+                </div>
+                
+                <div className={notificationSettings.enabled ? "" : "opacity-50 pointer-events-none"}>
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Tipos de Notificações</h3>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <Checkbox 
+                          id="notifyEvents" 
+                          checked={notificationSettings.types.events}
+                          onCheckedChange={() => handleNotificationTypeToggle('events')}
+                        />
+                        <div className="space-y-1 leading-none">
+                          <Label htmlFor="notifyEvents" className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Eventos
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Receba notificações sobre eventos agendados no sistema
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <Checkbox 
+                          id="notifyNewProjects" 
+                          checked={notificationSettings.types.newProjects}
+                          onCheckedChange={() => handleNotificationTypeToggle('newProjects')}
+                        />
+                        <div className="space-y-1 leading-none">
+                          <Label htmlFor="notifyNewProjects" className="flex items-center gap-2">
+                            <Briefcase className="h-4 w-4" />
+                            Novos Projetos
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Receba notificações quando novos projetos forem adicionados
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <Checkbox 
+                          id="notifyNewUsers" 
+                          checked={notificationSettings.types.newUsers}
+                          onCheckedChange={() => handleNotificationTypeToggle('newUsers')}
+                        />
+                        <div className="space-y-1 leading-none">
+                          <Label htmlFor="notifyNewUsers" className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Novos Usuários
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Receba notificações quando novos usuários se registrarem
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <Checkbox 
+                          id="notifyDailyReport" 
+                          checked={notificationSettings.types.dailyReport}
+                          onCheckedChange={() => handleNotificationTypeToggle('dailyReport')}
+                        />
+                        <div className="space-y-1 leading-none">
+                          <Label htmlFor="notifyDailyReport" className="flex items-center gap-2">
+                            <FileBarChart className="h-4 w-4" />
+                            Relatório Diário
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Receba um relatório diário resumindo as atividades do sistema
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className={`mt-6 ${notificationSettings.types.dailyReport ? "" : "opacity-50 pointer-events-none"}`}>
+                    <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Horário do Relatório Diário
+                    </h3>
+                    <div className="w-full sm:w-1/2 md:w-1/3">
+                      <Input 
+                        type="time" 
+                        value={notificationSettings.schedule.dailyReportTime}
+                        onChange={(e) => handleReportTimeChange(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Relatório será enviado todos os dias neste horário (Horário de Brasília)
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <h3 className="text-sm font-medium mb-3">Canais de Notificação</h3>
+                    <div className="flex flex-wrap gap-3">
+                      <ToggleGroup type="multiple" className="justify-start">
+                        <ToggleGroupItem 
+                          value="email" 
+                          aria-label="Toggle email"
+                          data-state={notificationSettings.channels.email ? "on" : "off"}
+                          onClick={() => handleNotificationChannelToggle('email')}
+                        >
+                          Email
+                        </ToggleGroupItem>
+                        <ToggleGroupItem 
+                          value="whatsapp" 
+                          aria-label="Toggle WhatsApp"
+                          data-state={notificationSettings.channels.whatsapp ? "on" : "off"}
+                          onClick={() => handleNotificationChannelToggle('whatsapp')}
+                        >
+                          WhatsApp
+                        </ToggleGroupItem>
+                        <ToggleGroupItem 
+                          value="inApp" 
+                          aria-label="Toggle In-App"
+                          data-state={notificationSettings.channels.inApp ? "on" : "off"}
+                          onClick={() => handleNotificationChannelToggle('inApp')}
+                        >
+                          No Sistema
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Selecione como deseja receber as notificações
+                    </p>
+                    
+                    {notificationSettings.channels.whatsapp && !whatsAppApiKey && (
+                      <div className="mt-3 p-3 bg-yellow-50 text-yellow-800 rounded-md text-sm">
+                        <p className="font-medium">Atenção:</p>
+                        <p>Para receber notificações via WhatsApp, configure a API na aba "Notificações WhatsApp".</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={saveSystemNotificationSettings} 
+                  disabled={!isSystemNotificationsFormDirty}
+                  className="flex items-center gap-2 mt-6"
+                >
+                  <Bell className="h-4 w-4" />
+                  Salvar Configurações de Notificações
                 </Button>
               </CardContent>
             </Card>
