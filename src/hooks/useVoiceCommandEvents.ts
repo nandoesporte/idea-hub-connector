@@ -8,7 +8,12 @@ import {
   deleteVoiceCommandEvent
 } from '@/lib/voiceCommandService';
 import { VoiceCommandEvent } from '@/types';
-import { sendEventReminder, isWhatsAppConfigured } from '@/lib/whatsappService';
+import { 
+  sendEventReminder, 
+  isWhatsAppConfigured, 
+  notifyAdminsAboutEvent,
+  notifyAdminsAboutSystemEvent
+} from '@/lib/whatsappService';
 
 export function useVoiceCommandEvents() {
   const [events, setEvents] = useState<VoiceCommandEvent[]>([]);
@@ -39,52 +44,41 @@ export function useVoiceCommandEvents() {
     loadEvents();
   }, [refreshKey]);
 
-  const refreshEvents = () => {
-    setRefreshKey(prev => prev + 1);
-  };
-
-  const sendWhatsAppNotificationsToAllNumbers = async (event: VoiceCommandEvent) => {
-    if (!isWhatsAppConfigured()) {
-      console.log('WhatsApp not configured, skipping notifications');
-      return;
-    }
-    
+  // Function to send daily events to admin numbers
+  const sendDailyEventsToAdmins = async () => {
     try {
-      // Get system notification numbers from localStorage
-      const savedNumbersStr = localStorage.getItem('whatsapp_notification_numbers');
-      if (!savedNumbersStr) return;
+      // Get today's events
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       
-      const savedNumbers = JSON.parse(savedNumbersStr);
-      if (!Array.isArray(savedNumbers) || savedNumbers.length === 0) return;
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
       
-      console.log('Sending WhatsApp notifications to system numbers:', savedNumbers);
+      const todaysEvents = events.filter(event => {
+        const eventDate = new Date(event.date);
+        eventDate.setHours(0, 0, 0, 0);
+        return eventDate.getTime() === today.getTime();
+      });
       
-      // Send notification to each saved number
-      const successfulNotifications = [];
+      // Send notification to admin numbers
+      const sent = await notifyAdminsAboutSystemEvent('daily-events', { events: todaysEvents });
       
-      for (const phone of savedNumbers) {
-        if (!phone || phone.trim() === '') continue;
-        
-        try {
-          await sendEventReminder({
-            title: event.title,
-            date: event.date,
-            time: `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`,
-            duration: event.duration || 60,
-            contactPhone: phone
-          });
-          successfulNotifications.push(phone);
-        } catch (error) {
-          console.error(`Failed to send notification to ${phone}:`, error);
-        }
-      }
-      
-      if (successfulNotifications.length > 0) {
-        toast.success(`${successfulNotifications.length} notificações de sistema enviadas via WhatsApp`);
+      if (sent > 0) {
+        toast.success(`Agenda do dia enviada para ${sent} número(s) de administrador`);
+        return true;
+      } else {
+        toast.warning('Não foi possível enviar a agenda do dia para administradores');
+        return false;
       }
     } catch (error) {
-      console.error('Error sending system WhatsApp notifications:', error);
+      console.error('Error sending daily events to admins:', error);
+      toast.error('Erro ao enviar agenda do dia para administradores');
+      return false;
     }
+  };
+
+  const refreshEvents = () => {
+    setRefreshKey(prev => prev + 1);
   };
 
   const createEventFromVoiceCommand = async (transcript: string) => {
@@ -153,8 +147,15 @@ export function useVoiceCommandEvents() {
         }
       }
       
-      // Send notifications to all system notification numbers
-      await sendWhatsAppNotificationsToAllNumbers(eventForNotification);
+      // Send notifications to all admin numbers about the new event
+      try {
+        const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
+        if (adminNotifications > 0) {
+          toast.success(`Notificação enviada para ${adminNotifications} administrador(es)`);
+        }
+      } catch (error) {
+        console.error('Error sending admin notifications:', error);
+      }
       
       refreshEvents();
       return true;
@@ -191,6 +192,7 @@ export function useVoiceCommandEvents() {
     refreshEvents,
     createEventFromVoiceCommand,
     processingCommand,
-    deleteEvent
+    deleteEvent,
+    sendDailyEventsToAdmins
   };
 }

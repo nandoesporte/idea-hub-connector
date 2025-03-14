@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 // WhatsApp API configuration based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
@@ -499,6 +498,202 @@ export const sendEventReminder = async (event: EventReminder): Promise<boolean> 
     phone: contactPhone,
     message
   });
+};
+
+/**
+ * Get system notification numbers from localStorage
+ * @returns Array of phone numbers or empty array if none configured
+ */
+export const getSystemNotificationNumbers = (): string[] => {
+  try {
+    const savedNumbersStr = localStorage.getItem('whatsapp_notification_numbers');
+    if (!savedNumbersStr) return [];
+    
+    const savedNumbers = JSON.parse(savedNumbersStr);
+    if (!Array.isArray(savedNumbers)) return [];
+    
+    // Filter out empty strings
+    return savedNumbers.filter(number => number && number.trim() !== '');
+  } catch (error) {
+    console.error('Error getting system notification numbers:', error);
+    return [];
+  }
+};
+
+/**
+ * Send system notification to all configured admin numbers
+ * @param title Notification title
+ * @param message Message body
+ * @returns Promise resolving to number of successful notifications
+ */
+export const sendSystemNotification = async (title: string, message: string): Promise<number> => {
+  if (!isWhatsAppConfigured()) {
+    addLogEntry('warning', 'system-notification', 'WhatsApp not configured, skipping system notification');
+    return 0;
+  }
+  
+  const adminNumbers = getSystemNotificationNumbers();
+  if (adminNumbers.length === 0) {
+    addLogEntry('warning', 'system-notification', 'No admin notification numbers configured');
+    return 0;
+  }
+  
+  addLogEntry('info', 'system-notification', `Sending system notification to ${adminNumbers.length} admin numbers`);
+  
+  // Format the message for WhatsApp (add emoji and formatting)
+  const formattedMessage = `🔔 *${title}*\n\n${message}\n\n⏱️ ${new Date().toLocaleString('pt-BR')}`;
+  
+  // Send to each admin number
+  const successfulSends = [];
+  
+  for (const phone of adminNumbers) {
+    try {
+      const success = await sendWhatsAppMessage({
+        phone,
+        message: formattedMessage
+      });
+      
+      if (success) {
+        successfulSends.push(phone);
+      }
+    } catch (error) {
+      addLogEntry('error', 'system-notification', `Failed to send system notification to ${phone}`, error);
+    }
+  }
+  
+  if (successfulSends.length > 0) {
+    addLogEntry('info', 'system-notification', `Successfully sent ${successfulSends.length} system notifications`);
+  } else {
+    addLogEntry('warning', 'system-notification', 'Failed to send any system notifications');
+  }
+  
+  return successfulSends.length;
+};
+
+/**
+ * Send notification about a new event to admin numbers
+ * @param event The event to notify about
+ * @returns Promise resolving to number of successful notifications
+ */
+export const notifyAdminsAboutEvent = async (event: any): Promise<number> => {
+  if (!isWhatsAppConfigured()) {
+    return 0;
+  }
+  
+  const formattedDate = event.date instanceof Date 
+    ? event.date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : new Date(event.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  
+  const typeMap = {
+    'meeting': 'Reunião',
+    'deadline': 'Prazo',
+    'task': 'Tarefa',
+    'other': 'Outro'
+  };
+  
+  const eventType = typeMap[event.type as keyof typeof typeMap] || 'Evento';
+  
+  const message = `📅 *Novo ${eventType} Criado*\n\n` +
+    `*Título:* ${event.title}\n` +
+    `*Descrição:* ${event.description || 'Não especificada'}\n` +
+    `*Data e Hora:* ${formattedDate}\n` +
+    `*Duração:* ${event.duration || 60} minutos\n` +
+    (event.contactPhone ? `*Contato:* ${event.contactPhone}\n` : '') +
+    `\n✅ Este evento foi adicionado ao sistema automaticamente.`;
+  
+  return sendSystemNotification(`Novo ${eventType} Criado`, message);
+};
+
+/**
+ * Notify admins about status changes, new projects, etc.
+ * @param type The type of notification
+ * @param data The data related to the notification
+ * @returns Promise resolving to number of successful notifications
+ */
+export const notifyAdminsAboutSystemEvent = async (type: string, data: any): Promise<number> => {
+  if (!isWhatsAppConfigured()) {
+    return 0;
+  }
+  
+  let title = '';
+  let message = '';
+  
+  switch (type) {
+    case 'new-project':
+      title = 'Novo Projeto Submetido';
+      message = `🚀 *Novo Projeto Submetido*\n\n` +
+        `*Título:* ${data.title}\n` +
+        `*Categoria:* ${data.category}\n` +
+        `*Descrição:* ${data.description}\n` +
+        `*Orçamento:* ${data.budget || 'Não especificado'}\n` +
+        `*Prazo:* ${data.timeline || 'Não especificado'}\n` +
+        (data.features?.length ? `*Funcionalidades:* ${data.features.join(', ')}\n` : '') +
+        `\n✅ Este projeto foi adicionado ao sistema e está aguardando análise.`;
+      break;
+      
+    case 'status-change':
+      const statusMap = {
+        'pending': 'Pendente',
+        'under-review': 'Em Análise',
+        'approved': 'Aprovado',
+        'in-progress': 'Em Desenvolvimento',
+        'completed': 'Concluído',
+        'rejected': 'Rejeitado'
+      };
+      
+      const newStatus = statusMap[data.newStatus as keyof typeof statusMap] || data.newStatus;
+      
+      title = `Status de Projeto Alterado: ${newStatus}`;
+      message = `🔄 *Alteração de Status de Projeto*\n\n` +
+        `*Projeto:* ${data.title}\n` +
+        `*Novo Status:* ${newStatus}\n` +
+        (data.message ? `*Mensagem:* ${data.message}\n` : '') +
+        `\n✅ O status deste projeto foi atualizado no sistema.`;
+      break;
+      
+    case 'new-message':
+      title = 'Nova Mensagem Recebida';
+      message = `💬 *Nova Mensagem Recebida*\n\n` +
+        `*De:* ${data.name}\n` +
+        `*Email:* ${data.email}\n` +
+        `*Assunto:* ${data.subject || 'Não especificado'}\n` +
+        `*Mensagem:* ${data.message}\n` +
+        `\n✅ Esta mensagem foi registrada no sistema e aguarda resposta.`;
+      break;
+      
+    case 'daily-events':
+      const events = data.events || [];
+      
+      if (events.length === 0) {
+        title = 'Agenda do Dia';
+        message = `📅 *Agenda do Dia*\n\n` +
+          `Não há eventos programados para hoje.`;
+      } else {
+        title = `Agenda do Dia: ${events.length} Evento(s)`;
+        message = `📅 *Agenda do Dia*\n\n` +
+          `Eventos programados para hoje (${new Date().toLocaleDateString('pt-BR')}):\n\n`;
+          
+        events.forEach((event: any, index: number) => {
+          const eventTime = event.date instanceof Date 
+            ? event.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : new Date(event.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+          message += `*${index + 1}. ${event.title}*\n` +
+            `⏰ ${eventTime}\n` +
+            `⏱️ ${event.duration || 60} minutos\n` +
+            (event.description ? `📝 ${event.description}\n` : '') +
+            (event.contactPhone ? `📞 ${event.contactPhone}\n` : '') +
+            `\n`;
+        });
+      }
+      break;
+      
+    default:
+      title = 'Notificação do Sistema';
+      message = `ℹ️ *Notificação do Sistema*\n\n${JSON.stringify(data, null, 2)}`;
+  }
+  
+  return sendSystemNotification(title, message);
 };
 
 /**
