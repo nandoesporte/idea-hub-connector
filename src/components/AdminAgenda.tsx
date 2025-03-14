@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   CalendarDays, Plus, Clock, User, Edit, Trash2, CalendarIcon, 
-  RefreshCw, MessageSquare, Mic, MicOff, Loader2
+  RefreshCw, MessageSquare, Mic, MicOff, Loader2, Square
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -411,11 +410,17 @@ const AdminAgenda = () => {
     recognitionRef.current.onend = () => {
       console.log("Speech recognition ended, isListening:", isListening);
       if (isListening) {
-        console.log("Final transcript:", transcript);
-        // Store the transcript in a local variable to ensure we have the final value
+        // Store the final transcript before changing isListening state
         const finalTranscript = transcript;
+        console.log("Final transcript:", finalTranscript);
         setIsListening(false);
-        handleVoiceCommand(finalTranscript);
+        
+        // Only process if we have a transcript
+        if (finalTranscript && finalTranscript.trim() !== '') {
+          handleVoiceCommand(finalTranscript);
+        } else {
+          toast.error('Nenhum comando de voz detectado');
+        }
       }
     };
 
@@ -430,7 +435,7 @@ const AdminAgenda = () => {
         recognitionRef.current.stop();
       }
     };
-  }, []);
+  }, []);  // Remove transcript dependency to avoid recreating recognition object
 
   const startListening = () => {
     setTranscript('');
@@ -444,9 +449,10 @@ const AdminAgenda = () => {
   };
 
   const stopListening = () => {
+    console.log("Stop listening called, current transcript:", transcript);
     if (recognitionRef.current) {
       recognitionRef.current.stop();
-      // We'll handle the voice command processing in the onend event handler
+      // The onend event will handle processing the transcript
     }
   };
 
@@ -480,8 +486,7 @@ const AdminAgenda = () => {
         };
 
         console.log("Adding new event:", event);
-        const updatedEvents = [...events, event];
-        setEvents(updatedEvents);
+        setEvents(prevEvents => [...prevEvents, event]);
         setSelectedDate(eventDate);
         
         toast.success('Evento adicionado por comando de voz!', {
@@ -519,7 +524,7 @@ const AdminAgenda = () => {
                 {isProcessingVoice ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : isListening ? (
-                  <MicOff className="h-4 w-4 mr-2" />
+                  <Square className="h-4 w-4 mr-2" />
                 ) : (
                   <Mic className="h-4 w-4 mr-2" />
                 )}
