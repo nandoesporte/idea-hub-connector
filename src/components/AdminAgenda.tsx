@@ -123,7 +123,6 @@ const AdminAgenda = () => {
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [showVoiceCommandHelp, setShowVoiceCommandHelp] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const activationKeyword = 'hub';
 
   const isMobile = useIsMobile();
 
@@ -389,8 +388,8 @@ const AdminAgenda = () => {
     }
 
     // Create a speech recognition instance
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognitionAPI();
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
     
     // Configure speech recognition
     recognitionRef.current.continuous = true;
@@ -398,24 +397,18 @@ const AdminAgenda = () => {
     recognitionRef.current.lang = 'pt-BR';
 
     // Set up event handlers
-    recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-      const currentTranscript = Array.from(event.results)
-        .map((result) => result[0])
-        .map((result) => result.transcript)
+    recognitionRef.current.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
         .join('');
       
-      setTranscript(currentTranscript);
-      console.log("Current transcript:", currentTranscript);
+      setTranscript(transcript);
     };
 
     recognitionRef.current.onend = () => {
-      console.log("Speech recognition ended, isListening:", isListening);
-      console.log("Final transcript:", transcript);
-      
       if (isListening) {
-        if (transcript.trim()) {
-          handleVoiceCommand();
-        }
+        handleVoiceCommand();
         setIsListening(false);
       }
     };
@@ -431,40 +424,26 @@ const AdminAgenda = () => {
         recognitionRef.current.stop();
       }
     };
-  }, [isListening, transcript]);
+  }, []);
 
   const startListening = () => {
     setTranscript('');
     setIsListening(true);
     if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start();
-        console.log("Started listening...");
-        toast.info("Escutando... Diga o evento que deseja agendar.");
-      } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        toast.error('Erro ao iniciar o reconhecimento de voz. Tente novamente.');
-        setIsListening(false);
-      }
+      recognitionRef.current.start();
+      toast.info('Escutando comando de voz. Diga o evento que deseja agendar...');
     } else {
       toast.error('Reconhecimento de voz não suportado neste navegador.');
     }
   };
 
   const stopListening = () => {
-    console.log("Stopping listening manually...");
     if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (error) {
-        console.error("Error stopping speech recognition:", error);
-      }
+      recognitionRef.current.stop();
     }
   };
 
   const handleVoiceCommand = async () => {
-    console.log("Processing voice command:", transcript);
-    
     if (!transcript.trim()) {
       toast.error('Nenhum comando detectado. Tente novamente.');
       return;
@@ -473,7 +452,6 @@ const AdminAgenda = () => {
     setIsProcessingVoice(true);
     try {
       const result = await processVoiceCommand(transcript);
-      console.log("Voice command processing result:", result);
       
       if (result.success) {
         // Create a new event with parsed data
@@ -489,8 +467,6 @@ const AdminAgenda = () => {
           contactPhone: result.contactPhone || '',
         };
 
-        console.log("Creating new event from voice command:", event);
-        
         const updatedEvents = [...events, event];
         setEvents(updatedEvents);
         setSelectedDate(eventDate);
@@ -499,7 +475,6 @@ const AdminAgenda = () => {
           description: `"${result.title}" agendado para ${format(eventDate, 'PPP', { locale: ptBR })} às ${format(eventDate, 'HH:mm')}`
         });
       } else {
-        console.error("Voice command processing failed");
         toast.error('Não foi possível processar o comando de voz. Tente novamente com mais detalhes.');
       }
     } catch (error) {
@@ -732,7 +707,7 @@ const AdminAgenda = () => {
         {isListening && (
           <Alert className="mt-2 bg-blue-50 border-blue-200">
             <Mic className="h-4 w-4 text-blue-500" />
-            <AlertTitle>Processando comando...</AlertTitle>
+            <AlertTitle>Ouvindo comando de voz</AlertTitle>
             <AlertDescription className="text-sm italic">
               "{transcript || 'Aguardando comando...'}"
             </AlertDescription>

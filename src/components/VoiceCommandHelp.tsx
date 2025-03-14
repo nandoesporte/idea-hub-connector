@@ -18,8 +18,8 @@ const VoiceCommandHelp = () => {
           <div>
             <h3 className="font-medium text-sm">Como funciona:</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Clique no botão "Comando de Voz" e fale diretamente o evento que deseja agendar. 
-              Após falar, o sistema processará automaticamente e criará o evento.
+              Clique no botão "Comando de Voz", fale o evento que deseja agendar e os detalhes serão 
+              processados automaticamente.
             </p>
           </div>
           
