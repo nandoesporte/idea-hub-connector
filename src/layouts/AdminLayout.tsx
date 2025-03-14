@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -40,9 +39,8 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Projetos',
-    href: 'https://idea-hub-connector.lovable.app/projects',
+    href: '/admin/projects',
     icon: Briefcase,
-    external: true,
   },
   {
     title: 'Mensagens',
