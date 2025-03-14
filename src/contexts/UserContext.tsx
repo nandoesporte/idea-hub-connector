@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type UserContextType = {
@@ -26,6 +26,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const setData = async () => {
@@ -36,16 +37,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Set admin role for specific user
+        if (session?.user && location.pathname === '/') {
+          navigate('/dashboard');
+        }
+
         if (session?.user?.email === 'kcsantin@gmail.com') {
           const { error: updateError } = await supabase.auth.updateUser({
             data: { role: 'admin' }
           });
 
           if (updateError) {
-            toast.error('Erro ao definir permissões de administrador');
-          } else {
-            toast.success('Permissões de administrador definidas com sucesso');
+            console.error('Error setting admin permissions:', updateError);
           }
         }
       }
@@ -56,6 +58,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        if (session?.user && location.pathname === '/') {
+          navigate('/dashboard');
+        }
+        
         setLoading(false);
       }
     );
@@ -65,7 +72,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate, location.pathname]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -94,7 +101,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (data.user && !error) {
-        // Create user profile in the database if needed
         await supabase.from('profiles').insert({
           id: data.user.id,
           name,
