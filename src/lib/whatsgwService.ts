@@ -15,7 +15,15 @@ const logHistory: LogEntry[] = [];
 
 // Configurações da API WhatsGW
 const WHATSGW_API_BASE_URL = "https://app.whatsgw.com.br/api/WhatsGw";
+const WHATSGW_API_V1_URL = "https://app.whatsgw.com.br/api/v1";
 let API_KEY = "";
+let DEFAULT_PHONE_NUMBER = "5544997270698"; // Número de WhatsApp configurado na conta
+
+// Proxy servers for CORS issues
+const CORS_PROXIES = [
+  "https://cors-anywhere.herokuapp.com/",
+  "https://api.allorigins.win/raw?url=",
+];
 
 // Interfaces para mensagens
 export interface WhatsAppMessage {
@@ -157,6 +165,42 @@ export const formatPhoneNumber = (phone: string): string | null => {
 };
 
 /**
+ * Tenta executar uma requisição à API usando diferentes métodos para contornar CORS
+ */
+const tryApiRequest = async (url: string, options?: RequestInit): Promise<Response> => {
+  // Tenta fazer a requisição direta primeiro
+  try {
+    addLogEntry('info', 'api-request', `Attempting direct API call to: ${url}`);
+    const response = await fetch(url, options);
+    return response;
+  } catch (directError) {
+    addLogEntry('warning', 'api-request', 'Direct API call failed, trying with proxies', directError);
+    
+    // Se falhar, tenta com os proxies
+    for (const proxy of CORS_PROXIES) {
+      try {
+        addLogEntry('info', 'api-request', `Trying with ${proxy}`);
+        const proxyUrl = `${proxy}${url}`;
+        const proxyOptions = {
+          ...options,
+          headers: {
+            ...options?.headers,
+            'X-Requested-With': 'XMLHttpRequest', // Necessário para alguns proxies
+          }
+        };
+        const response = await fetch(proxyUrl, proxyOptions);
+        return response;
+      } catch (proxyError) {
+        addLogEntry('warning', 'api-request', `Failed with proxy ${proxy}`, proxyError);
+      }
+    }
+    
+    // Se tudo falhar, lança um erro
+    throw new Error('Falha em todas as tentativas de conexão com a API. Verifique sua conexão ou tente mais tarde.');
+  }
+};
+
+/**
  * Testa a conexão com a API
  */
 export const testApiConnection = async (): Promise<boolean> => {
@@ -168,22 +212,43 @@ export const testApiConnection = async (): Promise<boolean> => {
   }
   
   try {
+    // Tenta o endpoint Status primeiro (formato URL Query)
     const url = `${WHATSGW_API_BASE_URL}/Status?apikey=${encodeURIComponent(apiKey)}`;
     
-    addLogEntry('info', 'api-connection', `Testing API connection to: ${url}`);
+    addLogEntry('info', 'api-connection', `Testing API connection`);
     
-    const response = await fetch(url);
-    const data = await response.json();
+    // Usa o método V1 da API que é mais confiável para testes
+    const v1Url = `${WHATSGW_API_V1_URL}/status`;
+    const options = {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': apiKey
+      }
+    };
     
-    if (data.result === 'success') {
-      addLogEntry('info', 'api-connection', "API connection successful", data);
-      return true;
-    } else {
-      addLogEntry('error', 'api-connection', "API connection failed", data);
+    try {
+      const response = await tryApiRequest(v1Url, options);
+      
+      // Verifica se o status da resposta é 200
+      if (response.status === 200) {
+        addLogEntry('info', 'api-connection', "API connection successful", { status: response.status });
+        return true;
+      } else {
+        const text = await response.text();
+        addLogEntry('error', 'api-connection', "API connection failed with status", { 
+          status: response.status, 
+          text: text 
+        });
+        return false;
+      }
+    } catch (error) {
+      addLogEntry('error', 'api-connection', "Error testing API connection", error);
       return false;
     }
   } catch (error) {
-    addLogEntry('error', 'api-connection', "Error testing API connection", {
+    addLogEntry('error', 'api-connection', "Error in API connection test", {
       message: error.message,
       stack: error.stack,
       name: error.name
@@ -214,41 +279,90 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
       return false;
     }
     
-    // Configura os parâmetros básicos da requisição
-    const queryParams = new URLSearchParams({
-      apikey: apiKey,
-      phone_number: '5544997270698', // número padrão de envio configurado na sua conta WhatsGW
-      contact_phone_number: formattedPhone,
-      message_custom_id: params.customId || `msg_${Date.now()}`,
-      message_type: params.mediaUrl ? 'document' : 'text',
-      message_body: params.message
-    });
+    // Usa a API V1 que tem formato mais simples e confiável
+    const url = `${WHATSGW_API_V1_URL}/send-message`;
     
-    // Adiciona parâmetros de mídia se necessário
+    const requestBody = {
+      number: formattedPhone,
+      message: params.message
+    };
+    
     if (params.mediaUrl) {
-      queryParams.append('message_caption', params.caption || '');
-      queryParams.append('message_body_mimetype', params.mimetype || 'application/pdf');
-      queryParams.append('message_body_filename', params.filename || 'file.pdf');
-      queryParams.append('download', '1');
-      queryParams.append('message_body', params.mediaUrl);
-    }
-    
-    const url = `${WHATSGW_API_BASE_URL}/Send?${queryParams.toString()}`;
-    
-    addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone}`, { 
-      url: url.substring(0, 100) + '...' // Trunca a URL no log por ser muito longa
-    });
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.result === 'success') {
-      addLogEntry('info', 'send-message', "WhatsApp message sent successfully", data);
-      return true;
+      // Para envio de mídias, usa o endpoint tradicional com querystring
+      const queryParams = new URLSearchParams({
+        apikey: apiKey,
+        phone_number: DEFAULT_PHONE_NUMBER,
+        contact_phone_number: formattedPhone,
+        message_custom_id: params.customId || `msg_${Date.now()}`,
+        message_type: 'document',
+        message_caption: params.caption || '',
+        message_body_mimetype: params.mimetype || 'application/pdf',
+        message_body_filename: params.filename || 'file.pdf',
+        download: '1',
+        message_body: params.mediaUrl
+      });
+      
+      const mediaUrl = `${WHATSGW_API_BASE_URL}/Send?${queryParams.toString()}`;
+      
+      addLogEntry('info', 'send-message', `Sending WhatsApp media message to ${formattedPhone}`, { 
+        url: 'URL omitted from logs due to length'
+      });
+      
+      const response = await tryApiRequest(mediaUrl);
+      const data = await response.json();
+      
+      if (data.result === 'success') {
+        addLogEntry('info', 'send-message', "WhatsApp media message sent successfully", data);
+        return true;
+      } else {
+        addLogEntry('error', 'send-message', "API returned error for media message", data);
+        toast.error(`Erro ao enviar mídia: ${data.message || 'Erro desconhecido'}`);
+        return false;
+      }
     } else {
-      addLogEntry('error', 'send-message', "API returned error", data);
-      toast.error(`Erro ao enviar mensagem: ${data.message || 'Erro desconhecido'}`);
-      return false;
+      // Para mensagens de texto simples, usa o endpoint V1
+      addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone} via ${WHATSGW_API_V1_URL}`, {
+        requestBody
+      });
+      
+      const options = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': apiKey
+        },
+        body: JSON.stringify(requestBody)
+      };
+      
+      try {
+        const response = await tryApiRequest(url, options);
+        
+        addLogEntry('info', 'send-message', `Response status: ${response.status}`, {
+          headers: Object.fromEntries([...response.headers.entries()].filter(entry => {
+            return !['set-cookie', 'cookie'].includes(entry[0].toLowerCase());
+          }))
+        });
+        
+        if (response.status === 200 || response.status === 201) {
+          addLogEntry('info', 'send-message', "WhatsApp message sent successfully");
+          return true;
+        } else if (response.status === 403) {
+          addLogEntry('error', 'send-message', "API access forbidden - your account may not have permission or the API key is wrong", {
+            message: `HTTP error ${response.status}`
+          });
+          throw new Error(`Acesso negado (403). Você precisa autorizar o domínio no painel da WhatsGW ou sua chave de API pode estar incorreta.`);
+        } else {
+          const errorText = await response.text();
+          addLogEntry('error', 'send-message', `API returned error status ${response.status}`, {
+            text: errorText
+          });
+          throw new Error(`Erro na API (${response.status}): ${errorText}`);
+        }
+      } catch (fetchError) {
+        addLogEntry('error', 'send-message', "All connection methods failed", fetchError);
+        throw fetchError;
+      }
     }
   } catch (error) {
     addLogEntry('error', 'send-message', "Error sending WhatsApp message", {
