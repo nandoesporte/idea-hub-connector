@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 interface LogEntry {
@@ -10,12 +9,19 @@ interface LogEntry {
 }
 
 // Armazenamento de logs
-const LOG_HISTORY_MAX_SIZE = 50;
+const LOG_HISTORY_MAX_SIZE = 100; // Aumentado para armazenar mais logs
 const logHistory: LogEntry[] = [];
 
 // Configurações da API WhatsGW
-const WHATSGW_API_BASE_URL = "https://app.whatsgw.com.br/api/WhatsGw";
+const WHATSGW_API_BASE_URL = "https://app.whatsgw.com.br/api/v1";
 let API_KEY = "";
+
+// Lista de servidores proxy CORS para tentar em caso de erros CORS
+const CORS_PROXIES = [
+  "https://cors-anywhere.herokuapp.com/",
+  "https://corsproxy.io/?",
+  "https://proxy.cors.sh/"
+];
 
 // Interfaces para mensagens
 export interface WhatsAppMessage {
@@ -158,6 +164,88 @@ export const formatPhoneNumber = (phone: string): string | null => {
 };
 
 /**
+ * Tenta fazer uma requisição direta à API
+ */
+const directApiCall = async (url: string, options: RequestInit): Promise<Response> => {
+  addLogEntry('info', 'api-request', `Attempting direct API call to: ${url}`);
+  try {
+    return await fetch(url, options);
+  } catch (error) {
+    addLogEntry('warning', 'api-request', `Direct API call failed, trying with proxies`, { error });
+    throw error;
+  }
+};
+
+/**
+ * Tenta fazer uma requisição através de um servidor proxy CORS
+ */
+const proxiedApiCall = async (url: string, options: RequestInit): Promise<Response> => {
+  // Primeiro, tenta o proxy primário
+  for (let i = 0; i < CORS_PROXIES.length; i++) {
+    const proxy = CORS_PROXIES[i];
+    const proxiedUrl = `${proxy}${url}`;
+    
+    addLogEntry('info', 'api-request', `Trying with proxy ${i+1}/${CORS_PROXIES.length}: ${proxy}`);
+    
+    try {
+      // Adiciona cabeçalho necessário para CORS Anywhere
+      const proxiedOptions = {
+        ...options,
+        headers: {
+          ...options.headers,
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      };
+      
+      const response = await fetch(proxiedUrl, proxiedOptions);
+      
+      if (response.ok) {
+        addLogEntry('info', 'api-request', `Successfully connected via proxy ${i+1}`);
+        return response;
+      }
+      
+      addLogEntry('warning', 'api-request', `Proxy ${i+1} returned status ${response.status}`, {
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      // Se obtemos uma resposta, mesmo que não seja 2xx, retornamos para processamento posterior
+      return response;
+      
+    } catch (error) {
+      addLogEntry('error', 'api-request', `Error with proxy ${i+1}`, { error });
+      // Continua para o próximo proxy se este falhar
+    }
+  }
+  
+  // Se todos os proxies falharem
+  throw new Error("Todos os métodos de conexão falharam");
+};
+
+/**
+ * Faz uma requisição à API do WhatsGW, tentando diferentes métodos
+ * de contornar as restrições de CORS se necessário
+ */
+const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
+  try {
+    // Primeiro tenta uma requisição direta
+    return await directApiCall(url, options);
+  } catch (directError) {
+    try {
+      // Se falhar (provavelmente por CORS), tenta com proxy
+      return await proxiedApiCall(url, options);
+    } catch (proxyError) {
+      // Se todos os métodos falharem
+      addLogEntry('error', 'api-request', `All connection methods failed`, { 
+        message: proxyError.message,
+        stack: proxyError.stack,
+        name: proxyError.name
+      });
+      throw new Error("Acesso negado (403). Você precisa autorizar o domínio no painel da WhatsGW ou sua chave de API pode estar incorreta.");
+    }
+  }
+};
+
+/**
  * Trata erros específicos da API
  */
 const handleApiError = (status: number, operation: string, responseData?: any): string => {
@@ -208,42 +296,41 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
       return false;
     }
     
-    // Define os parâmetros da URL
-    const urlParams = new URLSearchParams({
-      apikey: apiKey,
-      phone_number: "5544997270698", // Número do remetente (configurado na WhatsGW)
-      contact_phone_number: formattedPhone,
-      message_custom_id: params.customId || `msg_${Date.now()}`,
-      message_type: params.mediaUrl ? (params.mimetype?.startsWith('image/') ? 'image' : 'document') : 'text',
-      message_body: params.message
-    });
-    
-    // Adiciona parâmetros de mídia se fornecidos
+    // Prepara o corpo da requisição
+    const requestBody = {
+      number: formattedPhone,
+      message: params.message
+    };
+
+    // Adiciona campos de mídia se fornecidos
     if (params.mediaUrl) {
-      urlParams.append('message_body', params.mediaUrl);
-      
-      if (params.caption) {
-        urlParams.append('message_caption', params.caption);
-      }
-      
-      if (params.mimetype) {
-        urlParams.append('message_body_mimetype', params.mimetype);
-      }
-      
-      if (params.filename) {
-        urlParams.append('message_body_filename', params.filename);
-      }
-      
-      urlParams.append('download', '1');
+      Object.assign(requestBody, {
+        media_url: params.mediaUrl,
+        caption: params.caption || '',
+        filename: params.filename || 'file',
+        mimetype: params.mimetype || 'application/octet-stream'
+      });
     }
     
-    // Constrói a URL completa
-    const apiUrl = `${WHATSGW_API_BASE_URL}/Send?${urlParams.toString()}`;
+    addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone} via ${WHATSGW_API_BASE_URL}`, { requestBody });
     
-    addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone}`, { url: apiUrl });
+    // Opções da requisição
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': apiKey
+      },
+      body: JSON.stringify(requestBody)
+    };
     
     // Faz a requisição à API
-    const response = await fetch(apiUrl);
+    const response = await makeApiRequest(`${WHATSGW_API_BASE_URL}/send-message`, requestOptions);
+    
+    addLogEntry('info', 'send-message', `Response status: ${response.status}`, {
+      headers: Object.fromEntries(response.headers.entries())
+    });
     
     // Verifica se a resposta foi bem-sucedida
     if (!response.ok) {
@@ -255,7 +342,7 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
     // Processa a resposta
     const data = await response.json();
     
-    if (data.result === 'success') {
+    if (data.success) {
       addLogEntry('info', 'send-message', "WhatsApp message sent successfully", data);
       toast.success("Mensagem enviada com sucesso!");
       return true;

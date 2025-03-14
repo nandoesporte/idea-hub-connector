@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +14,8 @@ import {
   sendTestToSpecificNumber 
 } from "@/lib/whatsgwService";
 import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone, Zap, ShieldAlert } from "lucide-react";
-import WhatsAppLogs from './WhatsAppLogs';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate } from "react-router-dom";
 
 const AdminWhatsAppSettings = () => {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -24,7 +24,7 @@ const AdminWhatsAppSettings = () => {
   const [isSending, setIsSending] = useState(false);
   const [apiKey, setApiKeyState] = useState('');
   const [isApiKeySet, setIsApiKeySet] = useState(false);
-  const [showLogs, setShowLogs] = useState(false);
+  const navigate = useNavigate();
   
   useEffect(() => {
     const savedApiKey = getApiKey();
@@ -125,6 +125,15 @@ const AdminWhatsAppSettings = () => {
       toast.error("Erro ao enviar mensagem de teste direta");
     } finally {
       setIsSending(false);
+    }
+  };
+  
+  const handleViewLogs = () => {
+    const tabsElement = document.querySelector('[role="tablist"]');
+    const logsTab = tabsElement?.querySelector('[value="logs"]') as HTMLElement;
+    
+    if (logsTab) {
+      logsTab.click();
     }
   };
   
@@ -308,11 +317,15 @@ const AdminWhatsAppSettings = () => {
           <div className="mt-6 pt-4 border-t">
             <Button
               variant="outline"
-              onClick={() => setShowLogs(!showLogs)}
-              className="w-full"
+              onClick={handleViewLogs}
+              className="w-full flex items-center justify-center gap-2"
             >
-              {showLogs ? "Ocultar logs" : "Mostrar logs de erros e operações"}
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              Visualizar logs de erros e operações
             </Button>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Os logs ajudam a identificar problemas de conexão com a API do WhatsApp
+            </p>
           </div>
           
         </CardContent>
@@ -339,8 +352,6 @@ const AdminWhatsAppSettings = () => {
           </div>
         </CardFooter>
       </Card>
-      
-      {showLogs && <WhatsAppLogs />}
     </div>
   );
 };
