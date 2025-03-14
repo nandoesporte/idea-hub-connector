@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Shield } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const HeroSection = () => {
@@ -60,7 +60,7 @@ const HeroSection = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight"
         >
-          Conectando <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">ideias</span> a <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-primary">desenvolvedores</span> extraordinários
+          Tecnologia e <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">seguros</span> em uma só <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-primary">plataforma</span>
         </motion.h1>
         
         <motion.p 
@@ -69,8 +69,9 @@ const HeroSection = () => {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="text-base md:text-lg text-muted-foreground max-w-3xl leading-relaxed"
         >
-          Descreva sua ideia de projeto e nós a transformamos em um produto digital excepcional, 
-          com desenvolvimento profissional e suporte personalizado.
+          Na Idealhub, unimos inovação tecnológica à expertise do mercado de seguros. 
+          Nascida da fusão entre a Kefer Soluções em Tecnologia e a Vhm Seguros, 
+          oferecemos soluções digitais completas com a segurança que os novos tempos precisam.
         </motion.p>
         
         <motion.div 
