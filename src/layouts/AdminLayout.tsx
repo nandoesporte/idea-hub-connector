@@ -176,16 +176,18 @@ const AdminLayout = ({
 
   return (
     <div className="min-h-screen flex flex-col antialiased">
-      <Navbar>
+      <Navbar />
+      <div className="flex items-center px-4 py-2 border-b">
         <Button 
           variant="ghost" 
           size="sm" 
-          className="h-8 w-8 p-0 ml-2" 
+          className="h-8 w-8 p-0 mr-2" 
           onClick={toggleSidebar}
         >
           {sidebarHidden ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </Button>
-      </Navbar>
+        {title && <h1 className="text-lg font-medium">{title}</h1>}
+      </div>
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar - hidden on mobile */}
         {!isMobile && !sidebarHidden && (
