@@ -57,6 +57,8 @@ const App = () => (
                 <Route path="/submit-idea" element={<SubmitIdea />} />
                 <Route path="/projects" element={<ProjectTracking />} />
                 <Route path="/projects/:id" element={<ProjectDetails />} />
+                {/* Alias the project-ideas/new route to submit-idea */}
+                <Route path="/project-ideas/new" element={<Navigate to="/submit-idea" replace />} />
               </Route>
               
               {/* Admin routes */}

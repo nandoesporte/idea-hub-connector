@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +28,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const mockAdminProjects: ProjectIdea[] = [
@@ -269,7 +271,7 @@ const AdminProjects = () => {
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os status</SelectItem>
+                <SelectItem value="all">Todos os status</SelectItem>
                 <SelectItem value="pending">Pendente</SelectItem>
                 <SelectItem value="under-review">Em Análise</SelectItem>
                 <SelectItem value="approved">Aprovado</SelectItem>
@@ -279,9 +281,11 @@ const AdminProjects = () => {
               </SelectContent>
             </Select>
           </div>
-          <Button>
-            Novo Projeto
-          </Button>
+          <Link to="/submit-idea">
+            <Button>
+              Novo Projeto
+            </Button>
+          </Link>
         </div>
 
         <Tabs defaultValue="all" className="w-full">

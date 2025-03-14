@@ -1,3 +1,4 @@
+
 import React from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { 
@@ -180,34 +181,42 @@ const AdminPanel = () => {
         
         {/* Quick access cards */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
-          <FeatureCard
-            title="Gerenciar Usuários"
-            description="Adicione, edite ou remova usuários do sistema."
-            icon={<Users size={24} />}
-            className="hover:border-blue-400"
-            iconClassName="bg-blue-500/10 text-blue-500"
-          />
-          <FeatureCard
-            title="Projetos Recentes"
-            description="Veja e gerencie os últimos projetos submetidos."
-            icon={<Briefcase size={24} />}
-            className="hover:border-indigo-400"
-            iconClassName="bg-indigo-500/10 text-indigo-500"
-          />
-          <FeatureCard
-            title="Mensagens"
-            description="Responda às mensagens dos clientes e usuários."
-            icon={<MessageSquare size={24} />}
-            className="hover:border-violet-400"
-            iconClassName="bg-violet-500/10 text-violet-500"
-          />
-          <FeatureCard
-            title="Portfólio"
-            description="Gerencie projetos no portfólio da empresa."
-            icon={<FileText size={24} />}
-            className="hover:border-emerald-400"
-            iconClassName="bg-emerald-500/10 text-emerald-500"
-          />
+          <Link to="/admin/users">
+            <FeatureCard
+              title="Gerenciar Usuários"
+              description="Adicione, edite ou remova usuários do sistema."
+              icon={<Users size={24} />}
+              className="hover:border-blue-400"
+              iconClassName="bg-blue-500/10 text-blue-500"
+            />
+          </Link>
+          <Link to="/admin/projects">
+            <FeatureCard
+              title="Projetos Recentes"
+              description="Veja e gerencie os últimos projetos submetidos."
+              icon={<Briefcase size={24} />}
+              className="hover:border-indigo-400"
+              iconClassName="bg-indigo-500/10 text-indigo-500"
+            />
+          </Link>
+          <Link to="/admin/messages">
+            <FeatureCard
+              title="Mensagens"
+              description="Responda às mensagens dos clientes e usuários."
+              icon={<MessageSquare size={24} />}
+              className="hover:border-violet-400"
+              iconClassName="bg-violet-500/10 text-violet-500"
+            />
+          </Link>
+          <Link to="/admin/portfolio">
+            <FeatureCard
+              title="Portfólio"
+              description="Gerencie projetos no portfólio da empresa."
+              icon={<FileText size={24} />}
+              className="hover:border-emerald-400"
+              iconClassName="bg-emerald-500/10 text-emerald-500"
+            />
+          </Link>
           <FeatureCard
             title="Relatórios"
             description="Visualize e exporte relatórios de performance."
@@ -215,13 +224,15 @@ const AdminPanel = () => {
             className="hover:border-amber-400"
             iconClassName="bg-amber-500/10 text-amber-500"
           />
-          <FeatureCard
-            title="Configurações"
-            description="Configure preferências e ajustes do sistema."
-            icon={<Zap size={24} />}
-            className="hover:border-pink-400"
-            iconClassName="bg-pink-500/10 text-pink-500"
-          />
+          <Link to="/admin/settings">
+            <FeatureCard
+              title="Configurações"
+              description="Configure preferências e ajustes do sistema."
+              icon={<Zap size={24} />}
+              className="hover:border-pink-400"
+              iconClassName="bg-pink-500/10 text-pink-500"
+            />
+          </Link>
         </div>
         
         {/* Recent projects */}
@@ -233,7 +244,7 @@ const AdminPanel = () => {
                 <CardDescription>Últimos projetos submetidos no sistema</CardDescription>
               </div>
               <Button size="sm" variant="outline" asChild>
-                <Link to="https://idea-hub-connector.lovable.app/projects">
+                <Link to="/admin/projects">
                   Ver todos
                 </Link>
               </Button>
@@ -266,7 +277,7 @@ const AdminPanel = () => {
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" asChild>
-                    <Link to={`/admin/projects/${project.id}`}>
+                    <Link to={`/admin/projects`}>
                       Detalhes
                     </Link>
                   </Button>
@@ -280,7 +291,7 @@ const AdminPanel = () => {
               <span>{analyticsData.pendingProjects} projetos pendentes aguardam análise</span>
             </div>
             <Button size="sm" asChild>
-              <Link to="https://idea-hub-connector.lovable.app/projects?status=pending">
+              <Link to="/admin/projects">
                 Revisar pendentes
               </Link>
             </Button>
