@@ -62,6 +62,11 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				calendar: {
+					'event-past': '#FFDEE2',
+					'event-today': '#D3E4FD',
+					'event-future': '#F2FCE2',
 				}
 			},
 			borderRadius: {
@@ -134,6 +139,27 @@ export default {
 					backdropFilter: 'blur(10px)',
 					borderRadius: '0.5rem',
 					border: '1px solid rgba(255, 255, 255, 0.08)',
+				},
+				'.event-card-past': {
+					backgroundColor: 'var(--color-calendar-event-past, #FFDEE2)',
+					color: '#D14F69',
+				},
+				'.event-card-today': {
+					backgroundColor: 'var(--color-calendar-event-today, #D3E4FD)',
+					color: '#3B82F6',
+				},
+				'.event-card-future': {
+					backgroundColor: 'var(--color-calendar-event-future, #F2FCE2)',
+					color: '#22C55E',
+				},
+				'.calendar-dot-past': {
+					backgroundColor: '#F87171',
+				},
+				'.calendar-dot-today': {
+					backgroundColor: '#3B82F6',
+				},
+				'.calendar-dot-future': {
+					backgroundColor: '#22C55E',
 				},
 			}
 			addUtilities(newUtilities)
