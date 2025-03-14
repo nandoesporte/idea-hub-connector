@@ -13,35 +13,15 @@ interface VoiceCommandResult {
 }
 
 /**
- * Processes a voice command using GPT-4 to extract event details
+ * Processes a voice command to extract event details
  */
 export async function processVoiceCommand(transcript: string): Promise<VoiceCommandResult> {
   try {
     console.log('Processing voice command:', transcript);
     
-    // Prepare prompt for GPT-4
-    const prompt = `
-      Extraia as informações de evento a partir do seguinte comando de voz em português:
-      "${transcript}"
-      
-      Retorne apenas um objeto JSON com os seguintes campos:
-      - title: título do evento
-      - description: descrição do evento (opcional)
-      - dateInfo: informações sobre a data (como "hoje", "amanhã", "próxima segunda", ou data específica)
-      - timeInfo: horário do evento (como "9h", "14:30", "manhã", "tarde")
-      - duration: duração em minutos (padrão: 60 se não especificado)
-      - type: tipo do evento ("meeting" para reunião, "deadline" para prazo, "task" para tarefa, "other" para outros)
-      - contactPhone: número de telefone mencionado, se houver (formato: apenas números)
-      
-      Não inclua explicações, apenas o objeto JSON.
-    `;
-
-    // For simulating GPT-4 response in this demo
-    // In a real implementation, we would make an API call to GPT-4
-    const fakeGptResponse = simulateGpt4Response(transcript);
-    
-    // Parse the GPT response
-    const parsedResult = fakeGptResponse;
+    // For simulating NLP processing in this demo
+    const parsedResult = simulateNlpProcessing(transcript);
+    console.log('Parsed result:', parsedResult);
     
     // Process the date and time information
     const eventDate = processDateTimeInfo(
@@ -78,7 +58,7 @@ function validateEventType(type: string): 'meeting' | 'deadline' | 'task' | 'oth
   const validTypes = ['meeting', 'deadline', 'task', 'other'];
   
   // Try to determine type from Portuguese words
-  if (type.includes('reuni') || type.includes('meet'))
+  if (type.includes('reuni') || type.includes('meet') || type.includes('call'))
     return 'meeting';
   if (type.includes('prazo') || type.includes('deadline') || type.includes('entrega'))
     return 'deadline';
@@ -104,7 +84,7 @@ function processDateTimeInfo(dateInfo: string, timeInfo: string): Date {
   // Process date information
   if (dateInfo.includes('hoje')) {
     // Today - keep the current date
-  } else if (dateInfo.includes('amanhã')) {
+  } else if (dateInfo.includes('amanhã') || dateInfo.includes('amanha')) {
     eventDate = addDays(now, 1);
   } else if (dateInfo.includes('próxima') || dateInfo.includes('proxima')) {
     // Handle "próxima [day of week]"
@@ -127,7 +107,7 @@ function processDateTimeInfo(dateInfo: string, timeInfo: string): Date {
       const year = dateParts[2] || now.getFullYear();
       eventDate = new Date(year, month, day);
     }
-  } else if (dateInfo.match(/\d{1,2} de [a-zç]+( de \d{2,4})?/i)) {
+  } else if (dateInfo.match(/\d{1,2}\s+de\s+[a-zç]+(\s+de\s+\d{2,4})?/i)) {
     // Handle date in format "DD de Month [de YYYY]"
     try {
       const dateFormat = dateInfo.includes(' de 20') ? 'dd\' de \'MMMM\' de \'yyyy' : 'dd\' de \'MMMM';
@@ -137,6 +117,19 @@ function processDateTimeInfo(dateInfo: string, timeInfo: string): Date {
       }
     } catch (e) {
       console.error('Error parsing date:', e);
+    }
+  } else {
+    // Check for day of week without "próxima"
+    const weekdays = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+    for (let i = 0; i < weekdays.length; i++) {
+      if (dateInfo.includes(weekdays[i])) {
+        const targetDay = i;
+        const currentDay = now.getDay();
+        let daysToAdd = (targetDay - currentDay) % 7;
+        if (daysToAdd <= 0) daysToAdd += 7; // If today or past, go to next week
+        eventDate = addDays(now, daysToAdd);
+        break;
+      }
     }
   }
   
@@ -175,81 +168,171 @@ function processDateTimeInfo(dateInfo: string, timeInfo: string): Date {
 }
 
 /**
- * Simulates a GPT-4 response for demo purposes
- * In a real implementation, this would be replaced with an actual API call to GPT-4
+ * Simulates NLP processing for demo purposes
  */
-function simulateGpt4Response(transcript: string): any {
-  console.log('Simulating GPT-4 response for:', transcript);
+function simulateNlpProcessing(transcript: string): any {
+  console.log('Simulating NLP processing for:', transcript);
   
   const now = new Date();
-  const tomorrow = addDays(now, 1);
   
   // Basic parsing logic to extract information
   let title = '';
-  let description = '';
+  let description = transcript;
   let dateInfo = 'hoje';
   let timeInfo = '';
   let duration = 60;
   let type = 'meeting';
   let contactPhone = '';
   
+  const lowerTranscript = transcript.toLowerCase();
+  
   // Extract event type
-  if (transcript.includes('reunião') || transcript.includes('meeting')) {
+  if (lowerTranscript.includes('reunião') || lowerTranscript.includes('reunir') || lowerTranscript.includes('meeting')) {
     type = 'meeting';
-    title = transcript.includes('reunião com') ? 
-      'Reunião com ' + transcript.split('reunião com')[1].split(' às')[0].trim() :
-      'Reunião';
-  } else if (transcript.includes('prazo') || transcript.includes('deadline')) {
+    if (lowerTranscript.includes('reunião com')) {
+      const match = lowerTranscript.match(/reunião com\s+([^,\.]+)/i);
+      if (match && match[1]) {
+        title = 'Reunião com ' + match[1].trim();
+      } else {
+        title = 'Reunião';
+      }
+    } else {
+      title = 'Reunião';
+    }
+  } else if (lowerTranscript.includes('prazo') || lowerTranscript.includes('deadline') || lowerTranscript.includes('entrega')) {
     type = 'deadline';
-    title = transcript.includes('prazo para') ? 
-      'Prazo: ' + transcript.split('prazo para')[1].split(' em')[0].trim() :
-      'Prazo de entrega';
-  } else if (transcript.includes('tarefa') || transcript.includes('task')) {
+    if (lowerTranscript.includes('prazo para')) {
+      const match = lowerTranscript.match(/prazo para\s+([^,\.]+)/i);
+      if (match && match[1]) {
+        title = 'Prazo: ' + match[1].trim();
+      } else {
+        title = 'Prazo de entrega';
+      }
+    } else {
+      title = 'Prazo de entrega';
+    }
+  } else if (lowerTranscript.includes('tarefa') || lowerTranscript.includes('task')) {
     type = 'task';
-    title = transcript.includes('tarefa de') ? 
-      'Tarefa: ' + transcript.split('tarefa de')[1].split(' para')[0].trim() :
-      'Nova tarefa';
+    if (lowerTranscript.includes('tarefa de')) {
+      const match = lowerTranscript.match(/tarefa de\s+([^,\.]+)/i);
+      if (match && match[1]) {
+        title = 'Tarefa: ' + match[1].trim();
+      } else {
+        title = 'Nova tarefa';
+      }
+    } else {
+      title = 'Nova tarefa';
+    }
+  } else if (lowerTranscript.includes('agendar') || lowerTranscript.includes('marcar')) {
+    if (lowerTranscript.includes('agendar') && lowerTranscript.includes('reunião')) {
+      type = 'meeting';
+      title = 'Reunião agendada';
+    } else if (lowerTranscript.includes('agendar') && lowerTranscript.includes('prazo')) {
+      type = 'deadline';
+      title = 'Prazo agendado';
+    } else if (lowerTranscript.includes('agendar') && lowerTranscript.includes('tarefa')) {
+      type = 'task';
+      title = 'Tarefa agendada';
+    } else {
+      // Try to extract what comes after "agendar" or "marcar"
+      const match = lowerTranscript.match(/(agendar|marcar)\s+([^,\.]+)/i);
+      if (match && match[2]) {
+        title = match[2].trim();
+        
+        // Determine type based on extracted content
+        if (title.includes('reunião') || title.includes('call')) {
+          type = 'meeting';
+        } else if (title.includes('prazo') || title.includes('entrega')) {
+          type = 'deadline';
+        } else if (title.includes('tarefa')) {
+          type = 'task';
+        }
+      } else {
+        title = 'Evento agendado';
+      }
+    }
   } else {
-    title = 'Evento: ' + transcript.substring(0, 30);
+    // Default title if no specific pattern is found
+    title = 'Evento: ' + transcript.substring(0, 30).trim();
   }
   
   // Extract date
-  if (transcript.includes('amanhã')) {
+  if (lowerTranscript.includes('amanhã') || lowerTranscript.includes('amanha')) {
     dateInfo = 'amanhã';
-  } else if (transcript.includes('segunda')) {
+  } else if (lowerTranscript.includes('hoje')) {
+    dateInfo = 'hoje';
+  } else if (lowerTranscript.includes('próxima segunda') || lowerTranscript.includes('proxima segunda')) {
     dateInfo = 'próxima segunda';
-  } else if (transcript.includes('terça')) {
+  } else if (lowerTranscript.includes('próxima terça') || lowerTranscript.includes('proxima terca')) {
     dateInfo = 'próxima terça';
-  } else if (transcript.includes('quarta')) {
+  } else if (lowerTranscript.includes('próxima quarta') || lowerTranscript.includes('proxima quarta')) {
     dateInfo = 'próxima quarta';
-  } else if (transcript.includes('quinta')) {
+  } else if (lowerTranscript.includes('próxima quinta') || lowerTranscript.includes('proxima quinta')) {
     dateInfo = 'próxima quinta';
-  } else if (transcript.includes('sexta')) {
+  } else if (lowerTranscript.includes('próxima sexta') || lowerTranscript.includes('proxima sexta')) {
     dateInfo = 'próxima sexta';
-  } else if (transcript.includes('sábado') || transcript.includes('sabado')) {
+  } else if (lowerTranscript.includes('próximo sábado') || lowerTranscript.includes('proximo sabado')) {
     dateInfo = 'próxima sábado';
-  } else if (transcript.includes('domingo')) {
+  } else if (lowerTranscript.includes('próximo domingo') || lowerTranscript.includes('proximo domingo')) {
     dateInfo = 'próxima domingo';
+  } else if (lowerTranscript.includes('segunda')) {
+    dateInfo = 'segunda';
+  } else if (lowerTranscript.includes('terça') || lowerTranscript.includes('terca')) {
+    dateInfo = 'terça';
+  } else if (lowerTranscript.includes('quarta')) {
+    dateInfo = 'quarta';
+  } else if (lowerTranscript.includes('quinta')) {
+    dateInfo = 'quinta';
+  } else if (lowerTranscript.includes('sexta')) {
+    dateInfo = 'sexta';
+  } else if (lowerTranscript.includes('sábado') || lowerTranscript.includes('sabado')) {
+    dateInfo = 'sábado';
+  } else if (lowerTranscript.includes('domingo')) {
+    dateInfo = 'domingo';
+  }
+
+  // Try to find date in format DD/MM or day of month
+  const dateRegex = /(\d{1,2})\s*\/\s*(\d{1,2})/;
+  const dateMatch = lowerTranscript.match(dateRegex);
+  if (dateMatch) {
+    dateInfo = dateMatch[0];
+  }
+  
+  // Try to find date in format "DD de Month"
+  const monthRegex = /(\d{1,2})\s+de\s+(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)/i;
+  const monthMatch = lowerTranscript.match(monthRegex);
+  if (monthMatch) {
+    dateInfo = monthMatch[0];
   }
   
   // Extract time
-  const timeRegex = /\d{1,2}[hH:](\d{1,2})?/;
-  const timeMatch = transcript.match(timeRegex);
+  const timeRegex = /(\d{1,2})(h|:|hs|hora|horas)(\d{1,2})?\s*(da\s+)?(manhã|manha|tarde|noite)?/i;
+  const timeMatch = lowerTranscript.match(timeRegex);
+  
   if (timeMatch) {
     timeInfo = timeMatch[0];
-  } else if (transcript.includes('manhã')) {
+  } else if (lowerTranscript.includes('manhã') || lowerTranscript.includes('manha')) {
     timeInfo = 'manhã';
-  } else if (transcript.includes('tarde')) {
+  } else if (lowerTranscript.includes('tarde')) {
     timeInfo = 'tarde';
-  } else if (transcript.includes('noite')) {
+  } else if (lowerTranscript.includes('noite')) {
     timeInfo = 'noite';
+  } else {
+    // Try to find just hours mention
+    const hourRegex = /\b(\d{1,2})\s*(h|hora|horas)\b/i;
+    const hourMatch = lowerTranscript.match(hourRegex);
+    if (hourMatch) {
+      timeInfo = hourMatch[0];
+    }
   }
   
   // Extract duration
-  const durationMatch = transcript.match(/duração de (\d+) (hora|minuto)/);
+  const durationRegex = /duração de (\d+)\s*(hora|horas|minuto|minutos)/i;
+  const durationMatch = lowerTranscript.match(durationRegex);
+  
   if (durationMatch) {
     const durationValue = parseInt(durationMatch[1]);
-    const durationUnit = durationMatch[2];
+    const durationUnit = durationMatch[2].toLowerCase();
     
     if (durationUnit.includes('hora')) {
       duration = durationValue * 60;
@@ -258,20 +341,18 @@ function simulateGpt4Response(transcript: string): any {
     }
   }
   
-  // Extract phone number
-  const phoneRegex = /(\d{2})?[\s-]?(\d{8,9})|(\d{2})?[\s-]?(\d{4,5})[\s-]?(\d{4})/;
-  const phoneMatch = transcript.match(phoneRegex);
-  if (phoneMatch) {
+  // Extract phone number - various formats common in Brazil
+  const phoneRegex = /(\d{2})[\s-]?(\d{4,5})[\s-]?(\d{4})|(\d{2})[\s-]?(\d{8,9})|(\d{8,9})/g;
+  const phoneMatches = lowerTranscript.match(phoneRegex);
+  
+  if (phoneMatches && phoneMatches.length > 0) {
     // Clean up and format the phone number
-    contactPhone = phoneMatch[0].replace(/\D/g, '');
+    contactPhone = phoneMatches[0].replace(/\D/g, '');
+    // Ensure it has area code (11 for São Paulo as default)
     if (contactPhone.length === 8 || contactPhone.length === 9) {
-      // Add area code if missing (using São Paulo as default)
       contactPhone = '11' + contactPhone;
     }
   }
-  
-  // Create description from the transcript
-  description = transcript;
   
   return {
     title,

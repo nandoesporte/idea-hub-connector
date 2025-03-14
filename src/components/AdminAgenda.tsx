@@ -389,8 +389,8 @@ const AdminAgenda = () => {
     }
 
     // Create a speech recognition instance
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognitionAPI();
     
     // Configure speech recognition
     recognitionRef.current.continuous = true;
@@ -405,9 +405,13 @@ const AdminAgenda = () => {
         .join('');
       
       setTranscript(currentTranscript);
+      console.log("Current transcript:", currentTranscript);
     };
 
     recognitionRef.current.onend = () => {
+      console.log("Speech recognition ended, isListening:", isListening);
+      console.log("Final transcript:", transcript);
+      
       if (isListening) {
         if (transcript.trim()) {
           handleVoiceCommand();
@@ -433,20 +437,34 @@ const AdminAgenda = () => {
     setTranscript('');
     setIsListening(true);
     if (recognitionRef.current) {
-      recognitionRef.current.start();
-      toast.info("Escutando... Diga o evento que deseja agendar.");
+      try {
+        recognitionRef.current.start();
+        console.log("Started listening...");
+        toast.info("Escutando... Diga o evento que deseja agendar.");
+      } catch (error) {
+        console.error("Error starting speech recognition:", error);
+        toast.error('Erro ao iniciar o reconhecimento de voz. Tente novamente.');
+        setIsListening(false);
+      }
     } else {
       toast.error('Reconhecimento de voz não suportado neste navegador.');
     }
   };
 
   const stopListening = () => {
+    console.log("Stopping listening manually...");
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.error("Error stopping speech recognition:", error);
+      }
     }
   };
 
   const handleVoiceCommand = async () => {
+    console.log("Processing voice command:", transcript);
+    
     if (!transcript.trim()) {
       toast.error('Nenhum comando detectado. Tente novamente.');
       return;
@@ -455,6 +473,7 @@ const AdminAgenda = () => {
     setIsProcessingVoice(true);
     try {
       const result = await processVoiceCommand(transcript);
+      console.log("Voice command processing result:", result);
       
       if (result.success) {
         // Create a new event with parsed data
@@ -470,6 +489,8 @@ const AdminAgenda = () => {
           contactPhone: result.contactPhone || '',
         };
 
+        console.log("Creating new event from voice command:", event);
+        
         const updatedEvents = [...events, event];
         setEvents(updatedEvents);
         setSelectedDate(eventDate);
@@ -477,18 +498,8 @@ const AdminAgenda = () => {
         toast.success('Evento adicionado por comando de voz!', {
           description: `"${result.title}" agendado para ${format(eventDate, 'PPP', { locale: ptBR })} às ${format(eventDate, 'HH:mm')}`
         });
-        
-        // Automatically fill the event form with pre-filled data for review
-        setNewEvent({
-          title: result.title,
-          description: result.description || '',
-          date: eventDate,
-          time: `${eventDate.getHours().toString().padStart(2, '0')}:${eventDate.getMinutes().toString().padStart(2, '0')}`,
-          duration: result.duration || 60,
-          type: result.type,
-          contactPhone: result.contactPhone || '',
-        });
       } else {
+        console.error("Voice command processing failed");
         toast.error('Não foi possível processar o comando de voz. Tente novamente com mais detalhes.');
       }
     } catch (error) {
