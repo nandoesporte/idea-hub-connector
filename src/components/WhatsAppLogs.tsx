@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { getLogHistory, clearLogHistory } from "@/lib/whatsappService";
+import { getLogHistory, clearLogHistory } from "@/lib/whatsgwService";
 
 interface LogEntry {
   timestamp: Date;

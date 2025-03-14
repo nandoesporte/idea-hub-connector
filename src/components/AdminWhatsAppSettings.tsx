@@ -8,12 +8,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { 
-  sendWhatsAppMessage, 
   setApiKey, 
   getApiKey, 
   isWhatsAppConfigured,
+  sendTestMessage,
   sendTestToSpecificNumber 
-} from "@/lib/whatsappService";
+} from "@/lib/whatsgwService";
 import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone, Zap, ShieldAlert } from "lucide-react";
 import WhatsAppLogs from './WhatsAppLogs';
 
@@ -89,10 +89,7 @@ const AdminWhatsAppSettings = () => {
     setIsSending(true);
     
     try {
-      const success = await sendWhatsAppMessage({
-        phone: testPhone,
-        message: "🔍 *Mensagem de Teste*\n\nOlá! Este é um teste de notificação via WhatsApp do sistema de agenda. Se você recebeu esta mensagem, a integração está funcionando corretamente."
-      });
+      const success = await sendTestMessage(testPhone);
       
       if (success) {
         toast.success("Mensagem de teste enviada com sucesso!");
@@ -196,21 +193,6 @@ const AdminWhatsAppSettings = () => {
             </AlertDescription>
           </Alert>
           
-          <Alert className="mt-2 bg-amber-500/10 text-amber-600 border-amber-200">
-            <ShieldAlert className="h-4 w-4" />
-            <AlertTitle>Problemas de CORS e Erro 403</AlertTitle>
-            <AlertDescription className="text-sm">
-              <p className="mb-1">
-                Se você encontrar erros de conexão ou erros 403 (Forbidden), verifique:
-              </p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Se o domínio da aplicação está autorizado no painel da WhatsGW</li>
-                <li>Se a chave API está correta e ativa</li>
-                <li>Se sua conta tem permissões suficientes para enviar mensagens</li>
-              </ul>
-            </AlertDescription>
-          </Alert>
-          
           <div className="mt-4 space-y-2 border-t pt-4">
             <Label className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" />
@@ -236,7 +218,7 @@ const AdminWhatsAppSettings = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Este botão envia uma mensagem de teste diretamente para o número 44988057213 e usará vários métodos para contornar limitações de CORS
+              Este botão envia uma mensagem de teste diretamente para o número 44988057213
             </p>
           </div>
           
