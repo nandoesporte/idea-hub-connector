@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import VoiceCommandsSection from '@/components/VoiceCommandsSection';
 import { useUser } from '@/contexts/UserContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,11 +9,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CalendarDays, FileText, Lightbulb, ListChecks, Plus } from 'lucide-react';
 import EventsList from '@/components/EventsList';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
+import { isWhatsAppConfigured } from '@/lib/whatsgwService';
 
 export default function Dashboard() {
   const { user } = useUser();
   const navigate = useNavigate();
-  const { events, loading, deleteEvent } = useVoiceCommandEvents();
+  const { events, loading, deleteEvent, checkApiConnection } = useVoiceCommandEvents();
+
+  useEffect(() => {
+    // Check API connection when component mounts, but don't show success toast
+    if (isWhatsAppConfigured()) {
+      checkApiConnection(false);
+    }
+  }, []);
 
   return (
     <div className="container mx-auto py-8 space-y-8">

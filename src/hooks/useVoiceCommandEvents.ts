@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -46,17 +47,17 @@ export function useVoiceCommandEvents() {
     loadEvents();
 
     if (isWhatsAppConfigured()) {
-      checkApiConnection();
+      checkApiConnection(false);
     }
   }, [refreshKey]);
 
-  const checkApiConnection = async () => {
+  const checkApiConnection = async (showSuccessToast = true) => {
     try {
       const connected = await testApiConnection();
       setApiConnected(connected);
-      if (connected) {
+      if (connected && showSuccessToast) {
         toast.success('Conexão com a API do WhatsApp estabelecida com sucesso');
-      } else {
+      } else if (!connected) {
         toast.error('Falha na conexão com a API do WhatsApp. Verifique a chave e as configurações.');
       }
     } catch (error) {
