@@ -12,6 +12,7 @@ export function useVoiceCommandEvents() {
   const [events, setEvents] = useState<VoiceCommandEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [processingCommand, setProcessingCommand] = useState(false);
 
   useEffect(() => {
     async function loadEvents() {
@@ -41,13 +42,23 @@ export function useVoiceCommandEvents() {
   };
 
   const createEventFromVoiceCommand = async (transcript: string) => {
+    // Don't process if empty or already processing
+    if (!transcript || transcript.trim() === '' || processingCommand) {
+      return false;
+    }
+    
     try {
+      setProcessingCommand(true);
+      console.log('Processing transcript:', transcript);
+      
       const result = await processVoiceCommand(transcript);
       
       if (!result.success) {
         toast.error('Não foi possível processar o comando de voz');
         return false;
       }
+      
+      console.log('Voice command processed:', result);
       
       const saveResult = await saveVoiceCommandEvent(result);
       
@@ -56,6 +67,7 @@ export function useVoiceCommandEvents() {
         return false;
       }
       
+      console.log('Voice command event saved successfully');
       toast.success('Evento criado com sucesso!');
       refreshEvents();
       return true;
@@ -63,6 +75,8 @@ export function useVoiceCommandEvents() {
       console.error('Error creating event from voice command:', error);
       toast.error('Erro ao criar evento a partir do comando de voz');
       return false;
+    } finally {
+      setProcessingCommand(false);
     }
   };
 
@@ -70,6 +84,7 @@ export function useVoiceCommandEvents() {
     events,
     loading,
     refreshEvents,
-    createEventFromVoiceCommand
+    createEventFromVoiceCommand,
+    processingCommand
   };
 }
