@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   CalendarDays, Plus, Clock, User, Edit, Trash2, CalendarIcon, 
-  RefreshCw, MessageSquare, Mic, MicOff, Loader2, Square
+  RefreshCw, MessageSquare, Mic, MicOff, Loader2, Square, Phone
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -275,6 +275,10 @@ const AdminAgenda = () => {
     toast.success('Evento adicionado com sucesso!');
     
     setSelectedDate(eventDate);
+    
+    if (event.contactPhone && isWhatsAppConfigured()) {
+      handleSendWhatsAppReminder(event);
+    }
   };
 
   const handleUpdateEvent = (id: string) => {
@@ -382,22 +386,18 @@ const AdminAgenda = () => {
   };
 
   useEffect(() => {
-    // Check if browser supports speech recognition
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       console.log('Speech recognition not supported');
       return;
     }
 
-    // Create a speech recognition instance
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognitionRef.current = new SpeechRecognition();
     
-    // Configure speech recognition
     recognitionRef.current.continuous = true;
     recognitionRef.current.interimResults = true;
     recognitionRef.current.lang = 'pt-BR';
 
-    // Set up event handlers
     recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
       const currentTranscript = Array.from(event.results)
         .map((result) => result[0])
@@ -406,23 +406,18 @@ const AdminAgenda = () => {
       
       console.log("Speech recognition result:", currentTranscript);
       setTranscript(currentTranscript);
-      savedTranscriptRef.current = currentTranscript; // Save to ref for access in onend
+      savedTranscriptRef.current = currentTranscript;
     };
 
     recognitionRef.current.onend = () => {
       console.log("Speech recognition ended");
-      // If we were listening but now stopping, process the command
       if (isListening) {
-        // Use the saved transcript ref to ensure we have the latest value
         const finalTranscript = savedTranscriptRef.current;
         console.log("Final transcript from ref:", finalTranscript);
         
-        // First set listening to false to update UI
         setIsListening(false);
         
-        // Process the command if we have text
         if (finalTranscript && finalTranscript.trim() !== '') {
-          // Process the voice command
           processVoiceCommandAndCreateEvent(finalTranscript);
         } else {
           toast.error('Nenhum comando de voz detectado');
@@ -441,7 +436,7 @@ const AdminAgenda = () => {
         recognitionRef.current.stop();
       }
     };
-  }, []);  // Remove transcript dependency to avoid recreating recognition object
+  }, []);
 
   const startListening = () => {
     setTranscript('');
@@ -457,10 +452,9 @@ const AdminAgenda = () => {
 
   const stopListening = () => {
     console.log("Stop listening called, current transcript:", transcript);
-    savedTranscriptRef.current = transcript; // Make sure we have the latest transcript
+    savedTranscriptRef.current = transcript;
     if (recognitionRef.current) {
       recognitionRef.current.stop();
-      // The processing will be handled in the onend event handler
     }
   };
 
@@ -477,7 +471,6 @@ const AdminAgenda = () => {
       console.log("Voice command processing result:", result);
       
       if (result.success) {
-        // Create a new event with parsed data
         const eventDate = new Date(result.date);
         console.log("Creating event with date:", eventDate);
         
@@ -507,14 +500,12 @@ const AdminAgenda = () => {
       toast.error('Erro ao processar comando de voz');
     } finally {
       setIsProcessingVoice(false);
-      // Reset transcript after processing
       setTranscript('');
       savedTranscriptRef.current = '';
     }
   };
 
   const handleVoiceCommand = (finalTranscript: string) => {
-    // This function now just calls the async function that processes the command
     processVoiceCommandAndCreateEvent(finalTranscript);
   };
 
@@ -825,6 +816,12 @@ const AdminAgenda = () => {
                               <User className="h-3 w-3 mr-1" /> 
                               {event.isGoogleEvent ? 'Google Calendar' : 'Admin'}
                             </span>
+                            {event.contactPhone && (
+                              <span className="flex items-center">
+                                <Phone className="h-3 w-3 mr-1" /> 
+                                {event.contactPhone}
+                              </span>
+                            )}
                             <span>{event.duration} min</span>
                           </div>
                         </div>
@@ -882,10 +879,60 @@ const AdminAgenda = () => {
         <p className="text-xs text-muted-foreground">
           Agenda com {events.length} eventos locais {googleEvents.length > 0 ? `e ${googleEvents.length} eventos do Google Calendar` : ''}
         </p>
-        <Button variant="outline" size="sm" className="w-full sm:w-auto">
-          <CalendarIcon className="h-4 w-4 mr-2" />
-          Exportar Agenda
-        </Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full sm:w-auto">
+              <Phone className="h-4 w-4 mr-2" />
+              Configurar Notificações
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Configurações de Notificação WhatsApp</DialogTitle>
+              <DialogDescription>
+                Configure números de telefone padrão para receber notificações do WhatsApp.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="defaultPhoneNumber">Número de Telefone Padrão</Label>
+                <Input 
+                  id="defaultPhoneNumber" 
+                  placeholder="Ex: (44) 98805-7213"
+                  onChange={(e) => {
+                    localStorage.setItem('default_whatsapp_number', e.target.value);
+                    toast.success('Número de telefone padrão salvo!');
+                  }}
+                  defaultValue={localStorage.getItem('default_whatsapp_number') || ''}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Este número será sugerido quando você criar novos eventos.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="defaultMessage">Mensagem Personalizada</Label>
+                <Textarea 
+                  id="defaultMessage" 
+                  placeholder="Mensagem padrão para notificações..."
+                  onChange={(e) => {
+                    localStorage.setItem('default_whatsapp_message', e.target.value);
+                    toast.success('Mensagem padrão salva!');
+                  }}
+                  defaultValue={localStorage.getItem('default_whatsapp_message') || ''}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit" onClick={() => {
+                if (!isWhatsAppConfigured()) {
+                  toast.error("Configure a API do WhatsApp primeiro nas configurações");
+                } else {
+                  toast.success("Configurações de notificação salvas com sucesso!");
+                }
+              }}>Salvar configurações</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardFooter>
     </Card>
   );

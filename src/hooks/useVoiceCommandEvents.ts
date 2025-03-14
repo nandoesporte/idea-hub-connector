@@ -62,6 +62,13 @@ export function useVoiceCommandEvents() {
       
       console.log('Voice command processed:', result);
       
+      // Use default phone number if available and no phone is specified in the command
+      const defaultPhone = localStorage.getItem('default_whatsapp_number');
+      if (!result.contactPhone && defaultPhone) {
+        result.contactPhone = defaultPhone;
+        console.log('Using default phone number:', defaultPhone);
+      }
+      
       const saveResult = await saveVoiceCommandEvent(result);
       
       if (!saveResult.success) {
