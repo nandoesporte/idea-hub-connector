@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 interface LogEntry {
@@ -9,29 +10,22 @@ interface LogEntry {
 }
 
 // Armazenamento de logs
-const LOG_HISTORY_MAX_SIZE = 100; // Aumentado para armazenar mais logs
+const LOG_HISTORY_MAX_SIZE = 100;
 const logHistory: LogEntry[] = [];
 
 // Configurações da API WhatsGW
-const WHATSGW_API_BASE_URL = "https://app.whatsgw.com.br/api/v1";
+const WHATSGW_API_BASE_URL = "https://app.whatsgw.com.br/api/WhatsGw";
 let API_KEY = "";
-
-// Lista de servidores proxy CORS para tentar em caso de erros CORS
-const CORS_PROXIES = [
-  "https://cors-anywhere.herokuapp.com/",
-  "https://corsproxy.io/?",
-  "https://proxy.cors.sh/"
-];
 
 // Interfaces para mensagens
 export interface WhatsAppMessage {
   phone: string;
   message: string;
   customId?: string;
+  mediaUrl?: string;
+  caption?: string;
   filename?: string;
   mimetype?: string;
-  caption?: string;
-  mediaUrl?: string;
 }
 
 export interface EventReminder {
@@ -154,7 +148,6 @@ export const formatPhoneNumber = (phone: string): string | null => {
   }
   
   // Validação final - números brasileiros com código de país devem ter 12-13 dígitos
-  // (55 + DDD de 2 dígitos + número de telefone de 8-9 dígitos)
   if (numericOnly.length < 12 || numericOnly.length > 13) {
     addLogEntry('error', 'format-phone', "Invalid Brazilian phone number format", { phone, numericOnly, length: numericOnly.length });
     return null;
@@ -164,113 +157,38 @@ export const formatPhoneNumber = (phone: string): string | null => {
 };
 
 /**
- * Tenta fazer uma requisição direta à API
+ * Testa a conexão com a API
  */
-const directApiCall = async (url: string, options: RequestInit): Promise<Response> => {
-  addLogEntry('info', 'api-request', `Attempting direct API call to: ${url}`);
-  try {
-    return await fetch(url, options);
-  } catch (error) {
-    addLogEntry('warning', 'api-request', `Direct API call failed, trying with proxies`, { error });
-    throw error;
-  }
-};
-
-/**
- * Tenta fazer uma requisição através de um servidor proxy CORS
- */
-const proxiedApiCall = async (url: string, options: RequestInit): Promise<Response> => {
-  // Primeiro, tenta o proxy primário
-  for (let i = 0; i < CORS_PROXIES.length; i++) {
-    const proxy = CORS_PROXIES[i];
-    const proxiedUrl = `${proxy}${url}`;
-    
-    addLogEntry('info', 'api-request', `Trying with proxy ${i+1}/${CORS_PROXIES.length}: ${proxy}`);
-    
-    try {
-      // Adiciona cabeçalho necessário para CORS Anywhere
-      const proxiedOptions = {
-        ...options,
-        headers: {
-          ...options.headers,
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      };
-      
-      const response = await fetch(proxiedUrl, proxiedOptions);
-      
-      if (response.ok) {
-        addLogEntry('info', 'api-request', `Successfully connected via proxy ${i+1}`);
-        return response;
-      }
-      
-      addLogEntry('warning', 'api-request', `Proxy ${i+1} returned status ${response.status}`, {
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      // Se obtemos uma resposta, mesmo que não seja 2xx, retornamos para processamento posterior
-      return response;
-      
-    } catch (error) {
-      addLogEntry('error', 'api-request', `Error with proxy ${i+1}`, { error });
-      // Continua para o próximo proxy se este falhar
-    }
+export const testApiConnection = async (): Promise<boolean> => {
+  const apiKey = getApiKey();
+  
+  if (!apiKey) {
+    addLogEntry('error', 'api-connection', "API key not set");
+    return false;
   }
   
-  // Se todos os proxies falharem
-  throw new Error("Todos os métodos de conexão falharam");
-};
-
-/**
- * Faz uma requisição à API do WhatsGW, tentando diferentes métodos
- * de contornar as restrições de CORS se necessário
- */
-const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
   try {
-    // Primeiro tenta uma requisição direta
-    return await directApiCall(url, options);
-  } catch (directError) {
-    try {
-      // Se falhar (provavelmente por CORS), tenta com proxy
-      return await proxiedApiCall(url, options);
-    } catch (proxyError) {
-      // Se todos os métodos falharem
-      addLogEntry('error', 'api-request', `All connection methods failed`, { 
-        message: proxyError.message,
-        stack: proxyError.stack,
-        name: proxyError.name
-      });
-      throw new Error("Acesso negado (403). Você precisa autorizar o domínio no painel da WhatsGW ou sua chave de API pode estar incorreta.");
+    const url = `${WHATSGW_API_BASE_URL}/Status?apikey=${encodeURIComponent(apiKey)}`;
+    
+    addLogEntry('info', 'api-connection', `Testing API connection to: ${url}`);
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.result === 'success') {
+      addLogEntry('info', 'api-connection', "API connection successful", data);
+      return true;
+    } else {
+      addLogEntry('error', 'api-connection', "API connection failed", data);
+      return false;
     }
-  }
-};
-
-/**
- * Trata erros específicos da API
- */
-const handleApiError = (status: number, operation: string, responseData?: any): string => {
-  switch (status) {
-    case 401:
-      addLogEntry('error', operation, "API authentication failed - invalid API key", responseData);
-      return "Autenticação falhou. Verifique se sua chave de API está correta.";
-    case 403:
-      addLogEntry('error', operation, "API access forbidden - your account may not have permission or the API key is wrong", responseData);
-      return "Acesso negado (403). Verifique se sua chave de API está correta e se você tem permissões suficientes.";
-    case 404:
-      addLogEntry('error', operation, "API endpoint not found", responseData);
-      return "Endpoint da API não encontrado.";
-    case 429:
-      addLogEntry('error', operation, "Rate limit exceeded", responseData);
-      return "Limite de requisições excedido. Tente novamente em alguns minutos.";
-    case 500:
-    case 502:
-    case 503:
-    case 504:
-      addLogEntry('error', operation, `Server error (${status})`, responseData);
-      return `Erro no servidor WhatsApp (${status}). Tente novamente mais tarde.`;
-    default:
-      addLogEntry('error', operation, `HTTP error ${status}`, responseData);
-      return `Erro na API (${status}). Verifique os logs para mais detalhes.`;
+  } catch (error) {
+    addLogEntry('error', 'api-connection', "Error testing API connection", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    return false;
   }
 };
 
@@ -296,55 +214,36 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
       return false;
     }
     
-    // Prepara o corpo da requisição
-    const requestBody = {
-      number: formattedPhone,
-      message: params.message
-    };
-
-    // Adiciona campos de mídia se fornecidos
-    if (params.mediaUrl) {
-      Object.assign(requestBody, {
-        media_url: params.mediaUrl,
-        caption: params.caption || '',
-        filename: params.filename || 'file',
-        mimetype: params.mimetype || 'application/octet-stream'
-      });
-    }
-    
-    addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone} via ${WHATSGW_API_BASE_URL}`, { requestBody });
-    
-    // Opções da requisição
-    const requestOptions = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': apiKey
-      },
-      body: JSON.stringify(requestBody)
-    };
-    
-    // Faz a requisição à API
-    const response = await makeApiRequest(`${WHATSGW_API_BASE_URL}/send-message`, requestOptions);
-    
-    addLogEntry('info', 'send-message', `Response status: ${response.status}`, {
-      headers: Object.fromEntries(response.headers.entries())
+    // Configura os parâmetros básicos da requisição
+    const queryParams = new URLSearchParams({
+      apikey: apiKey,
+      phone_number: '5544997270698', // número padrão de envio configurado na sua conta WhatsGW
+      contact_phone_number: formattedPhone,
+      message_custom_id: params.customId || `msg_${Date.now()}`,
+      message_type: params.mediaUrl ? 'document' : 'text',
+      message_body: params.message
     });
     
-    // Verifica se a resposta foi bem-sucedida
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: `HTTP error ${response.status}` }));
-      const errorMessage = handleApiError(response.status, 'send-message', errorData);
-      throw new Error(errorMessage);
+    // Adiciona parâmetros de mídia se necessário
+    if (params.mediaUrl) {
+      queryParams.append('message_caption', params.caption || '');
+      queryParams.append('message_body_mimetype', params.mimetype || 'application/pdf');
+      queryParams.append('message_body_filename', params.filename || 'file.pdf');
+      queryParams.append('download', '1');
+      queryParams.append('message_body', params.mediaUrl);
     }
     
-    // Processa a resposta
+    const url = `${WHATSGW_API_BASE_URL}/Send?${queryParams.toString()}`;
+    
+    addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone}`, { 
+      url: url.substring(0, 100) + '...' // Trunca a URL no log por ser muito longa
+    });
+    
+    const response = await fetch(url);
     const data = await response.json();
     
-    if (data.success) {
+    if (data.result === 'success') {
       addLogEntry('info', 'send-message', "WhatsApp message sent successfully", data);
-      toast.success("Mensagem enviada com sucesso!");
       return true;
     } else {
       addLogEntry('error', 'send-message', "API returned error", data);
@@ -456,7 +355,7 @@ export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 2
 };
 
 /**
- * Envia mensagem de teste direto para o número específico fornecido no exemplo
+ * Envia mensagem de teste direto para o número específico
  */
 export const sendTestToSpecificNumber = async (): Promise<boolean> => {
   return sendWhatsAppMessage({

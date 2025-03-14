@@ -13,7 +13,8 @@ import {
   MessageSquare,
   Globe,
   Shield,
-  Key
+  Key,
+  Phone
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -116,10 +117,13 @@ const WhatsAppLogViewer = () => {
     switch (operation) {
       case 'send-message':
         return <MessageSquare className="h-4 w-4 text-green-500" />;
+      case 'api-connection':
       case 'api-request':
         return <Globe className="h-4 w-4 text-blue-400" />;
       case 'configuration':
         return <Key className="h-4 w-4 text-purple-500" />;
+      case 'format-phone':
+        return <Phone className="h-4 w-4 text-gray-500" />;
       default:
         return <Info className="h-4 w-4 text-gray-400" />;
     }
@@ -137,7 +141,7 @@ const WhatsAppLogViewer = () => {
     }
   };
   
-  const isCorsError = (log: LogEntry): boolean => {
+  const isApiError = (log: LogEntry): boolean => {
     if (log.type !== 'error') return false;
     
     const message = log.message?.toLowerCase() || '';
@@ -145,8 +149,8 @@ const WhatsAppLogViewer = () => {
                     JSON.stringify(log.details).toLowerCase() : 
                     String(log.details).toLowerCase();
                     
-    return message.includes('cors') || 
-           details.includes('cors') || 
+    return message.includes('api') || 
+           details.includes('api') || 
            message.includes('failed to fetch') ||
            details.includes('failed to fetch');
   };
@@ -238,9 +242,9 @@ const WhatsAppLogViewer = () => {
                       >
                         {log.type.toUpperCase()}
                       </Badge>
-                      {isCorsError(log) && (
+                      {isApiError(log) && (
                         <Badge variant="outline" className="bg-amber-500/20 text-amber-700 border-amber-300">
-                          <Shield className="h-3 w-3 mr-1" /> CORS
+                          <Shield className="h-3 w-3 mr-1" /> API
                         </Badge>
                       )}
                     </div>

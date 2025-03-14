@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Phone, MessageSquare, Bell, AlertCircle } from 'lucide-react';
-import { setApiKey, isWhatsAppConfigured } from '@/lib/whatsappService';
+import { setApiKey, isWhatsAppConfigured } from '@/lib/whatsgwService';
 import AdminWhatsAppSettings from '@/components/AdminWhatsAppSettings';
 import WhatsAppLogViewer from '@/components/WhatsAppLogViewer';
 
@@ -78,7 +79,7 @@ const AdminSettings = () => {
   const [isNotificationsFormDirty, setIsNotificationsFormDirty] = useState(false);
 
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('whatsapp_api_key') || '';
+    const savedApiKey = localStorage.getItem('whatsgw_api_key') || '';
     setWhatsAppApiKey(savedApiKey);
     
     const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');

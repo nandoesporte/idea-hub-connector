@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +12,10 @@ import {
   getApiKey, 
   isWhatsAppConfigured,
   sendTestMessage,
-  sendTestToSpecificNumber 
+  sendTestToSpecificNumber,
+  testApiConnection
 } from "@/lib/whatsgwService";
 import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone, Zap, ShieldAlert } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate } from "react-router-dom";
 
 const AdminWhatsAppSettings = () => {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -24,13 +24,15 @@ const AdminWhatsAppSettings = () => {
   const [isSending, setIsSending] = useState(false);
   const [apiKey, setApiKeyState] = useState('');
   const [isApiKeySet, setIsApiKeySet] = useState(false);
-  const navigate = useNavigate();
+  const [isTesting, setIsTesting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'failed'>('unknown');
   
   useEffect(() => {
     const savedApiKey = getApiKey();
     if (savedApiKey) {
       setApiKeyState(savedApiKey);
       setIsApiKeySet(true);
+      checkConnection(savedApiKey);
     }
     
     const savedEnabled = localStorage.getItem('whatsapp_enabled');
@@ -44,6 +46,22 @@ const AdminWhatsAppSettings = () => {
     }
   }, []);
   
+  const checkConnection = async (key?: string) => {
+    setIsTesting(true);
+    try {
+      if (key) {
+        setApiKey(key);
+      }
+      const success = await testApiConnection();
+      setConnectionStatus(success ? 'success' : 'failed');
+    } catch (error) {
+      console.error("Error testing connection:", error);
+      setConnectionStatus('failed');
+    } finally {
+      setIsTesting(false);
+    }
+  };
+  
   const handleToggleEnable = (checked: boolean) => {
     setIsEnabled(checked);
     localStorage.setItem('whatsapp_enabled', checked.toString());
@@ -54,7 +72,7 @@ const AdminWhatsAppSettings = () => {
     );
   };
   
-  const handleSaveApiKey = () => {
+  const handleSaveApiKey = async () => {
     if (!apiKey.trim()) {
       toast.error("Por favor, insira uma chave de API válida");
       return;
@@ -62,6 +80,9 @@ const AdminWhatsAppSettings = () => {
     
     setApiKey(apiKey);
     setIsApiKeySet(true);
+    
+    // Testa conexão com a nova chave
+    await checkConnection(apiKey);
     
     toast.success("Chave de API do WhatsApp salva com sucesso!");
   };
@@ -146,7 +167,7 @@ const AdminWhatsAppSettings = () => {
             Notificações via WhatsApp
           </CardTitle>
           <CardDescription>
-            Configure o envio automático de lembretes de agenda via WhatsApp
+            Configure o envio automático de lembretes de agenda via WhatsApp usando a API WhatsGW
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -167,21 +188,38 @@ const AdminWhatsAppSettings = () => {
               <Button 
                 onClick={handleSaveApiKey} 
                 variant="secondary"
-                disabled={!apiKey.trim()}
+                disabled={!apiKey.trim() || isTesting}
               >
-                Salvar
+                {isTesting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Testando...
+                  </>
+                ) : (
+                  "Salvar e Testar"
+                )}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               Esta chave é necessária para enviar mensagens através da API do WhatsApp (app.whatsgw.com.br)
             </p>
             
-            {isApiKeySet && (
+            {connectionStatus === 'success' && (
               <Alert className="mt-2 bg-green-500/10 text-green-600 border-green-200">
                 <CheckCircle className="h-4 w-4" />
-                <AlertTitle>API configurada</AlertTitle>
+                <AlertTitle>API configurada e conectada</AlertTitle>
                 <AlertDescription>
-                  Sua chave de API foi configurada e está pronta para uso
+                  Sua chave de API foi configurada e a conexão com o serviço WhatsGW está funcionando
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {connectionStatus === 'failed' && (
+              <Alert className="mt-2 bg-red-500/10 text-red-600 border-red-200">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Falha na conexão</AlertTitle>
+                <AlertDescription>
+                  Não foi possível conectar ao serviço WhatsGW. Verifique se a chave de API está correta e tente novamente.
                 </AlertDescription>
               </Alert>
             )}
@@ -192,12 +230,12 @@ const AdminWhatsAppSettings = () => {
             <AlertTitle>Documentação API</AlertTitle>
             <AlertDescription>
               <a 
-                href="https://documenter.getpostman.com/view/3741041/SztBa7ku" 
+                href="https://app.whatsgw.com.br/APIDocs" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="underline hover:text-blue-700"
               >
-                Consulte a documentação da API para mais informações
+                Consulte a documentação oficial da API WhatsGW para mais informações
               </a>
             </AlertDescription>
           </Alert>
@@ -210,7 +248,7 @@ const AdminWhatsAppSettings = () => {
             <div className="flex items-center gap-2">
               <Button 
                 onClick={handleDirectTest} 
-                disabled={isSending || !isApiKeySet}
+                disabled={isSending || !isApiKeySet || connectionStatus !== 'success'}
                 className="bg-amber-500 hover:bg-amber-600 text-white"
               >
                 {isSending ? (
@@ -242,7 +280,7 @@ const AdminWhatsAppSettings = () => {
               id="whatsapp-notifications"
               checked={isEnabled}
               onCheckedChange={handleToggleEnable}
-              disabled={!isApiKeySet}
+              disabled={!isApiKeySet || connectionStatus !== 'success'}
             />
           </div>
           
@@ -288,7 +326,7 @@ const AdminWhatsAppSettings = () => {
                   />
                   <Button 
                     onClick={handleSendTest} 
-                    disabled={isSending || !testPhone || !isApiKeySet}
+                    disabled={isSending || !testPhone || !isApiKeySet || connectionStatus !== 'success'}
                   >
                     {isSending ? (
                       <>
@@ -332,15 +370,22 @@ const AdminWhatsAppSettings = () => {
         <CardFooter className="border-t pt-4">
           <div className="flex items-center text-sm">
             {isApiKeySet ? (
-              isEnabled ? (
-                <div className="flex items-center text-green-500">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Notificações WhatsApp ativadas
-                </div>
+              connectionStatus === 'success' ? (
+                isEnabled ? (
+                  <div className="flex items-center text-green-500">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Notificações WhatsApp ativadas e conectadas
+                  </div>
+                ) : (
+                  <div className="flex items-center text-yellow-500">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    API conectada, mas notificações desativadas
+                  </div>
+                )
               ) : (
-                <div className="flex items-center text-yellow-500">
+                <div className="flex items-center text-red-500">
                   <AlertCircle className="h-4 w-4 mr-2" />
-                  API configurada, mas notificações desativadas
+                  Falha na conexão com a API
                 </div>
               )
             ) : (
