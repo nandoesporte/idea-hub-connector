@@ -1,12 +1,14 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, Plus, Clock, User, Edit, Trash2, CalendarIcon, RefreshCw, MessageSquare } from "lucide-react";
+import { 
+  CalendarDays, Plus, Clock, User, Edit, Trash2, CalendarIcon, 
+  RefreshCw, MessageSquare, Mic, MicOff, Loader2
+} from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GoogleLogin } from '@react-oauth/google';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { sendEventReminder, setApiKey, isWhatsAppConfigured } from '@/lib/whatsappService';
+import VoiceCommandHelp from './VoiceCommandHelp';
+import { processVoiceCommand } from '@/lib/voiceCommandService';
 
 interface Event {
   id: string;
@@ -30,7 +34,6 @@ interface Event {
   isGoogleEvent?: boolean;
 }
 
-// Serialize events for localStorage (convert Date objects to ISO strings)
 const serializeEvents = (events: Event[]): any[] => {
   return events.map(event => ({
     ...event,
@@ -38,7 +41,6 @@ const serializeEvents = (events: Event[]): any[] => {
   }));
 };
 
-// Deserialize events from localStorage (convert ISO strings back to Date objects)
 const deserializeEvents = (events: any[]): Event[] => {
   return events.map(event => ({
     ...event,
@@ -116,6 +118,11 @@ const AdminAgenda = () => {
   const [isGoogleSyncing, setIsGoogleSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [apiKey, setApiKey] = useState<string | null>(localStorage.getItem('whatsapp_api_key'));
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [showVoiceCommandHelp, setShowVoiceCommandHelp] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const isMobile = useIsMobile();
 
@@ -373,6 +380,112 @@ const AdminAgenda = () => {
     }
   };
 
+  useEffect(() => {
+    // Check if browser supports speech recognition
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      console.log('Speech recognition not supported');
+      return;
+    }
+
+    // Create a speech recognition instance
+    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    
+    // Configure speech recognition
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.interimResults = true;
+    recognitionRef.current.lang = 'pt-BR';
+
+    // Set up event handlers
+    recognitionRef.current.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
+        .join('');
+      
+      setTranscript(transcript);
+    };
+
+    recognitionRef.current.onend = () => {
+      if (isListening) {
+        handleVoiceCommand();
+        setIsListening(false);
+      }
+    };
+
+    recognitionRef.current.onerror = (event: any) => {
+      console.error('Speech recognition error', event.error);
+      toast.error('Erro no reconhecimento de voz. Tente novamente.');
+      setIsListening(false);
+    };
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const startListening = () => {
+    setTranscript('');
+    setIsListening(true);
+    if (recognitionRef.current) {
+      recognitionRef.current.start();
+      toast.info('Escutando comando de voz. Diga o evento que deseja agendar...');
+    } else {
+      toast.error('Reconhecimento de voz não suportado neste navegador.');
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  };
+
+  const handleVoiceCommand = async () => {
+    if (!transcript.trim()) {
+      toast.error('Nenhum comando detectado. Tente novamente.');
+      return;
+    }
+
+    setIsProcessingVoice(true);
+    try {
+      const result = await processVoiceCommand(transcript);
+      
+      if (result.success) {
+        // Create a new event with parsed data
+        const eventDate = new Date(result.date);
+        
+        const event: Event = {
+          id: Date.now().toString(),
+          title: result.title,
+          description: result.description || '',
+          date: eventDate,
+          duration: result.duration || 60,
+          type: result.type as 'meeting' | 'deadline' | 'task' | 'other',
+          contactPhone: result.contactPhone || '',
+        };
+
+        const updatedEvents = [...events, event];
+        setEvents(updatedEvents);
+        setSelectedDate(eventDate);
+        
+        toast.success('Evento adicionado por comando de voz!', {
+          description: `"${result.title}" agendado para ${format(eventDate, 'PPP', { locale: ptBR })} às ${format(eventDate, 'HH:mm')}`
+        });
+      } else {
+        toast.error('Não foi possível processar o comando de voz. Tente novamente com mais detalhes.');
+      }
+    } catch (error) {
+      console.error('Error processing voice command:', error);
+      toast.error('Erro ao processar comando de voz');
+    } finally {
+      setIsProcessingVoice(false);
+      setTranscript('');
+    }
+  };
+
   return (
     <Card className="w-full shadow-sm">
       <CardHeader className="pb-2">
@@ -382,6 +495,41 @@ const AdminAgenda = () => {
             <CardDescription>Gerencie seus compromissos e tarefas</CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                className={`w-full sm:w-auto ${isListening ? 'bg-red-100 text-red-600 hover:bg-red-200' : ''}`}
+                onClick={isListening ? stopListening : startListening}
+                disabled={isProcessingVoice}
+              >
+                {isProcessingVoice ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : isListening ? (
+                  <MicOff className="h-4 w-4 mr-2" />
+                ) : (
+                  <Mic className="h-4 w-4 mr-2" />
+                )}
+                {isListening ? 'Parar' : 'Comando de Voz'}
+              </Button>
+              
+              <Dialog open={showVoiceCommandHelp} onOpenChange={setShowVoiceCommandHelp}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="px-2"
+                    title="Ajuda para comandos de voz"
+                  >
+                    ?
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <VoiceCommandHelp />
+                </DialogContent>
+              </Dialog>
+            </div>
+            
             {!googleAuthToken ? (
               <div className="w-full sm:w-auto">
                 <GoogleLogin
@@ -417,6 +565,7 @@ const AdminAgenda = () => {
                 </Button>
               </div>
             )}
+            
             <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
               <DialogTrigger asChild>
                 <Button 
@@ -554,7 +703,18 @@ const AdminAgenda = () => {
             </Dialog>
           </div>
         </div>
+        
+        {isListening && (
+          <Alert className="mt-2 bg-blue-50 border-blue-200">
+            <Mic className="h-4 w-4 text-blue-500" />
+            <AlertTitle>Ouvindo comando de voz</AlertTitle>
+            <AlertDescription className="text-sm italic">
+              "{transcript || 'Aguardando comando...'}"
+            </AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
+      
       <CardContent className="pb-2">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-7 md:gap-6">
           <div className="rounded-lg border bg-card shadow-sm p-4 md:col-span-3">
@@ -685,6 +845,7 @@ const AdminAgenda = () => {
           </div>
         </div>
       </CardContent>
+      
       <CardFooter className="flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <p className="text-xs text-muted-foreground">
           Agenda com {events.length} eventos locais {googleEvents.length > 0 ? `e ${googleEvents.length} eventos do Google Calendar` : ''}
