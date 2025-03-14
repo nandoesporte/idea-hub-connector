@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,13 @@ const Dashboard = () => {
   return (
     <MainLayout>
       <div className="animate-fade-in">
+        {/* Admin Agenda - Only visible for admins and now displayed first */}
+        {isAdmin && (
+          <div className="mb-6">
+            <AdminAgenda />
+          </div>
+        )}
+        
         <div className="border-b pb-5 mb-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
@@ -90,13 +98,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-
-        {/* Admin Agenda - Only visible for admins */}
-        {isAdmin && (
-          <div className="mb-6">
-            <AdminAgenda />
-          </div>
-        )}
 
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full md:w-auto justify-start overflow-x-auto">
