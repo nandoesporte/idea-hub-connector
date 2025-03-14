@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -66,7 +67,10 @@ const AdminLayout = ({
   actionLabel = "Novo item",
   onAction 
 }: AdminLayoutProps) => {
-  const [collapsed, setCollapsed] = useState(false);
+  // Start with collapsed sidebar by default
+  const [collapsed, setCollapsed] = useState(true);
+  // Start with hidden sidebar - can be toggled to show
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useUser();
@@ -79,6 +83,10 @@ const AdminLayout = ({
     navigate('/dashboard');
     return null;
   }
+
+  const toggleSidebar = () => {
+    setSidebarHidden(!sidebarHidden);
+  };
 
   const renderNavLink = (item: NavItem) => {
     const isActive = pathname === item.href;
@@ -168,10 +176,19 @@ const AdminLayout = ({
 
   return (
     <div className="min-h-screen flex flex-col antialiased">
-      <Navbar />
+      <Navbar>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 w-8 p-0 ml-2" 
+          onClick={toggleSidebar}
+        >
+          {sidebarHidden ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </Button>
+      </Navbar>
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar - hidden on mobile */}
-        {!isMobile && (
+        {!isMobile && !sidebarHidden && (
           <aside 
             className={cn(
               "bg-card border-r shrink-0 overflow-y-auto flex flex-col transition-all duration-300 h-[calc(100vh-4rem)]",
