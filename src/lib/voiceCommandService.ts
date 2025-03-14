@@ -1,6 +1,7 @@
 
 import { addDays, setHours, setMinutes, parse, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { supabase } from './supabase';
 
 // Interface for the result of processing a voice command
 interface VoiceCommandResult {
@@ -61,6 +62,79 @@ export async function processVoiceCommand(transcript: string): Promise<VoiceComm
       date: new Date(),
       type: 'other',
     };
+  }
+}
+
+/**
+ * Saves a voice command event to Supabase
+ */
+export async function saveVoiceCommandEvent(event: VoiceCommandResult): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get the current user
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session || !session.user) {
+      console.error('No authenticated user found');
+      return { success: false, error: 'Usuário não autenticado' };
+    }
+    
+    console.log('Saving voice command event:', event);
+    
+    // Insert the event into the voice_command_events table
+    const { data, error } = await supabase
+      .from('voice_command_events')
+      .insert({
+        user_id: session.user.id,
+        title: event.title,
+        description: event.description || '',
+        date: event.date.toISOString(),
+        duration: event.duration || 60,
+        type: event.type,
+        contact_phone: event.contactPhone || '',
+      });
+    
+    if (error) {
+      console.error('Error saving voice command event:', error);
+      return { success: false, error: error.message };
+    }
+    
+    console.log('Voice command event saved successfully:', data);
+    return { success: true };
+  } catch (error) {
+    console.error('Error in saveVoiceCommandEvent:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Fetches voice command events for the current user
+ */
+export async function fetchVoiceCommandEvents(): Promise<any[]> {
+  try {
+    // Get the current user
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session || !session.user) {
+      console.error('No authenticated user found');
+      return [];
+    }
+    
+    // Query the voice_command_events table
+    const { data, error } = await supabase
+      .from('voice_command_events')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching voice command events:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in fetchVoiceCommandEvents:', error);
+    return [];
   }
 }
 

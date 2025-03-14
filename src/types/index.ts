@@ -68,3 +68,15 @@ export interface PortfolioItem {
   images: string[];
   link?: string;
 }
+
+export interface VoiceCommandEvent {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  date: Date;
+  duration?: number;
+  type: 'meeting' | 'deadline' | 'task' | 'other';
+  contactPhone?: string;
+  createdAt: Date;
+}
