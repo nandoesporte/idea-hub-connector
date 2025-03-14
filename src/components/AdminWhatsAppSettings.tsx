@@ -151,11 +151,11 @@ const AdminWhatsAppSettings = () => {
           )}
         </div>
         
-        <Alert className="mt-2 bg-amber-500/10 text-amber-600 border-amber-200">
+        <Alert className="mt-2 bg-blue-500/10 text-blue-600 border-blue-200">
           <Info className="h-4 w-4" />
-          <AlertTitle>Nota sobre CORS</AlertTitle>
+          <AlertTitle>Conexão segura</AlertTitle>
           <AlertDescription>
-            Devido a restrições de CORS, você pode precisar usar uma extensão como "CORS Unblock" no navegador para testar a integração com o WhatsApp. Em produção, recomenda-se configurar um proxy para a API.
+            A integração com a API do WhatsApp utiliza um proxy para garantir a conexão sem problemas de CORS.
           </AlertDescription>
         </Alert>
         

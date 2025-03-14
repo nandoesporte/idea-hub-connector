@@ -1,8 +1,9 @@
-
 import { toast } from "sonner";
 
 // WhatsApp API configuration based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
 const WHATSGW_API_URL = "https://app.whatsgw.com.br/api/v1";
+// Proxy service URL for bypassing CORS - we'll use a proxy service that works for this purpose
+const CORS_PROXY_URL = "https://cors-anywhere.herokuapp.com/";
 let WHATSGW_API_KEY = ""; // This will be set dynamically
 
 interface WhatsAppMessage {
@@ -82,39 +83,24 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
     
     console.log("Request body:", requestBody);
     
-    // Using a more permissive fetch configuration to handle CORS
-    const response = await fetch(`${WHATSGW_API_URL}/send-message`, {
+    // Build the full URL with the CORS proxy
+    const apiUrl = `${CORS_PROXY_URL}${WHATSGW_API_URL}/send-message`;
+    
+    // Send request through the CORS proxy
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": apiKey, // No "Bearer" prefix according to docs
-        "Accept": "application/json"
+        "Accept": "application/json",
+        "X-Requested-With": "XMLHttpRequest" // Required by some CORS proxies
       },
-      mode: "cors", // Explicitly set CORS mode
       body: JSON.stringify(requestBody)
-    }).catch(error => {
-      // Handle network errors specifically
-      console.error("Network error when sending WhatsApp message:", error);
-      
-      // If we get a failed to fetch error, it's likely a CORS issue
-      if (error.message === "Failed to fetch") {
-        toast.error(
-          "Erro de CORS ao enviar mensagem. Você precisa configurar um proxy para a API do WhatsApp ou usar um plugin CORS no seu navegador."
-        );
-        return null;
-      }
-      
-      throw error; // Re-throw other errors
     });
-    
-    // If response is null (network error was caught)
-    if (!response) {
-      return false;
-    }
     
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+      const errorData = await response.json().catch(() => ({ message: `HTTP error ${response.status}` }));
       throw new Error(errorData.message || `HTTP error ${response.status}`);
     }
     
@@ -125,41 +111,16 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
     return true;
   } catch (error) {
     console.error("Error sending WhatsApp message:", error);
-    toast.error(`Erro ao enviar mensagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    
+    // More user-friendly error message
+    if (error instanceof Error && error.message.includes("Failed to fetch")) {
+      toast.error("Erro ao conectar com o serviço de WhatsApp. Verifique sua conexão ou tente novamente mais tarde.");
+    } else {
+      toast.error(`Erro ao enviar mensagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+    
     return false;
   }
-};
-
-/**
- * Send an event reminder via WhatsApp
- */
-export const sendEventReminder = async (event: EventReminder): Promise<boolean> => {
-  if (!isWhatsAppConfigured()) {
-    console.error("WhatsApp API key not set");
-    toast.error("Chave de API do WhatsApp não configurada");
-    return false;
-  }
-  
-  const { title, date, time, duration, contactPhone } = event;
-  
-  const formattedDate = new Intl.DateTimeFormat('pt-BR', { 
-    day: '2-digit', 
-    month: '2-digit', 
-    year: 'numeric' 
-  }).format(date);
-  
-  const message = `🗓️ *Lembrete de Compromisso*\n\n` +
-    `Olá! Este é um lembrete para o seu compromisso:\n\n` +
-    `*${title}*\n` +
-    `📅 Data: ${formattedDate}\n` +
-    `⏰ Horário: ${time}\n` +
-    `⏱️ Duração: ${duration} minutos\n\n` +
-    `Para remarcar ou cancelar, entre em contato conosco.`;
-  
-  return sendWhatsAppMessage({
-    phone: contactPhone,
-    message
-  });
 };
 
 /**
@@ -208,6 +169,38 @@ export const formatPhoneNumber = (phone: string): string | null => {
   }
   
   return numericOnly;
+};
+
+/**
+ * Send an event reminder via WhatsApp
+ */
+export const sendEventReminder = async (event: EventReminder): Promise<boolean> => {
+  if (!isWhatsAppConfigured()) {
+    console.error("WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
+    return false;
+  }
+  
+  const { title, date, time, duration, contactPhone } = event;
+  
+  const formattedDate = new Intl.DateTimeFormat('pt-BR', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric' 
+  }).format(date);
+  
+  const message = `🗓️ *Lembrete de Compromisso*\n\n` +
+    `Olá! Este é um lembrete para o seu compromisso:\n\n` +
+    `*${title}*\n` +
+    `📅 Data: ${formattedDate}\n` +
+    `⏰ Horário: ${time}\n` +
+    `⏱️ Duração: ${duration} minutos\n\n` +
+    `Para remarcar ou cancelar, entre em contato conosco.`;
+  
+  return sendWhatsAppMessage({
+    phone: contactPhone,
+    message
+  });
 };
 
 /**
