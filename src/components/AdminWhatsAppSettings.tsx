@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +6,14 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { sendWhatsAppMessage, setApiKey, getApiKey, isWhatsAppConfigured } from "@/lib/whatsappService";
-import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone } from "lucide-react";
+import { 
+  sendWhatsAppMessage, 
+  setApiKey, 
+  getApiKey, 
+  isWhatsAppConfigured,
+  sendTestToSpecificNumber 
+} from "@/lib/whatsappService";
+import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone, Zap } from "lucide-react";
 
 const AdminWhatsAppSettings = () => {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -18,7 +23,6 @@ const AdminWhatsAppSettings = () => {
   const [apiKey, setApiKeyState] = useState('');
   const [isApiKeySet, setIsApiKeySet] = useState(false);
   
-  // Carregar a API key do localStorage ao iniciar
   useEffect(() => {
     const savedApiKey = getApiKey();
     if (savedApiKey) {
@@ -53,7 +57,6 @@ const AdminWhatsAppSettings = () => {
       return;
     }
     
-    // Salvar API key no localStorage e no serviço
     setApiKey(apiKey);
     setIsApiKeySet(true);
     
@@ -101,6 +104,30 @@ const AdminWhatsAppSettings = () => {
     }
   };
   
+  const handleDirectTest = async () => {
+    if (!isApiKeySet) {
+      toast.error("Por favor, configure a chave de API primeiro");
+      return;
+    }
+    
+    setIsSending(true);
+    
+    try {
+      const success = await sendTestToSpecificNumber();
+      
+      if (success) {
+        toast.success("Mensagem de teste enviada com sucesso para 44988057213!");
+      } else {
+        toast.error("Falha ao enviar mensagem de teste direta. Verifique a conexão e tente novamente.");
+      }
+    } catch (error) {
+      console.error("Error sending direct test message:", error);
+      toast.error("Erro ao enviar mensagem de teste direta");
+    } finally {
+      setIsSending(false);
+    }
+  };
+  
   return (
     <Card className="w-full shadow-sm">
       <CardHeader>
@@ -113,7 +140,6 @@ const AdminWhatsAppSettings = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* API Key Configuration */}
         <div className="space-y-2 pb-4 border-b">
           <Label htmlFor="api-key" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
@@ -152,14 +178,6 @@ const AdminWhatsAppSettings = () => {
         </div>
         
         <Alert className="mt-2 bg-blue-500/10 text-blue-600 border-blue-200">
-          <Info className="h-4 w-4" />
-          <AlertTitle>Conexão segura</AlertTitle>
-          <AlertDescription>
-            A integração com a API do WhatsApp utiliza um proxy para garantir a conexão sem problemas de CORS.
-          </AlertDescription>
-        </Alert>
-        
-        <Alert className="mt-2 bg-blue-500/10 text-blue-600 border-blue-200">
           <ExternalLink className="h-4 w-4" />
           <AlertTitle>Documentação API</AlertTitle>
           <AlertDescription>
@@ -173,6 +191,35 @@ const AdminWhatsAppSettings = () => {
             </a>
           </AlertDescription>
         </Alert>
+        
+        <div className="mt-4 space-y-2 border-t pt-4">
+          <Label className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-500" />
+            Teste Direto para 44988057213
+          </Label>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={handleDirectTest} 
+              disabled={isSending || !isApiKeySet}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              {isSending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Enviar teste para 44988057213
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Este botão envia uma mensagem de teste diretamente para o número 44988057213 sem usar o proxy CORS
+          </p>
+        </div>
         
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">

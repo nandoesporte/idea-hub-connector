@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 // WhatsApp API configuration based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
@@ -47,6 +48,78 @@ export const getApiKey = (): string => {
  */
 export const isWhatsAppConfigured = (): boolean => {
   return !!getApiKey();
+};
+
+/**
+ * Send a test message to a specific number (44988057213)
+ * This function bypasses the normal flow to test the direct API integration
+ */
+export const sendTestToSpecificNumber = async (): Promise<boolean> => {
+  const apiKey = getApiKey();
+  
+  if (!apiKey) {
+    console.error("WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
+    return false;
+  }
+  
+  try {
+    // Hardcoded number for testing
+    const testPhone = "44988057213";
+    const formattedPhone = formatPhoneNumber(testPhone);
+    
+    if (!formattedPhone) {
+      console.error("Invalid phone number format");
+      toast.error("Formato de número de telefone inválido");
+      return false;
+    }
+    
+    console.log(`Sending direct test WhatsApp message to ${formattedPhone}`);
+    
+    // Send directly to the API without the proxy for testing
+    const requestBody = {
+      number: formattedPhone,
+      message: "🔍 *Teste Direto da API*\n\nOlá! Este é um teste direto da API do WhatsApp sem usar o proxy CORS. Se você recebeu esta mensagem, a integração está funcionando corretamente."
+    };
+    
+    console.log("Request body:", requestBody);
+    
+    // Try direct API call first (may work in some environments)
+    const apiUrl = `${WHATSGW_API_URL}/send-message`;
+    
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": apiKey,
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    // Check if the response was successful
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: `HTTP error ${response.status}` }));
+      throw new Error(errorData.message || `HTTP error ${response.status}`);
+    }
+    
+    const data = await response.json().catch(() => ({ success: true }));
+    
+    console.log("WhatsApp test message sent successfully:", data);
+    toast.success("Mensagem de teste enviada com sucesso para 44988057213!");
+    return true;
+  } catch (error) {
+    console.error("Error sending direct test WhatsApp message:", error);
+    
+    // More user-friendly error message
+    if (error instanceof Error && error.message.includes("Failed to fetch")) {
+      toast.error("Erro ao conectar com o serviço de WhatsApp. Verifique sua conexão ou tente novamente mais tarde.");
+    } else {
+      toast.error(`Erro ao enviar mensagem de teste direto: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+    
+    return false;
+  }
 };
 
 /**
