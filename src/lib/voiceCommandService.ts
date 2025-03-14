@@ -1,3 +1,4 @@
+
 import { addDays, setHours, setMinutes, parse, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -18,6 +19,16 @@ interface VoiceCommandResult {
 export async function processVoiceCommand(transcript: string): Promise<VoiceCommandResult> {
   try {
     console.log('Processing voice command:', transcript);
+    
+    // If transcript is empty, return failure
+    if (!transcript || transcript.trim() === '') {
+      return {
+        success: false,
+        title: 'Erro no processamento',
+        date: new Date(),
+        type: 'other',
+      };
+    }
     
     // Simulate GPT-4 response for demo purposes
     const parsedResult = simulateGpt4Response(transcript);

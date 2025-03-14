@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -413,8 +414,8 @@ const AdminAgenda = () => {
         console.log("Final transcript:", transcript);
         // Store the transcript in a local variable to ensure we have the final value
         const finalTranscript = transcript;
-        handleVoiceCommand(finalTranscript);
         setIsListening(false);
+        handleVoiceCommand(finalTranscript);
       }
     };
 
@@ -445,6 +446,7 @@ const AdminAgenda = () => {
   const stopListening = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
+      // We'll handle the voice command processing in the onend event handler
     }
   };
 
