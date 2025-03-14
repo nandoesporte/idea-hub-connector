@@ -1,9 +1,15 @@
+
 import { toast } from "sonner";
 
 // WhatsApp API configuration based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
 const WHATSGW_API_URL = "https://app.whatsgw.com.br/api/v1";
 // Proxy service URL for bypassing CORS - we'll use a proxy service that works for this purpose
 const CORS_PROXY_URL = "https://cors-anywhere.herokuapp.com/";
+// Alternative proxies if the primary one fails
+const ALTERNATIVE_PROXIES = [
+  "https://api.allorigins.win/raw?url=",
+  "https://thingproxy.freeboard.io/fetch/"
+];
 let WHATSGW_API_KEY = ""; // This will be set dynamically
 
 // Add a log history array to keep track of recent operations
@@ -112,8 +118,51 @@ export const isWhatsAppConfigured = (): boolean => {
 };
 
 /**
+ * Attempts to send a request with different proxies if the first one fails
+ */
+const sendWithFallbackProxies = async (url: string, options: RequestInit): Promise<Response> => {
+  try {
+    // First try direct API call (may work in some environments or with CORS extensions)
+    addLogEntry('info', 'api-request', `Attempting direct API call to: ${url}`);
+    return await fetch(url, options);
+  } catch (directError) {
+    addLogEntry('warning', 'api-request', `Direct API call failed, trying with proxies`, { error: directError.message });
+    
+    // Try main proxy
+    try {
+      const proxyUrl = `${CORS_PROXY_URL}${url}`;
+      addLogEntry('info', 'api-request', `Trying with primary proxy: ${CORS_PROXY_URL}`);
+      return await fetch(proxyUrl, {
+        ...options,
+        headers: {
+          ...options.headers,
+          "X-Requested-With": "XMLHttpRequest" // Required by some CORS proxies
+        }
+      });
+    } catch (primaryProxyError) {
+      addLogEntry('warning', 'api-request', `Primary proxy failed, trying alternatives`, { error: primaryProxyError.message });
+      
+      // Try alternative proxies
+      for (const proxy of ALTERNATIVE_PROXIES) {
+        try {
+          const proxyUrl = `${proxy}${encodeURIComponent(url)}`;
+          addLogEntry('info', 'api-request', `Trying with alternative proxy: ${proxy}`);
+          return await fetch(proxyUrl, options);
+        } catch (alternativeProxyError) {
+          addLogEntry('warning', 'api-request', `Alternative proxy ${proxy} failed`, { error: alternativeProxyError.message });
+          // Continue to next proxy
+        }
+      }
+      
+      // If all proxies fail, throw the original error
+      throw directError;
+    }
+  }
+};
+
+/**
  * Send a test message to a specific number (44988057213)
- * This function bypasses the normal flow to test the direct API integration
+ * This function attempts to use multiple connection methods to test the direct API integration
  */
 export const sendTestToSpecificNumber = async (): Promise<boolean> => {
   const apiKey = getApiKey();
@@ -145,19 +194,20 @@ export const sendTestToSpecificNumber = async (): Promise<boolean> => {
     
     addLogEntry('info', 'direct-test', "Request body", requestBody);
     
-    // Try direct API call first (may work in some environments)
     const apiUrl = `${WHATSGW_API_URL}/send-message`;
-    
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": apiKey,
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    };
+
     try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": apiKey,
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(requestBody)
-      });
+      // Try multiple connection strategies
+      const response = await sendWithFallbackProxies(apiUrl, options);
       
       // Detailed logging of response
       const responseStatus = response.status;
@@ -191,7 +241,7 @@ export const sendTestToSpecificNumber = async (): Promise<boolean> => {
       return true;
     } catch (fetchError) {
       // Log the fetch error in detail
-      addLogEntry('error', 'direct-test', "Fetch error in direct API call", {
+      addLogEntry('error', 'direct-test', "All connection methods failed", {
         message: fetchError.message,
         stack: fetchError.stack,
         name: fetchError.name
@@ -209,7 +259,7 @@ export const sendTestToSpecificNumber = async (): Promise<boolean> => {
     
     // More user-friendly error message
     if (error instanceof Error && error.message.includes("Failed to fetch")) {
-      toast.error("Erro ao conectar com o serviço de WhatsApp. Verifique sua conexão ou tente novamente mais tarde.");
+      toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
     } else {
       toast.error(`Erro ao enviar mensagem de teste direto: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
@@ -252,21 +302,20 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
     
     addLogEntry('info', 'send-message', "Request body", requestBody);
     
-    // Build the full URL with the CORS proxy
-    const apiUrl = `${CORS_PROXY_URL}${WHATSGW_API_URL}/send-message`;
+    const apiUrl = `${WHATSGW_API_URL}/send-message`;
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": apiKey, // No "Bearer" prefix according to docs
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    };
     
-    // Send request through the CORS proxy
     try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": apiKey, // No "Bearer" prefix according to docs
-          "Accept": "application/json",
-          "X-Requested-With": "XMLHttpRequest" // Required by some CORS proxies
-        },
-        body: JSON.stringify(requestBody)
-      });
+      // Try multiple connection strategies
+      const response = await sendWithFallbackProxies(apiUrl, options);
       
       // Detailed logging of response
       const responseStatus = response.status;
@@ -299,8 +348,7 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
       toast.success("Mensagem enviada com sucesso!");
       return true;
     } catch (fetchError) {
-      // Log the fetch error in detail
-      addLogEntry('error', 'send-message', "Fetch error in API call", {
+      addLogEntry('error', 'send-message', "All connection methods failed", {
         message: fetchError.message,
         stack: fetchError.stack,
         name: fetchError.name
@@ -318,7 +366,7 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
     
     // More user-friendly error message
     if (error instanceof Error && error.message.includes("Failed to fetch")) {
-      toast.error("Erro ao conectar com o serviço de WhatsApp. Verifique sua conexão ou tente novamente mais tarde.");
+      toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
     } else {
       toast.error(`Erro ao enviar mensagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }

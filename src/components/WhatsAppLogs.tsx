@@ -10,7 +10,9 @@ import {
   Trash2, 
   FileDown, 
   Clock, 
-  Filter 
+  Filter,
+  Globe,
+  Shield 
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +32,7 @@ interface LogEntry {
 const WhatsAppLogs = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState<'all' | 'error' | 'warning' | 'info'>('all');
+  const [operationFilter, setOperationFilter] = useState<string>('all');
   const [autoRefresh, setAutoRefresh] = useState(false);
   
   // Function to load logs
@@ -50,7 +53,7 @@ const WhatsAppLogs = () => {
     if (autoRefresh) {
       intervalId = window.setInterval(() => {
         loadLogs();
-      }, 5000); // Refresh every 5 seconds
+      }, 3000); // Refresh every 3 seconds
     }
     
     return () => {
@@ -87,10 +90,14 @@ const WhatsAppLogs = () => {
     }
   };
   
+  // Get unique operation types for filtering
+  const operations = ['all', ...new Set(logs.map(log => log.operation))];
+  
   // Filter logs based on current filter
   const filteredLogs = logs.filter(log => {
-    if (filter === 'all') return true;
-    return log.type === filter;
+    if (filter !== 'all' && log.type !== filter) return false;
+    if (operationFilter !== 'all' && log.operation !== operationFilter) return false;
+    return true;
   });
   
   // Helper to format timestamp
@@ -102,7 +109,8 @@ const WhatsAppLogs = () => {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
+      fractionalSecondDigits: 3
     });
   };
   
@@ -119,6 +127,24 @@ const WhatsAppLogs = () => {
     }
   };
   
+  // Helper to get operation icon
+  const getOperationIcon = (operation: string) => {
+    switch (operation) {
+      case 'direct-test':
+        return <Zap className="h-4 w-4 text-amber-500" />;
+      case 'send-message':
+        return <MessageSquare className="h-4 w-4 text-green-500" />;
+      case 'api-request':
+        return <Globe className="h-4 w-4 text-blue-400" />;
+      case 'configuration':
+        return <Key className="h-4 w-4 text-purple-500" />;
+      case 'format-phone':
+        return <Phone className="h-4 w-4 text-gray-500" />;
+      default:
+        return <Info className="h-4 w-4 text-gray-400" />;
+    }
+  };
+  
   // Helper to get class for log type
   const getLogItemClass = (type: 'info' | 'error' | 'warning') => {
     switch (type) {
@@ -130,6 +156,21 @@ const WhatsAppLogs = () => {
       default:
         return "border-l-4 border-l-blue-500 bg-blue-500/10";
     }
+  };
+  
+  // Helper to check if error is CORS-related
+  const isCorsError = (log: LogEntry): boolean => {
+    if (log.type !== 'error') return false;
+    
+    const message = log.message?.toLowerCase() || '';
+    const details = typeof log.details === 'object' ? 
+                    JSON.stringify(log.details).toLowerCase() : 
+                    String(log.details).toLowerCase();
+                    
+    return message.includes('cors') || 
+           details.includes('cors') || 
+           message.includes('failed to fetch') ||
+           details.includes('failed to fetch');
   };
   
   return (
@@ -179,16 +220,33 @@ const WhatsAppLogs = () => {
           </div>
         </div>
         
-        <div className="flex items-center gap-2 mt-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Tabs defaultValue="all" className="w-[400px]" onValueChange={(value) => setFilter(value as any)}>
-            <TabsList>
-              <TabsTrigger value="all">Todos</TabsTrigger>
-              <TabsTrigger value="error" className="text-destructive">Erros</TabsTrigger>
-              <TabsTrigger value="warning" className="text-amber-500">Avisos</TabsTrigger>
-              <TabsTrigger value="info" className="text-blue-500">Info</TabsTrigger>
-            </TabsList>
-          </Tabs>
+        <div className="flex flex-col sm:flex-row items-center gap-2 mt-2">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Tabs defaultValue="all" className="w-[300px]" onValueChange={(value) => setFilter(value as any)}>
+              <TabsList>
+                <TabsTrigger value="all">Todos</TabsTrigger>
+                <TabsTrigger value="error" className="text-destructive">Erros</TabsTrigger>
+                <TabsTrigger value="warning" className="text-amber-500">Avisos</TabsTrigger>
+                <TabsTrigger value="info" className="text-blue-500">Info</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          
+          <div className="flex items-center gap-2 mt-2 sm:mt-0">
+            <Globe className="h-4 w-4 text-muted-foreground" />
+            <select 
+              className="border rounded p-1 text-sm"
+              value={operationFilter}
+              onChange={(e) => setOperationFilter(e.target.value)}
+            >
+              {operations.map(op => (
+                <option key={op} value={op}>
+                  {op === 'all' ? 'Todas operações' : op}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </CardHeader>
       
@@ -204,15 +262,23 @@ const WhatsAppLogs = () => {
                   <div className="flex justify-between items-start mb-1">
                     <div className="flex items-center gap-2">
                       {getLogIcon(log.type)}
-                      <span className="font-medium">
-                        {log.operation}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        {getOperationIcon(log.operation)}
+                        <span className="font-medium">
+                          {log.operation}
+                        </span>
+                      </div>
                       <Badge 
                         variant={log.type === 'error' ? 'destructive' : log.type === 'warning' ? 'outline' : 'secondary'}
                         className="ml-2"
                       >
                         {log.type.toUpperCase()}
                       </Badge>
+                      {isCorsError(log) && (
+                        <Badge variant="outline" className="bg-amber-500/20 text-amber-700 border-amber-300">
+                          <Shield className="h-3 w-3 mr-1" /> CORS
+                        </Badge>
+                      )}
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {formatTimestamp(log.timestamp)}
@@ -237,8 +303,8 @@ const WhatsAppLogs = () => {
               <Info className="h-12 w-12 mb-2 opacity-20" />
               <p>Nenhum log encontrado</p>
               <p className="text-sm">
-                {filter !== 'all' 
-                  ? `Não há registros do tipo ${filter.toUpperCase()}. Tente mudar o filtro.` 
+                {filter !== 'all' || operationFilter !== 'all'
+                  ? `Não há registros com os filtros atuais. Tente mudar os filtros.` 
                   : 'Os logs aparecerão aqui conforme as operações de WhatsApp forem executadas.'}
               </p>
             </div>

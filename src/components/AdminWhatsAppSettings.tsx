@@ -14,7 +14,7 @@ import {
   isWhatsAppConfigured,
   sendTestToSpecificNumber 
 } from "@/lib/whatsappService";
-import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone, Zap } from "lucide-react";
+import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone, Zap, ShieldAlert } from "lucide-react";
 import WhatsAppLogs from './WhatsAppLogs';
 
 const AdminWhatsAppSettings = () => {
@@ -196,6 +196,15 @@ const AdminWhatsAppSettings = () => {
             </AlertDescription>
           </Alert>
           
+          <Alert className="mt-2 bg-amber-500/10 text-amber-600 border-amber-200">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Problemas de CORS</AlertTitle>
+            <AlertDescription className="text-sm">
+              Se você encontrar erros de conexão, o sistema tentará automaticamente superar 
+              limitações de CORS usando vários métodos. Os logs abaixo mostrarão detalhes de qualquer problema.
+            </AlertDescription>
+          </Alert>
+          
           <div className="mt-4 space-y-2 border-t pt-4">
             <Label className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" />
@@ -221,7 +230,7 @@ const AdminWhatsAppSettings = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Este botão envia uma mensagem de teste diretamente para o número 44988057213 sem usar o proxy CORS
+              Este botão envia uma mensagem de teste diretamente para o número 44988057213 e usará vários métodos para contornar limitações de CORS
             </p>
           </div>
           
