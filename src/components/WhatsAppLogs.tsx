@@ -23,7 +23,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { getLogHistory, clearLogHistory } from "@/lib/whatsappService";
 
-// Define log entry interface to match the one in whatsappService
 interface LogEntry {
   timestamp: Date;
   type: 'info' | 'error' | 'warning';
@@ -38,25 +37,22 @@ const WhatsAppLogs = () => {
   const [operationFilter, setOperationFilter] = useState<string>('all');
   const [autoRefresh, setAutoRefresh] = useState(false);
   
-  // Function to load logs
   const loadLogs = () => {
     const logHistory = getLogHistory();
     setLogs(logHistory);
   };
   
-  // Load logs on component mount
   useEffect(() => {
     loadLogs();
   }, []);
   
-  // Set up auto-refresh if enabled
   useEffect(() => {
     let intervalId: number | null = null;
     
     if (autoRefresh) {
       intervalId = window.setInterval(() => {
         loadLogs();
-      }, 3000); // Refresh every 3 seconds
+      }, 3000);
     }
     
     return () => {
@@ -66,14 +62,12 @@ const WhatsAppLogs = () => {
     };
   }, [autoRefresh]);
   
-  // Handle clearing logs
   const handleClearLogs = () => {
     clearLogHistory();
     loadLogs();
     toast.success("Logs limpos com sucesso");
   };
   
-  // Export logs as JSON file
   const handleExportLogs = () => {
     try {
       const dataStr = JSON.stringify(logs, null, 2);
@@ -93,17 +87,14 @@ const WhatsAppLogs = () => {
     }
   };
   
-  // Get unique operation types for filtering
   const operations = ['all', ...new Set(logs.map(log => log.operation))];
   
-  // Filter logs based on current filter
   const filteredLogs = logs.filter(log => {
     if (filter !== 'all' && log.type !== filter) return false;
     if (operationFilter !== 'all' && log.operation !== operationFilter) return false;
     return true;
   });
   
-  // Helper to format timestamp
   const formatTimestamp = (timestamp: Date) => {
     const date = new Date(timestamp);
     return date.toLocaleString('pt-BR', {
@@ -116,7 +107,6 @@ const WhatsAppLogs = () => {
     });
   };
   
-  // Helper to get icon for log type
   const getLogIcon = (type: 'info' | 'error' | 'warning') => {
     switch (type) {
       case 'error':
@@ -129,7 +119,6 @@ const WhatsAppLogs = () => {
     }
   };
   
-  // Helper to get operation icon
   const getOperationIcon = (operation: string) => {
     switch (operation) {
       case 'direct-test':
@@ -147,7 +136,6 @@ const WhatsAppLogs = () => {
     }
   };
   
-  // Helper to get class for log type
   const getLogItemClass = (type: 'info' | 'error' | 'warning') => {
     switch (type) {
       case 'error':
@@ -160,7 +148,6 @@ const WhatsAppLogs = () => {
     }
   };
   
-  // Helper to check if error is CORS-related
   const isCorsError = (log: LogEntry): boolean => {
     if (log.type !== 'error') return false;
     
