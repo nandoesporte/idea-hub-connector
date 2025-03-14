@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import VoiceCommandsSection from '@/components/VoiceCommandsSection';
 import { useUser } from '@/contexts/UserContext';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarDays, FileText, Lightbulb, ListChecks, Plus, User, LayoutDashboard } from 'lucide-react';
+import { CalendarDays, FileText, Lightbulb, ListChecks, Plus, User, LayoutDashboard, Shield } from 'lucide-react';
 import EventsList from '@/components/EventsList';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
 import { isWhatsAppConfigured } from '@/lib/whatsgwService';
@@ -15,6 +14,7 @@ export default function Dashboard() {
   const { user } = useUser();
   const navigate = useNavigate();
   const { events, loading, deleteEvent, checkApiConnection } = useVoiceCommandEvents();
+  const isAdmin = user?.user_metadata?.role === 'admin';
 
   useEffect(() => {
     // Check API connection when component mounts, but don't show success toast
@@ -46,6 +46,17 @@ export default function Dashboard() {
           >
             <Plus className="h-4 w-4" /> Nova Ideia
           </Button>
+          
+          {isAdmin && (
+            <Button 
+              onClick={() => navigate('/admin')}
+              className="gap-1.5 shadow-sm"
+              size="sm"
+              variant="outline"
+            >
+              <Shield className="h-4 w-4 text-primary" /> Admin
+            </Button>
+          )}
         </div>
       </div>
       
