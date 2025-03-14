@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { sendWhatsAppMessage, setApiKey, getApiKey, isWhatsAppConfigured } from "@/lib/whatsappService";
-import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info } from "lucide-react";
+import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink } from "lucide-react";
 
 const AdminWhatsAppSettings = () => {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -152,6 +152,21 @@ const AdminWhatsAppSettings = () => {
           <AlertTitle>Nota sobre CORS</AlertTitle>
           <AlertDescription>
             Devido a restrições de CORS, você pode precisar usar uma extensão como "CORS Unblock" no navegador para testar a integração com o WhatsApp. Em produção, recomenda-se configurar um proxy para a API.
+          </AlertDescription>
+        </Alert>
+        
+        <Alert className="mt-2 bg-blue-500/10 text-blue-600 border-blue-200">
+          <ExternalLink className="h-4 w-4" />
+          <AlertTitle>Documentação API</AlertTitle>
+          <AlertDescription>
+            <a 
+              href="https://documenter.getpostman.com/view/3741041/SztBa7ku" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="underline hover:text-blue-700"
+            >
+              Consulte a documentação da API para mais informações
+            </a>
           </AlertDescription>
         </Alert>
         

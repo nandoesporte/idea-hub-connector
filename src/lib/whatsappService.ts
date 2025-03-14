@@ -1,7 +1,7 @@
 
 import { toast } from "sonner";
 
-// WhatsApp API configuration
+// WhatsApp API configuration based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
 const WHATSGW_API_URL = "https://app.whatsgw.com.br/api/v1";
 let WHATSGW_API_KEY = ""; // This will be set dynamically
 
@@ -50,6 +50,7 @@ export const isWhatsAppConfigured = (): boolean => {
 
 /**
  * Send a message via WhatsApp API
+ * Based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
  */
 export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: WhatsAppMessage): Promise<boolean> => {
   const apiKey = getApiKey();
@@ -72,20 +73,25 @@ export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: W
     
     console.log(`Sending WhatsApp message to ${formattedPhone} via ${WHATSGW_API_URL}`);
     
+    // According to API documentation, request should be in this format
+    const requestBody = {
+      number: formattedPhone,
+      message: message,
+      // Optional parameters for media messages can be added here if needed
+    };
+    
+    console.log("Request body:", requestBody);
+    
     // Using a more permissive fetch configuration to handle CORS
     const response = await fetch(`${WHATSGW_API_URL}/send-message`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+        "Authorization": apiKey, // No "Bearer" prefix according to docs
         "Accept": "application/json"
       },
       mode: "cors", // Explicitly set CORS mode
-      body: JSON.stringify({
-        phone: formattedPhone,
-        message,
-        isGroup
-      })
+      body: JSON.stringify(requestBody)
     }).catch(error => {
       // Handle network errors specifically
       console.error("Network error when sending WhatsApp message:", error);
