@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ProjectForm } from '@/components/ProjectForm';
+import ProjectForm from '@/components/ProjectForm';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
