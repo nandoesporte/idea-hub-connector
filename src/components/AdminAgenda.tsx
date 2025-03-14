@@ -123,6 +123,7 @@ const AdminAgenda = () => {
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [showVoiceCommandHelp, setShowVoiceCommandHelp] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const savedTranscriptRef = useRef<string>('');
 
   const isMobile = useIsMobile();
 
@@ -398,26 +399,31 @@ const AdminAgenda = () => {
 
     // Set up event handlers
     recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = Array.from(event.results)
+      const currentTranscript = Array.from(event.results)
         .map((result) => result[0])
         .map((result) => result.transcript)
         .join('');
       
-      console.log("Speech recognition result:", transcript);
-      setTranscript(transcript);
+      console.log("Speech recognition result:", currentTranscript);
+      setTranscript(currentTranscript);
+      savedTranscriptRef.current = currentTranscript; // Save to ref for access in onend
     };
 
     recognitionRef.current.onend = () => {
-      console.log("Speech recognition ended, isListening:", isListening);
+      console.log("Speech recognition ended");
+      // If we were listening but now stopping, process the command
       if (isListening) {
-        // Store the final transcript before changing isListening state
-        const finalTranscript = transcript;
-        console.log("Final transcript:", finalTranscript);
+        // Use the saved transcript ref to ensure we have the latest value
+        const finalTranscript = savedTranscriptRef.current;
+        console.log("Final transcript from ref:", finalTranscript);
+        
+        // First set listening to false to update UI
         setIsListening(false);
         
-        // Only process if we have a transcript
+        // Process the command if we have text
         if (finalTranscript && finalTranscript.trim() !== '') {
-          handleVoiceCommand(finalTranscript);
+          // Process the voice command
+          processVoiceCommandAndCreateEvent(finalTranscript);
         } else {
           toast.error('Nenhum comando de voz detectado');
         }
@@ -439,6 +445,7 @@ const AdminAgenda = () => {
 
   const startListening = () => {
     setTranscript('');
+    savedTranscriptRef.current = '';
     setIsListening(true);
     if (recognitionRef.current) {
       recognitionRef.current.start();
@@ -450,15 +457,14 @@ const AdminAgenda = () => {
 
   const stopListening = () => {
     console.log("Stop listening called, current transcript:", transcript);
+    savedTranscriptRef.current = transcript; // Make sure we have the latest transcript
     if (recognitionRef.current) {
       recognitionRef.current.stop();
-      // The onend event will handle processing the transcript
+      // The processing will be handled in the onend event handler
     }
   };
 
-  const handleVoiceCommand = async (finalTranscript: string) => {
-    console.log("Handling voice command with transcript:", finalTranscript);
-    
+  const processVoiceCommandAndCreateEvent = async (finalTranscript: string) => {
     if (!finalTranscript || !finalTranscript.trim()) {
       toast.error('Nenhum comando detectado. Tente novamente.');
       return;
@@ -481,7 +487,7 @@ const AdminAgenda = () => {
           description: result.description || '',
           date: eventDate,
           duration: result.duration || 60,
-          type: result.type || 'other',
+          type: result.type as 'meeting' | 'deadline' | 'task' | 'other',
           contactPhone: result.contactPhone || '',
         };
 
@@ -501,7 +507,15 @@ const AdminAgenda = () => {
       toast.error('Erro ao processar comando de voz');
     } finally {
       setIsProcessingVoice(false);
+      // Reset transcript after processing
+      setTranscript('');
+      savedTranscriptRef.current = '';
     }
+  };
+
+  const handleVoiceCommand = (finalTranscript: string) => {
+    // This function now just calls the async function that processes the command
+    processVoiceCommandAndCreateEvent(finalTranscript);
   };
 
   return (
@@ -515,9 +529,9 @@ const AdminAgenda = () => {
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
-                variant="outline"
+                variant={isListening ? "destructive" : "outline"}
                 size="sm"
-                className={`w-full sm:w-auto ${isListening ? 'bg-red-100 text-red-600 hover:bg-red-200' : ''}`}
+                className={`w-full sm:w-auto ${isListening ? 'animate-pulse' : ''}`}
                 onClick={isListening ? stopListening : startListening}
                 disabled={isProcessingVoice}
               >
@@ -723,8 +737,8 @@ const AdminAgenda = () => {
         </div>
         
         {isListening && (
-          <Alert className="mt-2 bg-blue-50 border-blue-200">
-            <Mic className="h-4 w-4 text-blue-500" />
+          <Alert className="mt-2 bg-red-50 border-red-200">
+            <Mic className="h-4 w-4 text-red-500" />
             <AlertTitle>Ouvindo comando de voz</AlertTitle>
             <AlertDescription className="text-sm italic">
               "{transcript || 'Aguardando comando...'}"
