@@ -117,28 +117,36 @@ export const savePortfolioItem = async (item: PortfolioItem) => {
     console.log('Saving portfolio item:', item);
     
     // Prepare the data for saving, handling Date objects and removing temporary ID
-    const itemToSave: any = {};
+    const itemToSave: any = {
+      title: item.title,
+      description: item.description,
+      category: item.category,
+      client: item.client,
+      technologies: item.technologies || [],
+      featured: item.featured || false,
+      featured_image: item.featuredImage,
+      images: item.images || [],
+      link: item.link
+    };
     
-    // Only include fields that exist in our database schema
+    // Only include ID if it's not a temporary one
     if (item.id && !item.id.toString().startsWith('temp-')) {
       itemToSave.id = item.id;
     }
     
-    itemToSave.title = item.title;
-    itemToSave.description = item.description;
-    itemToSave.category = item.category;
-    itemToSave.client = item.client;
-    
     // Convert completed date to ISO string if it's a Date object
-    itemToSave.completed = item.completed instanceof Date 
-      ? item.completed.toISOString() 
-      : item.completed;
-    
-    itemToSave.technologies = item.technologies || [];
-    itemToSave.featured = item.featured || false;
-    itemToSave.featured_image = item.featuredImage;
-    itemToSave.images = item.images || [];
-    itemToSave.link = item.link;
+    if (item.completed) {
+      if (item.completed instanceof Date) {
+        itemToSave.completed = item.completed.toISOString();
+      } else if (typeof item.completed === 'object' && item.completed._type === 'Date') {
+        // Handle serialized Date object
+        itemToSave.completed = item.completed.value.iso;
+      } else {
+        itemToSave.completed = item.completed;
+      }
+    } else {
+      itemToSave.completed = new Date().toISOString();
+    }
 
     console.log('Transformed item to save:', itemToSave);
 
