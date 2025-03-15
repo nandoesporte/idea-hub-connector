@@ -1,67 +1,99 @@
-
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Index from '@/pages/Index';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import ResetPassword from '@/pages/ResetPassword';
-import ForgotPassword from '@/pages/ForgotPassword';
-import UserDashboard from '@/pages/UserDashboard';
 import SubmitIdea from '@/pages/SubmitIdea';
-import ProjectTracking from '@/pages/ProjectTracking';
+import Register from '@/pages/Register';
+import Login from '@/pages/Login';
+import UserDashboard from '@/pages/UserDashboard';
+import Projects from '@/pages/Projects';
 import ProjectDetails from '@/pages/ProjectDetails';
-import AdminPanel from '@/pages/AdminPanel';
-import Dashboard from '@/pages/Dashboard';
-import Users from '@/pages/admin/Users';
-import Projects from '@/pages/admin/Projects';
-import Messages from '@/pages/admin/Messages';
-import AdminPortfolio from '@/pages/admin/Portfolio';
-import Settings from '@/pages/admin/Settings';
+import Pricing from '@/pages/Pricing';
+import Blog from '@/pages/Blog';
+import BlogPost from '@/pages/BlogPost';
+import Contact from '@/pages/Contact';
+import Terms from '@/pages/Terms';
+import Privacy from '@/pages/Privacy';
 import NotFound from '@/pages/NotFound';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { Toaster } from 'sonner';
-import Portfolio from '@/pages/Portfolio';
-import PortfolioDetails from '@/pages/PortfolioDetails';
+import MainLayout from '@/layouts/MainLayout';
+import AdminLayout from '@/layouts/AdminLayout';
+import AdminPanel from '@/pages/admin/AdminPanel';
+import Users from '@/pages/admin/Users';
+import ProjectsAdmin from '@/pages/admin/Projects';
+import Messages from '@/pages/admin/Messages';
+import PortfolioAdmin from '@/pages/admin/Portfolio';
+import Settings from '@/pages/admin/Settings';
 import Categories from '@/pages/admin/Categories';
+import { useUser } from '@/contexts/UserContext';
+import { Toaster } from 'sonner';
+import Dashboard from '@/pages/Dashboard';
+import ProjectIdeasNew from '@/pages/ProjectIdeasNew';
+import AdminDashboard from '@/pages/admin/Dashboard';
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  admin?: boolean;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, admin = false }) => {
+  const { user, loading } = useUser();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (admin && user?.user_metadata?.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 function App() {
   return (
-    <>
+    <Router>
       <Routes>
-        {/* Public routes */}
         <Route path="/" element={<Index />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/submit-idea" element={<SubmitIdea />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/portfolio" element={<Portfolio />} />
-        <Route path="/portfolio/:id" element={<PortfolioDetails />} />
-        
-        {/* Protected user routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/user-dashboard" element={<UserDashboard />} />
-          <Route path="/submit-idea" element={<SubmitIdea />} />
-          <Route path="/projects" element={<ProjectTracking />} />
-          <Route path="/projects/:id" element={<ProjectDetails />} />
-        </Route>
-        
-        {/* Protected admin routes */}
-        <Route element={<ProtectedRoute requireAdmin={true} />}>
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin/users" element={<Users />} />
-          <Route path="/admin/projects" element={<Projects />} />
-          <Route path="/admin/messages" element={<Messages />} />
-          <Route path="/admin/portfolio" element={<AdminPortfolio />} />
-          <Route path="/admin/settings" element={<Settings />} />
-          <Route path="/admin/categories" element={<Categories />} />
-        </Route>
-        
-        {/* Catch-all route */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:id" element={<BlogPost />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<NotFound />} />
+
+        {/* User Panel Routes */}
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+        <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetails /></ProtectedRoute>} />
+        <Route path="/project-ideas/new" element={<ProtectedRoute><ProjectIdeasNew /></ProtectedRoute>} />
+        <Route
+          path="/user-dashboard"
+          element={<ProtectedRoute>
+            <MainLayout>
+              <UserDashboard />
+            </MainLayout>
+          </ProtectedRoute>}
+        />
+
+        {/* Admin Panel Routes */}
+        <Route path="/admin" element={<ProtectedRoute admin><AdminPanel /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute admin><Users /></ProtectedRoute>} />
+        <Route path="/admin/projects" element={<ProtectedRoute admin><ProjectsAdmin /></ProtectedRoute>} />
+        <Route path="/admin/messages" element={<ProtectedRoute admin><Messages /></ProtectedRoute>} />
+        <Route path="/admin/portfolio" element={<ProtectedRoute admin><PortfolioAdmin /></ProtectedRoute>} />
+        <Route path="/admin/settings" element={<ProtectedRoute admin><Settings /></ProtectedRoute>} />
+        <Route path="/admin/categories" element={<ProtectedRoute admin><Categories /></ProtectedRoute>} />
+        <Route path="/admin/dashboard" element={<ProtectedRoute admin><AdminDashboard /></ProtectedRoute>} />
       </Routes>
-      <Toaster />
-    </>
+      <Toaster richColors />
+    </Router>
   );
 }
 

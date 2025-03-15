@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import Navbar from '@/components/Navbar';
 import { 
   LayoutDashboard, Users, Briefcase, MessageSquare, FileText, 
-  Settings, ChevronLeft, ChevronRight, Plus, Folder
+  Settings, ChevronLeft, ChevronRight, Plus, Folder, Grid3x3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -57,6 +57,11 @@ const navItems: NavItem[] = [
     title: 'Categorias',
     href: '/admin/categories',
     icon: Folder,
+  },
+  {
+    title: 'Interface Dashboard',
+    href: '/admin/dashboard',
+    icon: Grid3x3,
   },
   {
     title: 'Configurações',
