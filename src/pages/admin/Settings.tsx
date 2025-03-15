@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/lib/supabase';
 
 interface SiteSettings {
   siteName: string;
@@ -40,7 +41,7 @@ interface SiteSettings {
     metaDescription: string;
     ogImage: string;
     keywords: string;
-  };
+  }
 }
 
 interface NotificationSettings {
@@ -61,53 +62,77 @@ interface NotificationSettings {
   };
 }
 
-const initialSettings: SiteSettings = {
-  siteName: 'IdeaHub Connector',
-  siteDescription: 'Conectando ideias a desenvolvedores profissionais',
-  contactEmail: 'contato@ideahub.com.br',
-  phoneNumber: '(11) 98765-4321',
-  address: 'Av. Paulista, 1000, São Paulo - SP',
-  socialMedia: {
-    facebook: 'https://facebook.com/ideahub',
-    instagram: 'https://instagram.com/ideahub',
-    twitter: 'https://twitter.com/ideahub',
-    linkedin: 'https://linkedin.com/company/ideahub',
-  },
-  features: {
-    enableBlog: true,
-    enableTestimonials: true,
-    enableContactForm: true,
-    enableNewsletter: false,
-    enableUserRegistration: true,
-  },
-  seo: {
-    metaTitle: 'IdeaHub Connector | Transformando ideias em realidade',
-    metaDescription: 'Plataforma que conecta pessoas com ideias a desenvolvedores profissionais para transformar projetos em realidade.',
-    ogImage: '/images/og-image.png',
-    keywords: 'desenvolvimento web, aplicativos, ideias, projetos digitais, desenvolvimento de software',
+const getInitialSettings = (): SiteSettings => {
+  const savedSettings = localStorage.getItem('site_settings');
+  
+  if (savedSettings) {
+    try {
+      return JSON.parse(savedSettings);
+    } catch (error) {
+      console.error('Error parsing saved settings:', error);
+    }
   }
+  
+  return {
+    siteName: 'IdeaHub Connector',
+    siteDescription: 'Conectando ideias a desenvolvedores profissionais',
+    contactEmail: 'contato@ideahub.com.br',
+    phoneNumber: '(11) 98765-4321',
+    address: 'Av. Paulista, 1000, São Paulo - SP',
+    socialMedia: {
+      facebook: 'https://facebook.com/ideahub',
+      instagram: 'https://instagram.com/ideahub',
+      twitter: 'https://twitter.com/ideahub',
+      linkedin: 'https://linkedin.com/company/ideahub',
+    },
+    features: {
+      enableBlog: true,
+      enableTestimonials: true,
+      enableContactForm: true,
+      enableNewsletter: false,
+      enableUserRegistration: true,
+    },
+    seo: {
+      metaTitle: 'IdeaHub Connector | Transformando ideias em realidade',
+      metaDescription: 'Plataforma que conecta pessoas com ideias a desenvolvedores profissionais para transformar projetos em realidade.',
+      ogImage: '/images/og-image.png',
+      keywords: 'desenvolvimento web, aplicativos, ideias, projetos digitais, desenvolvimento de software',
+    }
+  };
 };
 
-const initialNotificationSettings: NotificationSettings = {
-  enabled: true,
-  types: {
-    events: true,
-    newProjects: true,
-    newUsers: true,
-    dailyReport: false,
-  },
-  channels: {
-    email: true,
-    whatsapp: false,
-    inApp: true,
-  },
-  schedule: {
-    dailyReportTime: '08:00',
-  },
+const getInitialNotificationSettings = (): NotificationSettings => {
+  const savedSettings = localStorage.getItem('system_notification_settings');
+  
+  if (savedSettings) {
+    try {
+      return JSON.parse(savedSettings);
+    } catch (error) {
+      console.error('Error parsing saved notification settings:', error);
+    }
+  }
+  
+  return {
+    enabled: true,
+    types: {
+      events: true,
+      newProjects: true,
+      newUsers: true,
+      dailyReport: false,
+    },
+    channels: {
+      email: true,
+      whatsapp: false,
+      inApp: true,
+    },
+    schedule: {
+      dailyReportTime: '08:00',
+    },
+  };
 };
 
 const AdminSettings = () => {
-  const [settings, setSettings] = useState<SiteSettings>(initialSettings);
+  const [settings, setSettings] = useState<SiteSettings>(getInitialSettings());
   const [isGeneralFormDirty, setIsGeneralFormDirty] = useState(false);
   const [isSocialFormDirty, setIsSocialFormDirty] = useState(false);
   const [isFeaturesFormDirty, setIsFeaturesFormDirty] = useState(false);
@@ -115,8 +140,9 @@ const AdminSettings = () => {
   const [whatsAppApiKey, setWhatsAppApiKey] = useState<string>('');
   const [notificationNumbers, setNotificationNumbers] = useState<string[]>(['', '', '']);
   const [isNotificationsFormDirty, setIsNotificationsFormDirty] = useState(false);
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(initialNotificationSettings);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(getInitialNotificationSettings());
   const [isSystemNotificationsFormDirty, setIsSystemNotificationsFormDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const savedApiKey = localStorage.getItem('whatsapp_api_key') || '';
@@ -133,16 +159,6 @@ const AdminSettings = () => {
       } catch (error) {
         console.error('Error parsing notification numbers:', error);
         setNotificationNumbers(['', '', '']);
-      }
-    }
-    
-    const savedNotificationSettings = localStorage.getItem('system_notification_settings');
-    if (savedNotificationSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedNotificationSettings);
-        setNotificationSettings(parsedSettings);
-      } catch (error) {
-        console.error('Error parsing notification settings:', error);
       }
     }
   }, []);
@@ -237,40 +253,83 @@ const AdminSettings = () => {
   };
 
   const saveGeneralSettings = () => {
-    toast.success('Configurações gerais salvas com sucesso!');
-    setIsGeneralFormDirty(false);
+    setIsSaving(true);
+    
+    const updatedSettings = { ...settings };
+    localStorage.setItem('site_settings', JSON.stringify(updatedSettings));
+    
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Configurações gerais salvas com sucesso!');
+      setIsGeneralFormDirty(false);
+    }, 500);
   };
 
   const saveSocialSettings = () => {
-    toast.success('Configurações de redes sociais salvas com sucesso!');
-    setIsSocialFormDirty(false);
+    setIsSaving(true);
+    
+    const updatedSettings = { ...settings };
+    localStorage.setItem('site_settings', JSON.stringify(updatedSettings));
+    
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Configurações de redes sociais salvas com sucesso!');
+      setIsSocialFormDirty(false);
+    }, 500);
   };
 
   const saveFeatureSettings = () => {
-    toast.success('Configurações de funcionalidades salvas com sucesso!');
-    setIsFeaturesFormDirty(false);
+    setIsSaving(true);
+    
+    const updatedSettings = { ...settings };
+    localStorage.setItem('site_settings', JSON.stringify(updatedSettings));
+    
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Configurações de funcionalidades salvas com sucesso!');
+      setIsFeaturesFormDirty(false);
+    }, 500);
   };
 
   const saveSeoSettings = () => {
-    toast.success('Configurações de SEO salvas com sucesso!');
-    setIsSeoFormDirty(false);
+    setIsSaving(true);
+    
+    const updatedSettings = { ...settings };
+    localStorage.setItem('site_settings', JSON.stringify(updatedSettings));
+    
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Configurações de SEO salvas com sucesso!');
+      setIsSeoFormDirty(false);
+    }, 500);
   };
 
   const saveNotificationSettings = () => {
+    setIsSaving(true);
+    
     localStorage.setItem('whatsapp_api_key', whatsAppApiKey);
     setApiKey(whatsAppApiKey);
     
     const filteredNumbers = notificationNumbers.filter(num => num.trim() !== '');
     localStorage.setItem('whatsapp_notification_numbers', JSON.stringify(filteredNumbers));
     
-    toast.success('Configurações de notificação salvas com sucesso!');
-    setIsNotificationsFormDirty(false);
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Configurações de notificação salvas com sucesso!');
+      setIsNotificationsFormDirty(false);
+    }, 500);
   };
 
   const saveSystemNotificationSettings = () => {
+    setIsSaving(true);
+    
     localStorage.setItem('system_notification_settings', JSON.stringify(notificationSettings));
-    toast.success('Configurações de notificações do sistema salvas com sucesso!');
-    setIsSystemNotificationsFormDirty(false);
+    
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Configurações de notificações do sistema salvas com sucesso!');
+      setIsSystemNotificationsFormDirty(false);
+    }, 500);
   };
 
   return (
@@ -352,9 +411,9 @@ const AdminSettings = () => {
                 </div>
                 <Button 
                   onClick={saveGeneralSettings} 
-                  disabled={!isGeneralFormDirty}
+                  disabled={!isGeneralFormDirty || isSaving}
                 >
-                  Salvar Alterações
+                  {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                 </Button>
               </CardContent>
             </Card>
@@ -411,9 +470,9 @@ const AdminSettings = () => {
                 </div>
                 <Button 
                   onClick={saveSocialSettings} 
-                  disabled={!isSocialFormDirty}
+                  disabled={!isSocialFormDirty || isSaving}
                 >
-                  Salvar Redes Sociais
+                  {isSaving ? 'Salvando...' : 'Salvar Redes Sociais'}
                 </Button>
               </CardContent>
             </Card>
@@ -474,7 +533,7 @@ const AdminSettings = () => {
                   <div className="space-y-0.5">
                     <Label htmlFor="enableNewsletter">Newsletter</Label>
                     <p className="text-sm text-muted-foreground">
-                      Adiciona um formulário de inscri��ão para newsletter.
+                      Adiciona um formulário de inscrição para newsletter.
                     </p>
                   </div>
                   <Switch 
@@ -500,9 +559,9 @@ const AdminSettings = () => {
                 
                 <Button 
                   onClick={saveFeatureSettings} 
-                  disabled={!isFeaturesFormDirty}
+                  disabled={!isFeaturesFormDirty || isSaving}
                 >
-                  Salvar Configurações
+                  {isSaving ? 'Salvando...' : 'Salvar Configurações'}
                 </Button>
               </CardContent>
             </Card>
@@ -565,7 +624,7 @@ const AdminSettings = () => {
                 
                 <Button 
                   onClick={saveNotificationSettings} 
-                  disabled={!isNotificationsFormDirty}
+                  disabled={!isNotificationsFormDirty || isSaving}
                   className="flex items-center gap-2"
                 >
                   <Bell className="h-4 w-4" />
@@ -738,7 +797,7 @@ const AdminSettings = () => {
                 
                 <Button 
                   onClick={saveSystemNotificationSettings} 
-                  disabled={!isSystemNotificationsFormDirty}
+                  disabled={!isSystemNotificationsFormDirty || isSaving}
                   className="flex items-center gap-2 mt-6"
                 >
                   <Bell className="h-4 w-4" />
@@ -801,9 +860,9 @@ const AdminSettings = () => {
                 </div>
                 <Button 
                   onClick={saveSeoSettings} 
-                  disabled={!isSeoFormDirty}
+                  disabled={!isSeoFormDirty || isSaving}
                 >
-                  Salvar Configurações de SEO
+                  {isSaving ? 'Salvando...' : 'Salvar Configurações de SEO'}
                 </Button>
               </CardContent>
             </Card>
