@@ -23,7 +23,12 @@ import {
   ArrowRight,
   CheckCircle,
   Clock,
-  PenLine
+  PenLine,
+  Car,
+  Bike,
+  Heart,
+  Home,
+  Phone
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -221,6 +226,70 @@ const Index = () => {
                 </p>
               </CardContent>
             </Card>
+          </div>
+          
+          {/* New Insurance Types Grid */}
+          <div className="mt-12">
+            <h3 className="text-xl md:text-2xl font-semibold text-center mb-6">Tipos de Seguros Disponíveis</h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="rounded-full w-12 h-12 flex items-center justify-center bg-pink-100 mb-3">
+                    <Heart className="h-6 w-6 text-pink-500" />
+                  </div>
+                  <h4 className="font-medium">Seguro de Vida</h4>
+                  <p className="text-xs text-muted-foreground mt-1">Proteção financeira para você e sua família</p>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="rounded-full w-12 h-12 flex items-center justify-center bg-blue-100 mb-3">
+                    <Home className="h-6 w-6 text-blue-500" />
+                  </div>
+                  <h4 className="font-medium">Seguro Residencial</h4>
+                  <p className="text-xs text-muted-foreground mt-1">Proteção completa para seu lar</p>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="rounded-full w-12 h-12 flex items-center justify-center bg-emerald-100 mb-3">
+                    <Car className="h-6 w-6 text-emerald-500" />
+                  </div>
+                  <h4 className="font-medium">Seguro Veicular</h4>
+                  <p className="text-xs text-muted-foreground mt-1">Proteção para seu automóvel</p>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="rounded-full w-12 h-12 flex items-center justify-center bg-purple-100 mb-3">
+                    <Phone className="h-6 w-6 text-purple-500" />
+                  </div>
+                  <h4 className="font-medium">Seguro de Celular</h4>
+                  <p className="text-xs text-muted-foreground mt-1">Proteção para seu dispositivo móvel</p>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="rounded-full w-12 h-12 flex items-center justify-center bg-amber-100 mb-3">
+                    <Bike className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <h4 className="font-medium">Seguro para Bike</h4>
+                  <p className="text-xs text-muted-foreground mt-1">Proteção para sua bicicleta</p>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="flex justify-center mt-8">
+              <Link to="/submit-idea">
+                <Button className="shadow-md">
+                  Solicitar Cotação <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
