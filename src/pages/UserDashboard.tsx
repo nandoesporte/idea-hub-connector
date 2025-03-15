@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Clock, FileText, Heart, Home, Shield, Briefcase, Hospital, ArrowRight, Phone, Mail, Cpu, Code, Database, ServerCog, BrainCircuit } from 'lucide-react';
+import { CheckCircle, Clock, FileText, Heart, Home, Shield, Briefcase, Hospital, ArrowRight, Phone, Mail, Cpu, Code, Database, ServerCog, BrainCircuit, SendIcon } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -98,8 +98,17 @@ const UserDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="md:col-span-2 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle>Soluções Tecnológicas</CardTitle>
-              <CardDescription>Transforme suas ideias em soluções digitais</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Soluções Tecnológicas</CardTitle>
+                  <CardDescription>Transforme suas ideias em soluções digitais</CardDescription>
+                </div>
+                <Link to="/submit-idea">
+                  <Button className="shadow-sm hover:shadow-md transition-all duration-300">
+                    <SendIcon className="h-4 w-4 mr-2" /> Enviar Ideia
+                  </Button>
+                </Link>
+              </div>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4 pb-6">
               <Link to="/submit-idea" className="group">
