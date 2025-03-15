@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,7 +51,6 @@ const AdminDashboard = () => {
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
     
-    // Update order property based on new position
     const updatedItems = items.map((item, index) => ({
       ...item,
       order: index + 1
@@ -176,7 +174,7 @@ const AdminDashboard = () => {
     return (
       <AdminLayout title="Gerenciamento do Dashboard">
         <div className="flex items-center justify-center h-64">
-          <ReloadIcon className="h-8 w-8 animate-spin text-primary" />
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
           <span className="ml-2">Carregando configuração...</span>
         </div>
       </AdminLayout>
@@ -198,11 +196,11 @@ const AdminDashboard = () => {
           </div>
           <div className="flex gap-2">
             <Button onClick={loadDashboardConfig} variant="outline" size="sm">
-              <ReloadIcon className="mr-2 h-4 w-4" />
+              <RefreshCw className="mr-2 h-4 w-4" />
               Recarregar
             </Button>
             <Button onClick={handleResetConfig} variant="destructive" size="sm">
-              <ResetIcon className="mr-2 h-4 w-4" />
+              <RotateCcw className="mr-2 h-4 w-4" />
               Resetar
             </Button>
           </div>
@@ -248,7 +246,7 @@ const AdminDashboard = () => {
                                   <div className="flex items-start justify-between">
                                     <div className="flex items-start gap-3">
                                       <div {...provided.dragHandleProps} className="cursor-grab mt-1">
-                                        <GripVerticalIcon className="h-5 w-5 text-muted-foreground" />
+                                        <GripVertical className="h-5 w-5 text-muted-foreground" />
                                       </div>
                                       <div>
                                         <div className="flex items-center gap-2">
