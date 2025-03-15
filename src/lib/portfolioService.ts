@@ -121,7 +121,7 @@ export const savePortfolioItem = async (item: PortfolioItem) => {
       title: item.title,
       description: item.description,
       category: item.category,
-      client: item.client,
+      client: item.client, // Make sure client field is included
       technologies: item.technologies || [],
       featured: item.featured || false,
       featured_image: item.featuredImage,
