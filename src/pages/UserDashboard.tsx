@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +10,6 @@ import {
 } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from 'sonner';
-import MainLayout from '@/layouts/MainLayout';
 import { getDashboardConfig } from '@/lib/dashboardService';
 import { DashboardComponent, DashboardItem } from '@/types/dashboard';
 
@@ -25,11 +23,9 @@ const UserDashboard = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Carregar configuração do dashboard
         const config = getDashboardConfig();
         setDashboardConfig(config.components.filter(comp => comp.enabled).sort((a, b) => a.order - b.order));
         
-        // Simular a obtenção de cotações recentes (dados de exemplo)
         setRecentQuotes([
           {
             id: '1',
@@ -59,7 +55,6 @@ const UserDashboard = () => {
     }
   }, [user]);
 
-  // Função para renderizar os ícones com base no nome do ícone (string)
   const renderIcon = (iconName: string | undefined, colorClass: string = 'text-primary', size: number = 10) => {
     if (!iconName) return <LayoutDashboard className={`h-${size} w-${size} ${colorClass}`} />;
     
@@ -84,7 +79,6 @@ const UserDashboard = () => {
     return icons[iconName] || <LayoutDashboard className={`h-${size} w-${size} ${colorClass}`} />;
   };
 
-  // Determinar o tamanho do componente
   const getComponentSize = (size?: string) => {
     switch (size) {
       case 'small': return 'md:col-span-1';
@@ -95,8 +89,6 @@ const UserDashboard = () => {
     }
   };
 
-  // Funções para renderizar componentes específicos
-  
   const renderTechSolutionsComponent = (component: DashboardComponent) => {
     if (!component.items || component.items.length === 0) return null;
     
@@ -330,7 +322,6 @@ const UserDashboard = () => {
     );
   };
 
-  // Renderizar um componente com base em seu tipo
   const renderComponent = (component: DashboardComponent) => {
     switch (component.type) {
       case 'tech':
@@ -347,46 +338,44 @@ const UserDashboard = () => {
   };
 
   return (
-    <MainLayout className="max-w-6xl mx-auto">
-      <div className="space-y-8 py-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Bem-vindo, {user?.user_metadata?.name?.split(' ')[0] || 'Cliente'}!
-          </h1>
-          <p className="text-muted-foreground">
-            Gerencie suas apólices, cotações e informações de seguro em um só lugar.
-          </p>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="shadow-sm">
-                <CardHeader className="pb-3">
-                  <div className="h-6 bg-primary/10 rounded w-3/4 animate-pulse"></div>
-                  <div className="h-4 bg-primary/5 rounded w-1/2 mt-2 animate-pulse"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    {[1, 2, 3, 4].map((j) => (
-                      <div key={j} className="h-24 bg-primary/5 rounded animate-pulse"></div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {dashboardConfig.map((component) => (
-              <React.Fragment key={component.id}>
-                {renderComponent(component)}
-              </React.Fragment>
-            ))}
-          </div>
-        )}
+    <div className="space-y-8 py-4">
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Bem-vindo, {user?.user_metadata?.name?.split(' ')[0] || 'Cliente'}!
+        </h1>
+        <p className="text-muted-foreground">
+          Gerencie suas apólices, cotações e informações de seguro em um só lugar.
+        </p>
       </div>
-    </MainLayout>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="h-6 bg-primary/10 rounded w-3/4 animate-pulse"></div>
+                <div className="h-4 bg-primary/5 rounded w-1/2 mt-2 animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((j) => (
+                    <div key={j} className="h-24 bg-primary/5 rounded animate-pulse"></div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {dashboardConfig.map((component) => (
+            <React.Fragment key={component.id}>
+              {renderComponent(component)}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
