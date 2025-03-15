@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -24,8 +23,28 @@ export function useVoiceCommandEvents() {
   const [processingCommand, setProcessingCommand] = useState(false);
   const [notificationSending, setNotificationSending] = useState(false);
   const [apiConnected, setApiConnected] = useState<boolean | null>(null);
+  const [reminderSettings, setReminderSettings] = useState({
+    enabled: true,
+    sendBefore: {
+      days: 1,
+      hours: 0,
+      minutes: 0
+    },
+    sendOnDay: true,
+    reminderTime: "09:00"
+  });
 
   useEffect(() => {
+    const savedSettings = localStorage.getItem('reminder_settings');
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        setReminderSettings(parsedSettings);
+      } catch (error) {
+        console.error('Error loading reminder settings:', error);
+      }
+    }
+    
     async function loadEvents() {
       setLoading(true);
       try {
@@ -65,6 +84,29 @@ export function useVoiceCommandEvents() {
       setApiConnected(false);
       toast.error('Erro ao verificar conexão com a API do WhatsApp');
     }
+  };
+
+  const calculateReminderTime = (eventDate: Date) => {
+    const reminderDate = new Date(eventDate.getTime());
+    
+    reminderDate.setDate(reminderDate.getDate() - reminderSettings.sendBefore.days);
+    reminderDate.setHours(reminderDate.getHours() - reminderSettings.sendBefore.hours);
+    reminderDate.setMinutes(reminderDate.getMinutes() - reminderSettings.sendBefore.minutes);
+    
+    if (reminderSettings.sendOnDay) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const reminderDay = new Date(reminderDate.getTime());
+      reminderDay.setHours(0, 0, 0, 0);
+      
+      if (today.getTime() === reminderDay.getTime()) {
+        const [hours, minutes] = reminderSettings.reminderTime.split(':').map(Number);
+        reminderDate.setHours(hours, minutes, 0, 0);
+      }
+    }
+    
+    return reminderDate;
   };
 
   const sendDailyEventsToAdmins = async () => {
@@ -386,7 +428,12 @@ export function useVoiceCommandEvents() {
         console.log('Using default phone number:', defaultPhone);
       }
       
-      const saveResult = await saveVoiceCommandEvent(result);
+      const reminderTime = calculateReminderTime(result.date);
+      
+      const saveResult = await saveVoiceCommandEvent({
+        ...result,
+        reminderScheduledFor: reminderTime
+      });
       
       if (!saveResult.success) {
         toast.error(`Erro ao salvar evento: ${saveResult.error}`);
@@ -473,6 +520,12 @@ export function useVoiceCommandEvents() {
     }
   };
 
+  const updateReminderSettings = (settings: typeof reminderSettings) => {
+    setReminderSettings(settings);
+    localStorage.setItem('reminder_settings', JSON.stringify(settings));
+    toast.success('Configurações de lembretes atualizadas com sucesso');
+  };
+
   return {
     events,
     loading,
@@ -486,6 +539,8 @@ export function useVoiceCommandEvents() {
     sendEventReminderManually,
     notificationSending,
     apiConnected,
-    checkApiConnection
+    checkApiConnection,
+    reminderSettings,
+    updateReminderSettings
   };
 }

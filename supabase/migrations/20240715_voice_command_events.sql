@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS public.voice_command_events (
   duration INTEGER,
   type TEXT NOT NULL CHECK (type IN ('meeting', 'deadline', 'task', 'other')),
   contact_phone TEXT,
+  reminder_sent BOOLEAN DEFAULT FALSE,
+  reminder_scheduled_for TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
 );
 
@@ -48,3 +50,6 @@ CREATE INDEX IF NOT EXISTS idx_voice_command_events_user_id ON public.voice_comm
 
 -- Create index on date
 CREATE INDEX IF NOT EXISTS idx_voice_command_events_date ON public.voice_command_events(date);
+
+-- Create index on reminder_scheduled_for
+CREATE INDEX IF NOT EXISTS idx_voice_command_events_reminder ON public.voice_command_events(reminder_scheduled_for);

@@ -42,4 +42,14 @@ export interface NotificationSettings {
   schedule: {
     dailyReportTime: string;
   };
+  reminders: {
+    enabled: boolean;
+    sendBefore: {
+      days: number;
+      hours: number;
+      minutes: number;
+    };
+    sendOnDay: boolean;
+    reminderTime: string;
+  };
 }

@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Bell, Calendar, Clock, FileBarChart, Users, Briefcase } from 'lucide-react';
+import { Bell, Calendar, Clock, FileBarChart, Users, Briefcase, AlarmClock } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface NotificationSettings {
   enabled: boolean;
@@ -25,6 +27,16 @@ interface NotificationSettings {
   schedule: {
     dailyReportTime: string;
   };
+  reminders: {
+    enabled: boolean;
+    sendBefore: {
+      days: number;
+      hours: number;
+      minutes: number;
+    };
+    sendOnDay: boolean;
+    reminderTime: string;
+  };
 }
 
 interface SystemNotificationSettingsProps {
@@ -34,6 +46,7 @@ interface SystemNotificationSettingsProps {
   onToggleType: (type: keyof NotificationSettings['types']) => void;
   onToggleChannel: (channel: keyof NotificationSettings['channels']) => void;
   onTimeChange: (time: string) => void;
+  onReminderSettingsChange: (settings: Partial<NotificationSettings['reminders']>) => void;
   onSave: () => void;
   isDirty: boolean;
   isSaving: boolean;
@@ -46,10 +59,16 @@ const SystemNotificationSettings: React.FC<SystemNotificationSettingsProps> = ({
   onToggleType,
   onToggleChannel,
   onTimeChange,
+  onReminderSettingsChange,
   onSave,
   isDirty,
   isSaving
 }) => {
+  // Generate number options for select dropdowns
+  const generateOptions = (max: number) => {
+    return Array.from({ length: max + 1 }, (_, i) => i);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -167,6 +186,137 @@ const SystemNotificationSettings: React.FC<SystemNotificationSettingsProps> = ({
               </p>
             </div>
           </div>
+          
+          <Separator className="my-6" />
+          
+          {/* Event Reminders Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="enableReminders" className="flex items-center gap-2">
+                  <AlarmClock className="h-4 w-4" />
+                  Lembretes de Eventos
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Configurações para envio de lembretes para eventos marcados
+                </p>
+              </div>
+              <Switch 
+                id="enableReminders" 
+                checked={notificationSettings.reminders?.enabled ?? true}
+                onCheckedChange={(checked) => onReminderSettingsChange({ enabled: checked })}
+              />
+            </div>
+            
+            <div className={notificationSettings.reminders?.enabled !== false ? "" : "opacity-50 pointer-events-none"}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="reminderDays">Dias antes</Label>
+                  <Select 
+                    value={String(notificationSettings.reminders?.sendBefore?.days ?? 1)}
+                    onValueChange={(value) => onReminderSettingsChange({ 
+                      sendBefore: { 
+                        ...notificationSettings.reminders?.sendBefore,
+                        days: parseInt(value) 
+                      } 
+                    })}
+                  >
+                    <SelectTrigger id="reminderDays">
+                      <SelectValue placeholder="Dias" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {generateOptions(7).map(num => (
+                        <SelectItem key={`days-${num}`} value={String(num)}>
+                          {num} {num === 1 ? 'dia' : 'dias'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="reminderHours">Horas antes</Label>
+                  <Select 
+                    value={String(notificationSettings.reminders?.sendBefore?.hours ?? 0)}
+                    onValueChange={(value) => onReminderSettingsChange({ 
+                      sendBefore: { 
+                        ...notificationSettings.reminders?.sendBefore,
+                        hours: parseInt(value) 
+                      } 
+                    })}
+                  >
+                    <SelectTrigger id="reminderHours">
+                      <SelectValue placeholder="Horas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {generateOptions(23).map(num => (
+                        <SelectItem key={`hours-${num}`} value={String(num)}>
+                          {num} {num === 1 ? 'hora' : 'horas'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="reminderMinutes">Minutos antes</Label>
+                  <Select 
+                    value={String(notificationSettings.reminders?.sendBefore?.minutes ?? 0)}
+                    onValueChange={(value) => onReminderSettingsChange({ 
+                      sendBefore: { 
+                        ...notificationSettings.reminders?.sendBefore,
+                        minutes: parseInt(value) 
+                      } 
+                    })}
+                  >
+                    <SelectTrigger id="reminderMinutes">
+                      <SelectValue placeholder="Minutos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[0, 15, 30, 45].map(num => (
+                        <SelectItem key={`minutes-${num}`} value={String(num)}>
+                          {num} {num === 1 ? 'minuto' : 'minutos'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-2 mt-4">
+                <Checkbox 
+                  id="sendOnDayCheckbox" 
+                  checked={notificationSettings.reminders?.sendOnDay ?? true}
+                  onCheckedChange={(checked) => 
+                    onReminderSettingsChange({ sendOnDay: checked === true })
+                  }
+                />
+                <div className="space-y-1 leading-none">
+                  <Label htmlFor="sendOnDayCheckbox">Enviar no dia do evento em horário específico</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Se marcado, enviará um lembrete adicional no dia do evento
+                  </p>
+                </div>
+              </div>
+              
+              {notificationSettings.reminders?.sendOnDay && (
+                <div className="w-full sm:w-1/2 md:w-1/3 mt-4">
+                  <Label htmlFor="reminderTime">Horário do lembrete no dia</Label>
+                  <Input 
+                    id="reminderTime"
+                    type="time" 
+                    value={notificationSettings.reminders?.reminderTime ?? "09:00"}
+                    onChange={(e) => onReminderSettingsChange({ reminderTime: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Horário para envio do lembrete no dia do evento
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <Separator className="my-6" />
           
           <div className="mt-6">
             <h3 className="text-sm font-medium mb-3">Canais de Notificação</h3>
