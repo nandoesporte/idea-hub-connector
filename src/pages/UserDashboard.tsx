@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -98,17 +99,8 @@ const UserDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="md:col-span-2 shadow-sm">
             <CardHeader className="pb-3">
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Soluções Tecnológicas</CardTitle>
-                  <CardDescription>Transforme suas ideias em soluções digitais</CardDescription>
-                </div>
-                <Link to="/submit-idea">
-                  <Button className="shadow-sm hover:shadow-md transition-all duration-300">
-                    <SendIcon className="h-4 w-4 mr-2" /> Enviar Ideia
-                  </Button>
-                </Link>
-              </div>
+              <CardTitle>Soluções Tecnológicas</CardTitle>
+              <CardDescription>Transforme suas ideias em soluções digitais</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4 pb-6">
               <Link to="/submit-idea" className="group">
@@ -142,6 +134,14 @@ const UserDashboard = () => {
                   <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Inteligência artificial para seu negócio</p>
                 </div>
               </Link>
+              
+              <div className="col-span-2 flex justify-center mt-4">
+                <Link to="/submit-idea">
+                  <Button className="shadow-sm hover:shadow-md transition-all duration-300">
+                    <SendIcon className="h-4 w-4 mr-2" /> Enviar Ideia
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
 
