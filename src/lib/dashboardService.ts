@@ -1,5 +1,4 @@
-
-import { DashboardComponent, DashboardConfig } from '@/types/dashboard';
+import { DashboardComponent, DashboardConfig, DashboardItem } from '@/types/dashboard';
 
 // Mock data - em uma aplicação real, isso viria do Supabase
 const defaultDashboardConfig: DashboardConfig = {

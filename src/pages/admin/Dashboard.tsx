@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ReloadIcon, PlusIcon, Cross2Icon, GripVerticalIcon, CopyIcon, ResetIcon } from '@radix-ui/react-icons';
+import { 
+  RefreshCw, Plus, X, GripVertical, Copy, RotateCcw
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   getDashboardConfig, 
