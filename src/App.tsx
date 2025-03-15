@@ -29,6 +29,8 @@ import Dashboard from '@/pages/Dashboard';
 import ProjectIdeasNew from '@/pages/ProjectIdeasNew';
 import AdminDashboard from '@/pages/admin/Dashboard';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import Portfolio from '@/pages/Portfolio';
+import PortfolioDetails from '@/pages/PortfolioDetails';
 
 function App() {
   return (
@@ -45,6 +47,8 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/portfolio" element={<Portfolio />} />
+        <Route path="/portfolio/:id" element={<PortfolioDetails />} />
         <Route path="*" element={<NotFound />} />
 
         {/* Protected User Routes */}
