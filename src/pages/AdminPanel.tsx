@@ -7,7 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { 
   Users, Briefcase, MessageSquare, FileText, 
-  TrendingUp, ArrowUpRight, Zap, BarChart3, Clock, AlertCircle
+  TrendingUp, ArrowUpRight, Zap, BarChart3, Clock, AlertCircle, Folder
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import FeatureCard from '@/components/FeatureCard';
@@ -217,13 +217,15 @@ const AdminPanel = () => {
               iconClassName="bg-emerald-500/10 text-emerald-500"
             />
           </Link>
-          <FeatureCard
-            title="Relatórios"
-            description="Visualize e exporte relatórios de performance."
-            icon={<BarChart3 size={24} />}
-            className="hover:border-amber-400"
-            iconClassName="bg-amber-500/10 text-amber-500"
-          />
+          <Link to="/admin/categories">
+            <FeatureCard
+              title="Gerenciar Categorias"
+              description="Edite as categorias de tecnologia e seguros."
+              icon={<Folder size={24} />}
+              className="hover:border-cyan-400"
+              iconClassName="bg-cyan-500/10 text-cyan-500"
+            />
+          </Link>
           <Link to="/admin/settings">
             <FeatureCard
               title="Configurações"

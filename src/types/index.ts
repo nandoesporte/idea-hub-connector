@@ -30,6 +30,16 @@ export interface ProjectIdea {
   }>;
 }
 
+export interface CategoryItem {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  link: string;
+  type: 'tech' | 'insurance';
+  iconColor: string;
+}
+
 export interface User {
   id: string;
   name: string;
