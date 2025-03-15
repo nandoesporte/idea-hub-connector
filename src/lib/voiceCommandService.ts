@@ -11,6 +11,7 @@ interface VoiceCommandResult {
   duration?: number;
   type: 'meeting' | 'deadline' | 'task' | 'other';
   contactPhone?: string;
+  reminderScheduledFor?: Date; // Added this property
 }
 
 /**
@@ -51,6 +52,7 @@ export async function processVoiceCommand(transcript: string): Promise<VoiceComm
       duration: parsedResult.duration || 60,
       type: validateEventType(parsedResult.type),
       contactPhone: parsedResult.contactPhone || "",
+      reminderScheduledFor: parsedResult.reminderScheduledFor || null,
     };
   } catch (error) {
     console.error('Error processing voice command:', error);
@@ -90,6 +92,7 @@ export async function saveVoiceCommandEvent(event: VoiceCommandResult): Promise<
         duration: event.duration || 60,
         type: event.type,
         contact_phone: event.contactPhone || '',
+        reminder_scheduled_for: event.reminderScheduledFor?.toISOString() || null,
       });
     
     if (error) {
@@ -333,6 +336,7 @@ function simulateGpt4Response(transcript: string): any {
   let duration = 60;
   let type = 'meeting';
   let contactPhone = '';
+  let reminderScheduledFor = null;
   
   // Extract event type
   if (cleanedTranscript.toLowerCase().includes('reunião') || cleanedTranscript.toLowerCase().includes('meeting')) {
@@ -510,6 +514,7 @@ function simulateGpt4Response(transcript: string): any {
     timeInfo,
     duration,
     type,
-    contactPhone
+    contactPhone,
+    reminderScheduledFor
   };
 }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -85,6 +84,16 @@ const getInitialNotificationSettings = (): NotificationSettingsType => {
     schedule: {
       dailyReportTime: '08:00',
     },
+    reminders: {
+      enabled: true,
+      sendBefore: {
+        days: 1,
+        hours: 0,
+        minutes: 0
+      },
+      sendOnDay: true,
+      reminderTime: "09:00"
+    }
   };
 };
 
@@ -206,6 +215,17 @@ const AdminSettings = () => {
       schedule: {
         ...prev.schedule,
         dailyReportTime: time
+      }
+    }));
+    setIsSystemNotificationsFormDirty(true);
+  };
+
+  const handleReminderSettingsChange = (settings: Partial<NotificationSettingsType['reminders']>) => {
+    setNotificationSettings(prev => ({
+      ...prev,
+      reminders: {
+        ...prev.reminders,
+        ...settings
       }
     }));
     setIsSystemNotificationsFormDirty(true);
@@ -361,6 +381,7 @@ const AdminSettings = () => {
               onToggleType={handleNotificationTypeToggle}
               onToggleChannel={handleNotificationChannelToggle}
               onTimeChange={handleReportTimeChange}
+              onReminderSettingsChange={handleReminderSettingsChange}
               onSave={saveSystemNotificationSettings}
               isDirty={isSystemNotificationsFormDirty}
               isSaving={isSaving}
