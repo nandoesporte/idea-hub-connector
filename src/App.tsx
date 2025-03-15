@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import Index from '@/pages/Index';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -25,7 +26,7 @@ import Categories from '@/pages/admin/Categories';
 
 function App() {
   return (
-    <BrowserRouter>
+    <>
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Index />} />
@@ -60,7 +61,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
-    </BrowserRouter>
+    </>
   );
 }
 
