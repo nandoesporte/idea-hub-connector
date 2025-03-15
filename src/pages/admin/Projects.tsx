@@ -8,19 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Clock, CheckCircle, AlertCircle, PlayCircle, 
-  RotateCcw, XCircle, Search, Filter, Edit, Trash 
+  RotateCcw, XCircle, Search, Filter, Edit, Trash,
+  Plus
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { 
   Select, 
   SelectContent, 
@@ -31,79 +22,7 @@ import {
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
-const mockAdminProjects: ProjectIdea[] = [
-  {
-    id: '1',
-    title: 'Website para loja de roupas',
-    description: 'Preciso de um site para minha loja de roupas com catálogo de produtos e formulário de contato.',
-    category: 'website',
-    budget: 'R$ 5.000 - R$ 8.000',
-    timeline: '1 mês',
-    features: ['Catálogo de produtos', 'Formulário de contato', 'Responsivo'],
-    userId: 'user123',
-    status: 'pending',
-    createdAt: new Date('2023-10-15'),
-    updatedAt: new Date('2023-10-18'),
-    urgency: 'normal',
-  },
-  {
-    id: '2',
-    title: 'E-commerce completo para joalheria',
-    description: 'E-commerce de joias com sistema de pagamento integrado, gestão de estoque e área de cliente.',
-    category: 'e-commerce',
-    budget: 'R$ 20.000 - R$ 30.000',
-    timeline: '3 meses',
-    features: ['Pagamento online', 'Gestão de estoque', 'Painel administrativo'],
-    userId: 'user456',
-    status: 'under-review',
-    createdAt: new Date('2023-11-05'),
-    updatedAt: new Date('2023-11-10'),
-    urgency: 'alta',
-  },
-  {
-    id: '3',
-    title: 'Aplicativo para gerenciamento de tarefas',
-    description: 'App mobile para gerenciamento de tarefas com notificações e sincronização entre dispositivos.',
-    category: 'mobile-app',
-    budget: 'R$ 12.000 - R$ 18.000',
-    timeline: '2 meses',
-    features: ['Login e perfil', 'Notificações', 'Sincronização em nuvem'],
-    userId: 'user789',
-    status: 'approved',
-    createdAt: new Date('2023-09-20'),
-    updatedAt: new Date('2023-09-25'),
-    urgency: 'baixa',
-  },
-  {
-    id: '4',
-    title: 'Sistema de gestão financeira',
-    description: 'Sistema para controle financeiro pessoal com importação de extratos bancários e relatórios.',
-    category: 'desktop-app',
-    budget: 'R$ 8.000 - R$ 15.000',
-    timeline: '2 meses',
-    features: ['Importação de extratos', 'Gráficos e relatórios', 'Categorização automática'],
-    userId: 'user123',
-    status: 'in-progress',
-    createdAt: new Date('2023-08-10'),
-    updatedAt: new Date('2023-08-15'),
-    urgency: 'normal',
-  },
-  {
-    id: '5',
-    title: 'Automação de processos de RH',
-    description: 'Sistema de automação para processos de RH, incluindo recrutamento e gestão de funcionários.',
-    category: 'automation',
-    budget: 'R$ 15.000 - R$ 25.000',
-    timeline: '3 meses',
-    features: ['Recrutamento automatizado', 'Gestão de ponto', 'Avaliação de desempenho'],
-    userId: 'user456',
-    status: 'completed',
-    createdAt: new Date('2023-07-01'),
-    updatedAt: new Date('2023-07-05'),
-    urgency: 'normal',
-  }
-];
-
+// Componentes para exibir o status do projeto
 const ProjectStatusIcon = ({ status }: { status: ProjectIdea['status'] }) => {
   switch (status) {
     case 'pending':
@@ -143,6 +62,7 @@ const ProjectStatusBadge = ({ status }: { status: ProjectIdea['status'] }) => {
   );
 };
 
+// Componente para o card de projeto
 const AdminProjectCard = ({ project, onUpdateStatus }: { 
   project: ProjectIdea; 
   onUpdateStatus: (id: string, status: ProjectIdea['status']) => void;
@@ -176,7 +96,7 @@ const AdminProjectCard = ({ project, onUpdateStatus }: {
               <ProjectStatusIcon status={project.status} />
               <ProjectStatusBadge status={project.status} />
               <span className="text-xs text-gray-500">
-                ID: {project.id} • Usuário: {project.userId}
+                ID: {project.id} • Cliente: {project.clientName || project.userId}
               </span>
             </div>
           </div>
@@ -207,8 +127,22 @@ const AdminProjectCard = ({ project, onUpdateStatus }: {
           </div>
         </div>
         
-        <div className="text-xs text-gray-500 mt-3">
-          Criado em {formatDate(project.createdAt)} • Atualizado em {formatDate(project.updatedAt)}
+        <div className="flex justify-between items-center mt-4 pt-3 border-t">
+          <div className="text-xs text-gray-500">
+            Criado em {formatDate(project.createdAt)} • Atualizado em {formatDate(project.updatedAt)}
+          </div>
+          <div className="flex gap-2">
+            <Link to={`/admin/projects/${project.id}`}>
+              <Button variant="outline" size="sm">
+                <Edit className="h-4 w-4 mr-1" /> Editar
+              </Button>
+            </Link>
+            <Link to={`/project-details/${project.id}`}>
+              <Button variant="secondary" size="sm">
+                Detalhes
+              </Button>
+            </Link>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -216,7 +150,8 @@ const AdminProjectCard = ({ project, onUpdateStatus }: {
 };
 
 const AdminProjects = () => {
-  const [projects, setProjects] = useState<ProjectIdea[]>(mockAdminProjects);
+  // Estado inicial vazio para projetos
+  const [projects, setProjects] = useState<ProjectIdea[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
@@ -235,7 +170,8 @@ const AdminProjects = () => {
       project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.userId.toLowerCase().includes(searchQuery.toLowerCase());
+      (project.clientName && project.clientName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (project.userId && project.userId.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesStatus = !selectedStatus || project.status === selectedStatus;
     
@@ -252,20 +188,20 @@ const AdminProjects = () => {
           </p>
         </div>
 
-        <div className="flex gap-4 items-center">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por título, usuário ou ID..."
+              placeholder="Buscar por título, cliente ou ID..."
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center w-full sm:w-auto">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <Select 
-              onValueChange={(value) => setSelectedStatus(value || null)}
+              onValueChange={(value) => setSelectedStatus(value === 'all' ? null : value)}
             >
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Filtrar por status" />
@@ -281,15 +217,15 @@ const AdminProjects = () => {
               </SelectContent>
             </Select>
           </div>
-          <Link to="/submit-idea">
-            <Button>
-              Novo Projeto
+          <Link to="/submit-idea" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" /> Novo Projeto
             </Button>
           </Link>
         </div>
 
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="all">Todos ({projects.length})</TabsTrigger>
             <TabsTrigger value="new">
               Novos ({projects.filter(p => p.status === 'pending' || p.status === 'under-review').length})
@@ -312,9 +248,22 @@ const AdminProjects = () => {
                 />
               ))
             ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum projeto encontrado com os filtros atuais.</p>
-              </div>
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="rounded-full bg-primary/10 p-4 mb-4">
+                    <Plus className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Nenhum projeto encontrado</h3>
+                  <p className="text-muted-foreground text-center mb-6">
+                    Não há projetos cadastrados ou correspondentes aos filtros atuais.
+                  </p>
+                  <Link to="/submit-idea">
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" /> Criar novo projeto
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
           
@@ -330,9 +279,17 @@ const AdminProjects = () => {
                   />
                 ))
             ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum projeto novo encontrado.</p>
-              </div>
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="rounded-full bg-primary/10 p-4 mb-4">
+                    <Clock className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Nenhum projeto novo</h3>
+                  <p className="text-muted-foreground text-center">
+                    Não há projetos pendentes ou em análise no momento.
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
           
@@ -348,9 +305,17 @@ const AdminProjects = () => {
                   />
                 ))
             ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum projeto ativo encontrado.</p>
-              </div>
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="rounded-full bg-primary/10 p-4 mb-4">
+                    <PlayCircle className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Nenhum projeto ativo</h3>
+                  <p className="text-muted-foreground text-center">
+                    Não há projetos aprovados ou em desenvolvimento no momento.
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
           
@@ -366,9 +331,17 @@ const AdminProjects = () => {
                   />
                 ))
             ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum projeto encerrado encontrado.</p>
-              </div>
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="rounded-full bg-primary/10 p-4 mb-4">
+                    <CheckCircle className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Nenhum projeto encerrado</h3>
+                  <p className="text-muted-foreground text-center">
+                    Não há projetos concluídos ou rejeitados no momento.
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
         </Tabs>
