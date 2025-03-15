@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, Shield, Home, Heart, Briefcase, Hospital } from 'lucide-react';
+import { ArrowRight, Sparkles, Shield, Home, Heart, Briefcase, Hospital, Lightbulb, Monitor, Smartphone } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const HeroSection = () => {
@@ -51,7 +51,7 @@ const HeroSection = () => {
           className="inline-flex items-center rounded-full border px-4 py-1.5 text-sm font-medium bg-background/50 backdrop-blur-sm shadow-sm"
         >
           <Shield className="mr-2 h-4 w-4 text-primary" />
-          <span>Seguros para toda sua vida com tecnologia e segurança</span>
+          <span>Inovação digital e expertise em seguros</span>
         </motion.div>
         
         <motion.h1 
@@ -60,7 +60,7 @@ const HeroSection = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight"
         >
-          Soluções em <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">seguros</span> para cada momento da sua <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-primary">vida</span>
+          Transforme Suas <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">Ideias</span> em Realidade <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-primary">Digital</span>
         </motion.h1>
         
         <motion.p 
@@ -69,9 +69,7 @@ const HeroSection = () => {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="text-base md:text-lg text-muted-foreground max-w-3xl leading-relaxed"
         >
-          Na Idealhub, unimos inovação tecnológica à expertise do mercado de seguros. 
-          Oferecemos proteção completa para você, sua família, empresa e patrimônio com 
-          a facilidade e segurança que os novos tempos exigem.
+          Além da Tecnologia, Uma Variedade de Produtos em Seguros com a Segurança e Facilidade que os Novos Tempos Precisam. Na Idealhub, unimos inovação tecnológica à expertise do mercado de seguros.
         </motion.p>
         
         <motion.div 
@@ -82,18 +80,18 @@ const HeroSection = () => {
         >
           <Link to="/submit-idea">
             <Button size="lg" className="w-full sm:w-auto px-6 bg-gradient-to-r from-primary to-blue-600 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:-translate-y-1 rounded-xl">
-              Solicitar cotação
+              Enviar Minha Ideia
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
-          <Link to="/#insurance-options">
+          <Link to="/#how-it-works">
             <Button size="lg" variant="outline" className="w-full sm:w-auto px-6 hover:bg-secondary/80 transition-all duration-300 border-2 rounded-xl">
-              Ver opções de seguros
+              Como Funciona
             </Button>
           </Link>
         </motion.div>
         
-        {/* Insurance Categories Icons */}
+        {/* Service Categories Icons */}
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -104,33 +102,33 @@ const HeroSection = () => {
             whileHover={{ y: -5, scale: 1.02 }}
             className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
           >
-            <Heart className="h-10 w-10 text-primary mb-2" />
-            <p className="text-sm font-medium">Seguro de Vida</p>
+            <Smartphone className="h-10 w-10 text-primary mb-2" />
+            <p className="text-sm font-medium">Aplicativos</p>
           </motion.div>
           <motion.div 
             whileHover={{ y: -5, scale: 1.02 }}
             className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
           >
-            <Home className="h-10 w-10 text-primary mb-2" />
-            <p className="text-sm font-medium">Seguro Residencial</p>
+            <Monitor className="h-10 w-10 text-primary mb-2" />
+            <p className="text-sm font-medium">Sistemas Web</p>
           </motion.div>
           <motion.div 
             whileHover={{ y: -5, scale: 1.02 }}
             className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
           >
-            <Briefcase className="h-10 w-10 text-primary mb-2" />
-            <p className="text-sm font-medium">Seguro Empresarial</p>
+            <Shield className="h-10 w-10 text-primary mb-2" />
+            <p className="text-sm font-medium">Soluções em Seguros</p>
           </motion.div>
           <motion.div 
             whileHover={{ y: -5, scale: 1.02 }}
             className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
           >
-            <Hospital className="h-10 w-10 text-primary mb-2" />
-            <p className="text-sm font-medium">Seguro Saúde</p>
+            <Lightbulb className="h-10 w-10 text-primary mb-2" />
+            <p className="text-sm font-medium">Ideias Personalizadas</p>
           </motion.div>
         </motion.div>
         
-        {/* Modern Stats with Animation */}
+        {/* Stats with Animation */}
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -141,8 +139,8 @@ const HeroSection = () => {
             whileHover={{ y: -5, scale: 1.02 }}
             className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
           >
-            <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">5000+</p>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1">Clientes Protegidos</p>
+            <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">100+</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">Projetos Entregues</p>
           </motion.div>
           <motion.div 
             whileHover={{ y: -5, scale: 1.02 }}
@@ -156,7 +154,7 @@ const HeroSection = () => {
             className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300 col-span-2 md:col-span-1"
           >
             <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">24h</p>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1">Atendimento Rápido</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">Suporte Contínuo</p>
           </motion.div>
         </motion.div>
       </div>

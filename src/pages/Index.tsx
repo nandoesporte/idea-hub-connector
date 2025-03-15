@@ -16,11 +16,14 @@ import {
   LineChart,
   BarChart,
   Layers,
-  Heart,
-  Home,
-  Briefcase,
-  Hospital,
-  Truck
+  FileText,
+  Lightbulb,
+  Monitor,
+  Smartphone,
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  PenLine
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -30,100 +33,22 @@ const Index = () => {
       {/* Hero Section */}
       <HeroSection />
       
-      {/* Insurance Options Section */}
-      <section id="insurance-options" className="py-12 bg-muted/30">
-        <div className="container space-y-10">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Nossas soluções em seguros</h2>
-            <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Proteção completa para você, sua família e seu patrimônio
+      {/* Describe Your Idea Section */}
+      <section className="py-12 bg-muted/30">
+        <div className="container space-y-6">
+          <div className="max-w-3xl mx-auto text-center space-y-2">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Descreva Sua Ideia</h2>
+            <p className="text-base md:text-lg text-muted-foreground">
+              Conte-nos sobre sua necessidade – seja um aplicativo, site, sistema ou uma solução específica para o setor de seguros – e nós transformaremos sua ideia em um produto digital de alta performance, com desenvolvimento profissional e suporte personalizado.
             </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
-              <CardContent className="p-6">
-                <div className="rounded-full w-12 h-12 flex items-center justify-center bg-primary/10 mb-4">
-                  <Heart className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Seguro de Vida</h3>
-                <p className="text-muted-foreground">
-                  Proteção financeira para sua família em caso de imprevistos, garantindo tranquilidade para quem você ama.
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
-              <CardContent className="p-6">
-                <div className="rounded-full w-12 h-12 flex items-center justify-center bg-primary/10 mb-4">
-                  <Home className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Seguro Residencial</h3>
-                <p className="text-muted-foreground">
-                  Proteja seu lar contra incêndios, roubos, danos e outras eventualidades, com coberturas personalizadas.
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
-              <CardContent className="p-6">
-                <div className="rounded-full w-12 h-12 flex items-center justify-center bg-primary/10 mb-4">
-                  <Briefcase className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Seguro Empresarial</h3>
-                <p className="text-muted-foreground">
-                  Soluções completas para proteger seu negócio, funcionários, patrimônio e operações contra diversos riscos.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
-              <CardContent className="p-6">
-                <div className="rounded-full w-12 h-12 flex items-center justify-center bg-primary/10 mb-4">
-                  <Hospital className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Seguro Saúde</h3>
-                <p className="text-muted-foreground">
-                  Planos completos para cuidar da saúde de você e sua família, com ampla rede de atendimento médico.
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
-              <CardContent className="p-6">
-                <div className="rounded-full w-12 h-12 flex items-center justify-center bg-primary/10 mb-4">
-                  <Truck className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Seguro Auto</h3>
-                <p className="text-muted-foreground">
-                  Proteção completa para seu veículo com coberturas contra acidentes, roubo, terceiros e assistência 24h.
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
-              <CardContent className="p-6">
-                <div className="rounded-full w-12 h-12 flex items-center justify-center bg-primary/10 mb-4">
-                  <img 
-                    src="/lovable-uploads/7e72b76c-70f4-4d0e-a01f-d4559c7530fb.png" 
-                    alt="Agro Icon" 
-                    className="h-6 w-6 object-contain"
-                  />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Seguro Agrícola</h3>
-                <p className="text-muted-foreground">
-                  Proteção para produtores rurais contra perdas por eventos climáticos, pragas e outros riscos da atividade.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="flex justify-center pt-4">
-            <Link to="/submit-idea">
-              <Button size="lg" className="shadow-md">
-                Solicitar cotação agora
-              </Button>
-            </Link>
+            <div className="pt-4">
+              <Link to="/submit-idea">
+                <Button size="lg" className="shadow-md">
+                  Enviar Minha Ideia
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -132,9 +57,9 @@ const Index = () => {
       <section id="how-it-works" className="py-12">
         <div className="container space-y-10">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Como funciona</h2>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Como Funciona</h2>
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Contrate seu seguro de forma simples e rápida em quatro etapas
+              Transformamos sua ideia em realidade em quatro etapas simples
             </p>
           </div>
           
@@ -142,63 +67,63 @@ const Index = () => {
             <div className="flex flex-col items-center text-center space-y-3 p-4 animate-fade-in">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="h-7 w-7 text-primary" />
+                  <PenLine className="h-7 w-7 text-primary" />
                 </div>
                 <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-sm">1</div>
               </div>
-              <h3 className="text-lg font-semibold">Solicite sua cotação</h3>
-              <p className="text-sm text-muted-foreground">Preencha nosso formulário detalhando suas necessidades de proteção e cobertura.</p>
+              <h3 className="text-lg font-semibold">Envie Sua Ideia</h3>
+              <p className="text-sm text-muted-foreground">Preencha nosso formulário detalhado com todos os requisitos do seu projeto, especificando se deseja incluir soluções para produtos de seguros.</p>
             </div>
             
             <div className="flex flex-col items-center text-center space-y-3 p-4 animate-fade-in [animation-delay:200ms]">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Users className="h-7 w-7 text-primary" />
+                  <FileText className="h-7 w-7 text-primary" />
                 </div>
                 <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-sm">2</div>
               </div>
-              <h3 className="text-lg font-semibold">Receba uma proposta personalizada</h3>
-              <p className="text-sm text-muted-foreground">Nossa equipe especializada elabora uma proposta que atende suas necessidades específicas.</p>
+              <h3 className="text-lg font-semibold">Receba uma Proposta Personalizada</h3>
+              <p className="text-sm text-muted-foreground">Nossa equipe especializada analisa sua ideia e elabora uma proposta customizada, combinando estratégias digitais inovadoras e soluções seguras para o setor de seguros.</p>
             </div>
             
             <div className="flex flex-col items-center text-center space-y-3 p-4 animate-fade-in [animation-delay:400ms]">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Calendar className="h-7 w-7 text-primary" />
+                  <Clock className="h-7 w-7 text-primary" />
                 </div>
                 <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-sm">3</div>
               </div>
-              <h3 className="text-lg font-semibold">Aprovação e contratação digital</h3>
-              <p className="text-sm text-muted-foreground">Aprove a proposta e assine digitalmente os documentos necessários com total segurança.</p>
+              <h3 className="text-lg font-semibold">Acompanhe o Desenvolvimento</h3>
+              <p className="text-sm text-muted-foreground">Monitore o progresso do seu projeto em tempo real através da nossa plataforma, com atualizações e relatórios detalhados que garantem total transparência.</p>
             </div>
             
             <div className="flex flex-col items-center text-center space-y-3 p-4 animate-fade-in [animation-delay:600ms]">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Check className="h-7 w-7 text-primary" />
+                  <CheckCircle className="h-7 w-7 text-primary" />
                 </div>
                 <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-sm">4</div>
               </div>
-              <h3 className="text-lg font-semibold">Gerencie seu seguro online</h3>
-              <p className="text-sm text-muted-foreground">Acompanhe e gerencie seu seguro através de nossa plataforma digital, com suporte 24h.</p>
+              <h3 className="text-lg font-semibold">Receba o Produto Finalizado</h3>
+              <p className="text-sm text-muted-foreground">Entregamos sua solução digital pronta para uso, com suporte contínuo para garantir que seu negócio evolua de forma segura e prática.</p>
             </div>
           </div>
           
           <div className="flex justify-center pt-4">
             <Link to="/submit-idea">
               <Button size="lg" className="shadow-md">
-                Solicitar cotação agora
+                Enviar Minha Ideia Agora
               </Button>
             </Link>
           </div>
         </div>
       </section>
       
-      {/* Features */}
+      {/* Why Choose Us */}
       <section className="py-12 bg-muted/20">
         <div className="container space-y-10">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Por que escolher a Idealhub</h2>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Por Que Escolher a Idealhub</h2>
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
               Unimos inovação digital com profundo conhecimento do mercado de seguros
             </p>
@@ -212,33 +137,39 @@ const Index = () => {
             />
             
             <FeatureCard 
-              title="Atendimento Personalizado" 
-              description="Entendemos que cada cliente tem necessidades únicas. Nossa equipe está pronta para oferecer a proteção ideal para você." 
+              title="Processo Simplificado" 
+              description="Envie sua ideia de forma rápida e intuitiva, sem complicações técnicas." 
+              icon={<Lightbulb className="h-6 w-6" />} 
+            />
+            
+            <FeatureCard 
+              title="Equipe Especializada" 
+              description="Contamos com desenvolvedores experientes e profissionais de diversos segmentos, prontos para entregar soluções personalizadas – inclusive para o setor de seguros." 
               icon={<Users className="h-6 w-6" />} 
             />
             
             <FeatureCard 
-              title="Contratação 100% Digital" 
-              description="Todo o processo de cotação, contratação e gestão da sua apólice pode ser feito online, com segurança e praticidade." 
-              icon={<Database className="h-6 w-6" />} 
+              title="Gestão Transparente" 
+              description="Acompanhe cada etapa do desenvolvimento com relatórios detalhados e atualizações frequentes, garantindo total visibilidade sobre seu projeto." 
+              icon={<Clock className="h-6 w-6" />} 
             />
             
             <FeatureCard 
-              title="Suporte 24 horas" 
-              description="Conte com nossa central de atendimento 24h para resolver qualquer problema ou dúvida sobre seu seguro." 
-              icon={<MessageSquare className="h-6 w-6" />} 
-            />
-            
-            <FeatureCard 
-              title="Tecnologia de Ponta" 
-              description="Utilizamos as mais modernas tecnologias para garantir segurança, agilidade e transparência em todos os processos." 
+              title="Soluções Personalizadas" 
+              description="Cada projeto é único e desenvolvido de acordo com suas necessidades específicas, seja para apps de bem-estar, e-commerces, sistemas corporativos ou plataformas de seguros." 
               icon={<Settings className="h-6 w-6" />} 
             />
             
             <FeatureCard 
-              title="Gestão Transparente" 
-              description="Acompanhe todas as informações da sua apólice de forma clara e detalhada através da nossa plataforma digital." 
-              icon={<Calendar className="h-6 w-6" />} 
+              title="Tecnologia de Ponta" 
+              description="Utilizamos as mais modernas tecnologias para entregar produtos digitais com alta qualidade, segurança e performance." 
+              icon={<Database className="h-6 w-6" />} 
+            />
+            
+            <FeatureCard 
+              title="Suporte Contínuo" 
+              description="Oferecemos suporte técnico e manutenção mesmo após a entrega do projeto, assegurando a evolução constante do seu negócio." 
+              icon={<MessageSquare className="h-6 w-6" />} 
             />
           </div>
         </div>
@@ -248,9 +179,9 @@ const Index = () => {
       <section className="py-12">
         <div className="container space-y-10">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Plataformas e Soluções Tecnológicas</h2>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Produtos e Soluções para o Setor de Seguros</h2>
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Tecnologia de ponta a serviço da sua proteção e tranquilidade
+              Além de oferecer soluções digitais para diversos segmentos, também disponibilizamos:
             </p>
           </div>
           
@@ -298,21 +229,21 @@ const Index = () => {
       <section className="py-12 bg-gradient-to-br from-primary/10 to-blue-400/10">
         <div className="container text-center space-y-6">
           <div className="space-y-2 max-w-2xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Pronto para proteger o que é importante para você?</h2>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Pronto para Transformar Sua Ideia em Realidade?</h2>
             <p className="text-base md:text-lg text-muted-foreground">
-              Descubra como nossos seguros podem oferecer proteção completa com a segurança e facilidade que os novos tempos exigem.
+              Junte-se a centenas de empreendedores que já impulsionaram seus negócios com a Idealhub. Descubra como nossa plataforma pode elevar sua presença digital e oferecer a segurança e facilidade que os novos tempos exigem – inclusive no setor de seguros.
             </p>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
             <Link to="/submit-idea">
               <Button size="lg" className="w-full sm:w-auto px-6 shadow-md">
-                Solicitar cotação
+                Enviar Minha Ideia
               </Button>
             </Link>
             <Link to="/register">
               <Button size="lg" variant="outline" className="w-full sm:w-auto px-6">
-                Criar uma conta
+                Criar Uma Conta
               </Button>
             </Link>
           </div>
