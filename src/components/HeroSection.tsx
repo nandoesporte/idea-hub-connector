@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, Shield } from 'lucide-react';
+import { ArrowRight, Sparkles, Shield, Home, Heart, Briefcase, Hospital } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const HeroSection = () => {
@@ -50,8 +50,8 @@ const HeroSection = () => {
           transition={{ duration: 0.6 }}
           className="inline-flex items-center rounded-full border px-4 py-1.5 text-sm font-medium bg-background/50 backdrop-blur-sm shadow-sm"
         >
-          <Sparkles className="mr-2 h-4 w-4 text-primary" />
-          <span>Transforme suas ideias em realidade digital</span>
+          <Shield className="mr-2 h-4 w-4 text-primary" />
+          <span>Seguros para toda sua vida com tecnologia e segurança</span>
         </motion.div>
         
         <motion.h1 
@@ -60,7 +60,7 @@ const HeroSection = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight"
         >
-          Tecnologia e <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">seguros</span> em uma só <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-primary">plataforma</span>
+          Soluções em <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">seguros</span> para cada momento da sua <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-primary">vida</span>
         </motion.h1>
         
         <motion.p 
@@ -70,8 +70,8 @@ const HeroSection = () => {
           className="text-base md:text-lg text-muted-foreground max-w-3xl leading-relaxed"
         >
           Na Idealhub, unimos inovação tecnológica à expertise do mercado de seguros. 
-          Nascida da fusão entre a Kefer Soluções em Tecnologia e a Vhm Seguros, 
-          oferecemos soluções digitais completas com a segurança que os novos tempos precisam.
+          Oferecemos proteção completa para você, sua família, empresa e patrimônio com 
+          a facilidade e segurança que os novos tempos exigem.
         </motion.p>
         
         <motion.div 
@@ -82,30 +82,67 @@ const HeroSection = () => {
         >
           <Link to="/submit-idea">
             <Button size="lg" className="w-full sm:w-auto px-6 bg-gradient-to-r from-primary to-blue-600 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:-translate-y-1 rounded-xl">
-              Enviar minha ideia
+              Solicitar cotação
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
-          <Link to="/#how-it-works">
+          <Link to="/#insurance-options">
             <Button size="lg" variant="outline" className="w-full sm:w-auto px-6 hover:bg-secondary/80 transition-all duration-300 border-2 rounded-xl">
-              Como funciona
+              Ver opções de seguros
             </Button>
           </Link>
+        </motion.div>
+        
+        {/* Insurance Categories Icons */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 w-full mt-8"
+        >
+          <motion.div 
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
+          >
+            <Heart className="h-10 w-10 text-primary mb-2" />
+            <p className="text-sm font-medium">Seguro de Vida</p>
+          </motion.div>
+          <motion.div 
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
+          >
+            <Home className="h-10 w-10 text-primary mb-2" />
+            <p className="text-sm font-medium">Seguro Residencial</p>
+          </motion.div>
+          <motion.div 
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
+          >
+            <Briefcase className="h-10 w-10 text-primary mb-2" />
+            <p className="text-sm font-medium">Seguro Empresarial</p>
+          </motion.div>
+          <motion.div 
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
+          >
+            <Hospital className="h-10 w-10 text-primary mb-2" />
+            <p className="text-sm font-medium">Seguro Saúde</p>
+          </motion.div>
         </motion.div>
         
         {/* Modern Stats with Animation */}
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
+          transition={{ duration: 0.6, delay: 1.0 }}
           className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 w-full mt-8"
         >
           <motion.div 
             whileHover={{ y: -5, scale: 1.02 }}
             className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300"
           >
-            <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">100+</p>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1">Projetos Entregues</p>
+            <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">5000+</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">Clientes Protegidos</p>
           </motion.div>
           <motion.div 
             whileHover={{ y: -5, scale: 1.02 }}
@@ -118,8 +155,8 @@ const HeroSection = () => {
             whileHover={{ y: -5, scale: 1.02 }}
             className="flex flex-col items-center p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-lg border border-muted/20 hover:border-primary/20 transition-all duration-300 col-span-2 md:col-span-1"
           >
-            <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">4.9/5</p>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1">Avaliação Média</p>
+            <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">24h</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">Atendimento Rápido</p>
           </motion.div>
         </motion.div>
       </div>
