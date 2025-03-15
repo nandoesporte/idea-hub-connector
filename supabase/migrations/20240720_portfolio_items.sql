@@ -85,7 +85,7 @@ BEGIN
                 setweight(to_tsvector('portuguese', coalesce(NEW.category, '')), 'C') ||
                 setweight(to_tsvector('portuguese', coalesce(NEW.client, '')), 'C');
             RETURN NEW;
-        END
+        END;
         $$ LANGUAGE plpgsql;
     END IF;
 END $$;
