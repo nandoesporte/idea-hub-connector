@@ -194,6 +194,13 @@ const PortfolioDetails = () => {
     }).format(date);
   };
 
+  // Function to handle opening the project URL in a new tab
+  const handleVisitProject = () => {
+    if (portfolioCase?.projectUrl) {
+      window.open(portfolioCase.projectUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   if (!portfolioCase) {
     return (
       <MainLayout>
@@ -242,6 +249,19 @@ const PortfolioDetails = () => {
             className="w-full object-cover aspect-video"
           />
         </div>
+
+        {/* Project URL Button (if available) */}
+        {portfolioCase.projectUrl && (
+          <div className="flex justify-center">
+            <Button 
+              onClick={handleVisitProject}
+              className="flex items-center gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Visitar o Projeto
+            </Button>
+          </div>
+        )}
 
         {/* Client and Details */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
