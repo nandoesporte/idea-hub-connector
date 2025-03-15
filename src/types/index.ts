@@ -18,6 +18,7 @@ export interface ProjectIdea {
   timeline?: string;
   features?: string[];
   userId: string;
+  clientName?: string; // Added clientName property as optional
   status: 'pending' | 'under-review' | 'approved' | 'in-progress' | 'completed' | 'rejected';
   createdAt: Date;
   updatedAt: Date;

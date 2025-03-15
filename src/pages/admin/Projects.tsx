@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +21,6 @@ import {
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
-// Componentes para exibir o status do projeto
 const ProjectStatusIcon = ({ status }: { status: ProjectIdea['status'] }) => {
   switch (status) {
     case 'pending':
@@ -62,7 +60,6 @@ const ProjectStatusBadge = ({ status }: { status: ProjectIdea['status'] }) => {
   );
 };
 
-// Componente para o card de projeto
 const AdminProjectCard = ({ project, onUpdateStatus }: { 
   project: ProjectIdea; 
   onUpdateStatus: (id: string, status: ProjectIdea['status']) => void;
@@ -150,7 +147,6 @@ const AdminProjectCard = ({ project, onUpdateStatus }: {
 };
 
 const AdminProjects = () => {
-  // Estado inicial vazio para projetos
   const [projects, setProjects] = useState<ProjectIdea[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
