@@ -32,6 +32,14 @@ const PortfolioCard = ({ portfolioCase }: { portfolioCase: PortfolioItem }) => {
     'other': 'Outro'
   };
 
+  // Handle visiting the project URL
+  const handleVisitProject = (e: React.MouseEvent, url: string | undefined) => {
+    if (url) {
+      e.preventDefault();
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <Card className="overflow-hidden h-full flex flex-col">
       <div className="relative aspect-video overflow-hidden bg-muted">
@@ -67,14 +75,22 @@ const PortfolioCard = ({ portfolioCase }: { portfolioCase: PortfolioItem }) => {
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0 mt-auto">
-        <Link to={`/portfolio/${portfolioCase.id}`} className="w-full">
-          <Button variant="outline" className="w-full justify-between">
-            <span>Ver detalhes</span>
-            {portfolioCase.link && (
-              <ExternalLink className="h-4 w-4 ml-2" />
-            )}
+        {portfolioCase.link ? (
+          <Button 
+            variant="outline" 
+            className="w-full justify-between" 
+            onClick={(e) => handleVisitProject(e, portfolioCase.link)}
+          >
+            <span>Ver projeto</span>
+            <ExternalLink className="h-4 w-4 ml-2" />
           </Button>
-        </Link>
+        ) : (
+          <Link to={`/portfolio/${portfolioCase.id}`} className="w-full">
+            <Button variant="outline" className="w-full justify-between">
+              <span>Ver detalhes</span>
+            </Button>
+          </Link>
+        )}
       </CardFooter>
     </Card>
   );
