@@ -147,71 +147,71 @@ const UserDashboard = () => {
 
           <Card className="shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle>Ações Rápidas</CardTitle>
-              <CardDescription>O que você precisa hoje?</CardDescription>
+              <CardTitle>Seguros Disponíveis</CardTitle>
+              <CardDescription>Escolha o tipo de seguro que deseja cotar</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pb-6">
-              <Link to="/submit-idea">
-                <Button className="w-full justify-start shadow-sm hover:shadow-md transition-all duration-300" size="lg">
-                  <Shield className="mr-2 h-5 w-5" /> Solicitar Nova Cotação
-                </Button>
+            <CardContent className="grid grid-cols-2 gap-4 pb-6">
+              <Link to="/submit-idea" className="group">
+                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
+                  <Heart className="h-10 w-10 text-pink-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="font-medium text-center">Seguro de Vida</h3>
+                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Proteção financeira para você e sua família</p>
+                </div>
               </Link>
-              <Link to="/projects">
-                <Button variant="outline" className="w-full justify-start hover:bg-primary/5 transition-all duration-300" size="lg">
-                  <Clock className="mr-2 h-5 w-5" /> Ver Minhas Cotações
-                </Button>
+              
+              <Link to="/submit-idea" className="group">
+                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
+                  <Home className="h-10 w-10 text-blue-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="font-medium text-center">Seguro Residencial</h3>
+                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Proteção completa para seu lar</p>
+                </div>
               </Link>
-              <a href="tel:+5511999999999">
-                <Button variant="ghost" className="w-full justify-start hover:bg-primary/5 transition-all duration-300" size="lg">
-                  <Phone className="mr-2 h-5 w-5" /> Contato Telefônico
-                </Button>
-              </a>
-              <a href="mailto:contato@idealhub.com.br">
-                <Button variant="ghost" className="w-full justify-start hover:bg-primary/5 transition-all duration-300" size="lg">
-                  <Mail className="mr-2 h-5 w-5" /> Enviar E-mail
-                </Button>
-              </a>
+              
+              <Link to="/submit-idea" className="group">
+                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
+                  <Briefcase className="h-10 w-10 text-purple-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="font-medium text-center">Seguro Empresarial</h3>
+                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Soluções para proteger seu negócio</p>
+                </div>
+              </Link>
+              
+              <Link to="/submit-idea" className="group">
+                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
+                  <Hospital className="h-10 w-10 text-green-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="font-medium text-center">Seguro Saúde</h3>
+                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Cuidados médicos para você e sua família</p>
+                </div>
+              </Link>
             </CardContent>
           </Card>
         </div>
 
         <Card className="shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle>Seguros Disponíveis</CardTitle>
-            <CardDescription>Escolha o tipo de seguro que deseja cotar</CardDescription>
+            <CardTitle>Ações Rápidas</CardTitle>
+            <CardDescription>O que você precisa hoje?</CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-6">
-            <Link to="/submit-idea" className="group">
-              <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
-                <Heart className="h-10 w-10 text-pink-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                <h3 className="font-medium text-center">Seguro de Vida</h3>
-                <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Proteção financeira para você e sua família</p>
-              </div>
+          <CardContent className="space-y-4 pb-6">
+            <Link to="/submit-idea">
+              <Button className="w-full justify-start shadow-sm hover:shadow-md transition-all duration-300" size="lg">
+                <Shield className="mr-2 h-5 w-5" /> Solicitar Nova Cotação
+              </Button>
             </Link>
-            
-            <Link to="/submit-idea" className="group">
-              <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
-                <Home className="h-10 w-10 text-blue-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                <h3 className="font-medium text-center">Seguro Residencial</h3>
-                <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Proteção completa para seu lar</p>
-              </div>
+            <Link to="/projects">
+              <Button variant="outline" className="w-full justify-start hover:bg-primary/5 transition-all duration-300" size="lg">
+                <Clock className="mr-2 h-5 w-5" /> Ver Minhas Cotações
+              </Button>
             </Link>
-            
-            <Link to="/submit-idea" className="group">
-              <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
-                <Briefcase className="h-10 w-10 text-purple-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                <h3 className="font-medium text-center">Seguro Empresarial</h3>
-                <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Soluções para proteger seu negócio</p>
-              </div>
-            </Link>
-            
-            <Link to="/submit-idea" className="group">
-              <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
-                <Hospital className="h-10 w-10 text-green-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                <h3 className="font-medium text-center">Seguro Saúde</h3>
-                <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Cuidados médicos para você e sua família</p>
-              </div>
-            </Link>
+            <a href="tel:+5511999999999">
+              <Button variant="ghost" className="w-full justify-start hover:bg-primary/5 transition-all duration-300" size="lg">
+                <Phone className="mr-2 h-5 w-5" /> Contato Telefônico
+              </Button>
+            </a>
+            <a href="mailto:contato@idealhub.com.br">
+              <Button variant="ghost" className="w-full justify-start hover:bg-primary/5 transition-all duration-300" size="lg">
+                <Mail className="mr-2 h-5 w-5" /> Enviar E-mail
+              </Button>
+            </a>
           </CardContent>
         </Card>
 
