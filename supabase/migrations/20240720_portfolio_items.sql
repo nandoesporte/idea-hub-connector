@@ -68,24 +68,3 @@ BEGIN
             USING (bucket_id = 'images');
     END IF;
 END $$;
-
--- Update the search_vector function for portfolio_items if search is needed
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM pg_trigger
-        WHERE tgname = 'portfolio_items_search_vector_update'
-    ) THEN
-        CREATE OR REPLACE FUNCTION portfolio_items_search_vector_update() RETURNS trigger AS $$
-        BEGIN
-            NEW.search_vector = 
-                setweight(to_tsvector('portuguese', coalesce(NEW.title, '')), 'A') ||
-                setweight(to_tsvector('portuguese', coalesce(NEW.description, '')), 'B') ||
-                setweight(to_tsvector('portuguese', coalesce(NEW.category, '')), 'C') ||
-                setweight(to_tsvector('portuguese', coalesce(NEW.client, '')), 'C');
-            RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-    END IF;
-END $$;

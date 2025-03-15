@@ -10,15 +10,30 @@ export const getPortfolioItems = async () => {
     const { data, error } = await supabase
       .from('portfolio_items')
       .select('*')
-      .order('completed', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Supabase error:', error);
       throw error;
     }
     
-    console.log('Portfolio items fetched:', data);
-    return data as PortfolioItem[];
+    // Transform the data to match our frontend model
+    const transformedData = data.map(item => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      category: item.category,
+      client: item.client,
+      completed: item.completed,
+      technologies: item.technologies || [],
+      featured: item.featured || false,
+      featuredImage: item.featured_image,
+      images: item.images || [],
+      link: item.link
+    }));
+    
+    console.log('Portfolio items fetched:', transformedData);
+    return transformedData as PortfolioItem[];
   } catch (error: any) {
     console.error('Error fetching portfolio items:', error.message);
     toast.error('Erro ao carregar projetos: ' + error.message);
@@ -34,11 +49,27 @@ export const getFeaturedPortfolioItems = async () => {
       .from('portfolio_items')
       .select('*')
       .eq('featured', true)
-      .order('completed', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
-    console.log('Featured portfolio items fetched:', data);
-    return data as PortfolioItem[];
+    
+    // Transform the data to match our frontend model
+    const transformedData = data.map(item => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      category: item.category,
+      client: item.client,
+      completed: item.completed,
+      technologies: item.technologies || [],
+      featured: item.featured || false,
+      featuredImage: item.featured_image,
+      images: item.images || [],
+      link: item.link
+    }));
+    
+    console.log('Featured portfolio items fetched:', transformedData);
+    return transformedData as PortfolioItem[];
   } catch (error: any) {
     console.error('Error fetching featured portfolio items:', error.message);
     return [];
@@ -56,8 +87,24 @@ export const getPortfolioItemById = async (id: string) => {
       .single();
 
     if (error) throw error;
-    console.log('Portfolio item fetched:', data);
-    return data as PortfolioItem;
+    
+    // Transform the data to match our frontend model
+    const transformedItem = {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      client: data.client,
+      completed: data.completed,
+      technologies: data.technologies || [],
+      featured: data.featured || false,
+      featuredImage: data.featured_image,
+      images: data.images || [],
+      link: data.link
+    };
+    
+    console.log('Portfolio item fetched:', transformedItem);
+    return transformedItem as PortfolioItem;
   } catch (error: any) {
     console.error('Error fetching portfolio item:', error.message);
     return null;
@@ -105,8 +152,23 @@ export const savePortfolioItem = async (item: PortfolioItem) => {
       throw error;
     }
     
-    console.log('Portfolio item saved successfully:', data);
-    return data[0] as PortfolioItem;
+    // Transform the returned data to match our frontend model
+    const savedItem = {
+      id: data[0].id,
+      title: data[0].title,
+      description: data[0].description,
+      category: data[0].category,
+      client: data[0].client,
+      completed: data[0].completed,
+      technologies: data[0].technologies || [],
+      featured: data[0].featured || false,
+      featuredImage: data[0].featured_image,
+      images: data[0].images || [],
+      link: data[0].link
+    };
+    
+    console.log('Portfolio item saved successfully:', savedItem);
+    return savedItem as PortfolioItem;
   } catch (error: any) {
     console.error('Error saving portfolio item:', error.message);
     toast.error('Erro ao salvar projeto: ' + error.message);
