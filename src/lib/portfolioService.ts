@@ -138,11 +138,21 @@ export const savePortfolioItem = async (item: PortfolioItem) => {
     if (item.completed) {
       if (item.completed instanceof Date) {
         itemToSave.completed = item.completed.toISOString();
-      } else if (typeof item.completed === 'object' && item.completed._type === 'Date') {
-        // Handle serialized Date object
-        itemToSave.completed = item.completed.value.iso;
       } else {
-        itemToSave.completed = item.completed;
+        // Handle any other format safely
+        try {
+          // Try to parse as a date if it's a string or convert from another format
+          const date = new Date(item.completed as any);
+          if (!isNaN(date.getTime())) {
+            itemToSave.completed = date.toISOString();
+          } else {
+            // If parsing fails, use current date as fallback
+            itemToSave.completed = new Date().toISOString();
+          }
+        } catch (e) {
+          console.error("Error parsing date:", e);
+          itemToSave.completed = new Date().toISOString();
+        }
       }
     } else {
       itemToSave.completed = new Date().toISOString();
