@@ -254,6 +254,16 @@ const AdminPortfolio = () => {
       }
     });
 
+  // Handle visiting the project URL
+  const handleVisitProject = (url: string | undefined) => {
+    if (url) {
+      // Open the URL in a new tab
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.error('Este projeto não possui um link definido.');
+    }
+  };
+
   if (error) {
     console.error('Error in query:', error);
   }
@@ -349,16 +359,13 @@ const AdminPortfolio = () => {
                   </CardContent>
                   <CardFooter className="justify-between pt-3 border-t">
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" asChild>
-                        {item.link ? (
-                          <a href={item.link} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Visitar
-                          </a>
-                        ) : (
-                          <span>
-                            <Eye className="h-3.5 w-3.5 mr-1" /> Visualizar
-                          </span>
-                        )}
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleVisitProject(item.link)}
+                        disabled={!item.link}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 mr-1" /> Visitar
                       </Button>
                     </div>
                     <DropdownMenu>
