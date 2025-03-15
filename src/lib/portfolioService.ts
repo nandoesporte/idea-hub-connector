@@ -12,7 +12,11 @@ export const getPortfolioItems = async () => {
       .select('*')
       .order('completed', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
+    
     console.log('Portfolio items fetched:', data);
     return data as PortfolioItem[];
   } catch (error: any) {
@@ -25,6 +29,7 @@ export const getPortfolioItems = async () => {
 // Get featured portfolio items
 export const getFeaturedPortfolioItems = async () => {
   try {
+    console.log('Fetching featured portfolio items...');
     const { data, error } = await supabase
       .from('portfolio_items')
       .select('*')
@@ -32,6 +37,7 @@ export const getFeaturedPortfolioItems = async () => {
       .order('completed', { ascending: false });
 
     if (error) throw error;
+    console.log('Featured portfolio items fetched:', data);
     return data as PortfolioItem[];
   } catch (error: any) {
     console.error('Error fetching featured portfolio items:', error.message);
@@ -42,6 +48,7 @@ export const getFeaturedPortfolioItems = async () => {
 // Get portfolio item by id
 export const getPortfolioItemById = async (id: string) => {
   try {
+    console.log(`Fetching portfolio item with ID: ${id}`);
     const { data, error } = await supabase
       .from('portfolio_items')
       .select('*')
@@ -49,6 +56,7 @@ export const getPortfolioItemById = async (id: string) => {
       .single();
 
     if (error) throw error;
+    console.log('Portfolio item fetched:', data);
     return data as PortfolioItem;
   } catch (error: any) {
     console.error('Error fetching portfolio item:', error.message);
@@ -59,6 +67,8 @@ export const getPortfolioItemById = async (id: string) => {
 // Create or update portfolio item
 export const savePortfolioItem = async (item: PortfolioItem) => {
   try {
+    console.log('Saving portfolio item:', item);
+    
     // Convert completed date to ISO string if it's a Date object
     const itemToSave = {
       ...item,
@@ -67,12 +77,19 @@ export const savePortfolioItem = async (item: PortfolioItem) => {
         : item.completed
     };
 
+    console.log('Transformed item to save:', itemToSave);
+
     const { data, error } = await supabase
       .from('portfolio_items')
       .upsert(itemToSave)
       .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error while saving:', error);
+      throw error;
+    }
+    
+    console.log('Portfolio item saved successfully:', data);
     return data[0] as PortfolioItem;
   } catch (error: any) {
     console.error('Error saving portfolio item:', error.message);
@@ -84,12 +101,14 @@ export const savePortfolioItem = async (item: PortfolioItem) => {
 // Delete portfolio item
 export const deletePortfolioItem = async (id: string) => {
   try {
+    console.log(`Deleting portfolio item with ID: ${id}`);
     const { error } = await supabase
       .from('portfolio_items')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
+    console.log('Portfolio item deleted successfully');
     return true;
   } catch (error: any) {
     console.error('Error deleting portfolio item:', error.message);
@@ -110,7 +129,10 @@ export const uploadPortfolioImage = async (file: File, portfolioId: string) => {
       .from('images')
       .upload(filePath, file);
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Supabase storage upload error:', uploadError);
+      throw uploadError;
+    }
     console.log(`Image uploaded successfully: ${filePath}`);
 
     const { data } = supabase.storage

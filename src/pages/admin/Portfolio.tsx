@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { 
   Search, MoreHorizontal, Eye, Edit, Trash, 
-  Plus, ArrowUpDown, ExternalLink, Image as ImageIcon, Upload
+  ArrowUpDown, ExternalLink, Image as ImageIcon, Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,6 +34,7 @@ const categoryOptions = [
 ];
 
 const AdminPortfolio = () => {
+  console.log('Rendering AdminPortfolio component');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -45,21 +46,26 @@ const AdminPortfolio = () => {
   const queryClient = useQueryClient();
 
   // Fetch portfolio items
-  const { data: portfolioItems = [], isLoading } = useQuery({
+  const { data: portfolioItems = [], isLoading, error } = useQuery({
     queryKey: ['portfolioItems'],
-    queryFn: getPortfolioItems
+    queryFn: getPortfolioItems,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  console.log('Query results:', { isLoading, error, portfolioItemsCount: portfolioItems.length });
 
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: savePortfolioItem,
     onSuccess: () => {
+      console.log('Portfolio item saved successfully');
       queryClient.invalidateQueries({ queryKey: ['portfolioItems'] });
       setShowProjectModal(false);
       setCurrentItem(null);
       toast.success('Projeto salvo com sucesso!');
     },
     onError: (error: any) => {
+      console.error('Error in save mutation:', error);
       toast.error(`Erro ao salvar: ${error.message}`);
     }
   });
@@ -95,6 +101,7 @@ const AdminPortfolio = () => {
   };
 
   const openCreateModal = () => {
+    console.log('Opening create modal');
     const newItem: PortfolioItem = {
       id: `temp-${Date.now()}`,
       title: '',
@@ -111,6 +118,7 @@ const AdminPortfolio = () => {
   };
 
   const openEditModal = (item: PortfolioItem) => {
+    console.log('Opening edit modal for item:', item);
     // Ensure completed is a Date object
     const itemWithDate = {
       ...item,
@@ -203,6 +211,8 @@ const AdminPortfolio = () => {
   const handleSave = () => {
     if (!currentItem) return;
     
+    console.log('Attempting to save item:', currentItem);
+    
     if (!currentItem.title.trim()) {
       toast.error('O título é obrigatório');
       return;
@@ -217,17 +227,18 @@ const AdminPortfolio = () => {
     const itemToSave = {
       ...currentItem,
       id: currentItem.id.startsWith('temp-') 
-        ? currentItem.id.replace('temp-', '') 
+        ? undefined  // Let Supabase generate a UUID
         : currentItem.id
     };
     
+    console.log('Final item to save:', itemToSave);
     saveMutation.mutate(itemToSave);
   };
 
   const filteredAndSortedItems = portfolioItems
     .filter(item => 
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.technologies.some(tech => tech.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -242,6 +253,10 @@ const AdminPortfolio = () => {
         return dateB.getTime() - dateA.getTime();
       }
     });
+
+  if (error) {
+    console.error('Error in query:', error);
+  }
 
   return (
     <AdminLayout
@@ -269,6 +284,10 @@ const AdminPortfolio = () => {
         {isLoading ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Carregando projetos...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-destructive">Erro ao carregar projetos: {(error as Error).message}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -368,7 +387,7 @@ const AdminPortfolio = () => {
               ))
             ) : (
               <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">Nenhum projeto encontrado.</p>
+                <p className="text-muted-foreground">Nenhum projeto encontrado. Clique em "Novo Projeto" para adicionar.</p>
               </div>
             )}
           </div>
@@ -412,7 +431,7 @@ const AdminPortfolio = () => {
                   <Label htmlFor="description">Descrição</Label>
                   <Textarea
                     id="description"
-                    value={currentItem.description}
+                    value={currentItem.description || ''}
                     onChange={(e) => setCurrentItem({...currentItem, description: e.target.value})}
                     placeholder="Descreva o projeto e seus principais objetivos"
                     className="resize-none"
@@ -520,7 +539,7 @@ const AdminPortfolio = () => {
                     </div>
                   </div>
                   
-                  {currentItem.images.length > 0 && (
+                  {currentItem.images && currentItem.images.length > 0 && (
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       {currentItem.images.map((img, index) => (
                         <div 

@@ -6,9 +6,9 @@ import MainLayout from '@/layouts/MainLayout';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ExternalLink, Star, Clock } from 'lucide-react';
+import { ExternalLink, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PortfolioItem, ProjectCategory } from '@/types';
+import { PortfolioItem } from '@/types';
 import { getPortfolioItems } from '@/lib/portfolioService';
 
 const PortfolioCard = ({ portfolioCase }: { portfolioCase: PortfolioItem }) => {
@@ -85,6 +85,8 @@ const Portfolio = () => {
     queryKey: ['portfolioItems'],
     queryFn: getPortfolioItems
   });
+
+  console.log('Portfolio items:', portfolioItems);
 
   return (
     <MainLayout className="max-w-6xl mx-auto">
