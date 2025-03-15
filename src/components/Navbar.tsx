@@ -46,7 +46,7 @@ const Navbar = () => {
       <div className="container flex items-center justify-between h-14 md:h-16">
         <Link to="/" className="flex items-center space-x-2">
           <span className="text-lg font-bold tracking-tight text-foreground animate-fade-in">
-            Idea<span className="text-gradient">Hub</span>
+            Ideal<span className="text-gradient">Hub</span>
           </span>
         </Link>
 
