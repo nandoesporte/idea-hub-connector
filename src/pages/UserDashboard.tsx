@@ -1,11 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, Clock, FileText, Heart, Home, Shield, Briefcase, Hospital, ArrowRight, Phone, Mail } from 'lucide-react';
+import { CheckCircle, Clock, FileText, Heart, Home, Shield, Briefcase, Hospital, ArrowRight, Phone, Mail, Cpu, Code, Database, ServerCog, BrainCircuit } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -16,36 +14,23 @@ const UserDashboard = () => {
   const [recentQuotes, setRecentQuotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock data for recent quotes - in a real app, this would come from Supabase
   useEffect(() => {
     const fetchRecentQuotes = async () => {
       setLoading(true);
       try {
-        // In a real app, you would fetch real data from Supabase
-        // const { data, error } = await supabase
-        //   .from('quotes')
-        //   .select('*')
-        //   .eq('user_id', user?.id)
-        //   .order('created_at', { ascending: false })
-        //   .limit(3);
-        
-        // if (error) throw error;
-        // setRecentQuotes(data || []);
-
-        // For now, use mock data
         setRecentQuotes([
           {
             id: '1',
             insurance_type: 'life',
             status: 'pending',
-            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
+            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
             quote_amount: 'R$ 120,00/mês'
           },
           {
             id: '2',
             insurance_type: 'home',
             status: 'approved',
-            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7), // 7 days ago
+            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
             quote_amount: 'R$ 89,90/mês'
           }
         ]);
@@ -110,50 +95,47 @@ const UserDashboard = () => {
           </p>
         </div>
 
-        {/* Main Dashboard Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Insurance Options */}
           <Card className="md:col-span-2 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle>Seguros Disponíveis</CardTitle>
-              <CardDescription>Escolha o tipo de seguro que deseja cotar</CardDescription>
+              <CardTitle>Soluções Tecnológicas</CardTitle>
+              <CardDescription>Transforme suas ideias em soluções digitais</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4 pb-6">
               <Link to="/submit-idea" className="group">
-                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
-                  <Heart className="h-10 w-10 text-pink-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="font-medium text-center">Seguro de Vida</h3>
-                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Proteção financeira para você e sua família</p>
+                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-blue-500/5">
+                  <Cpu className="h-10 w-10 text-blue-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="font-medium text-center">Desenvolvimento Web</h3>
+                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Sites, aplicações e portais personalizados</p>
                 </div>
               </Link>
               
               <Link to="/submit-idea" className="group">
-                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
-                  <Home className="h-10 w-10 text-blue-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="font-medium text-center">Seguro Residencial</h3>
-                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Proteção completa para seu lar</p>
+                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-purple-500/5">
+                  <Code className="h-10 w-10 text-purple-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="font-medium text-center">Apps Móveis</h3>
+                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Aplicativos para iOS e Android</p>
                 </div>
               </Link>
               
               <Link to="/submit-idea" className="group">
-                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
-                  <Briefcase className="h-10 w-10 text-purple-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="font-medium text-center">Seguro Empresarial</h3>
-                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Soluções para proteger seu negócio</p>
+                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-green-500/5">
+                  <Database className="h-10 w-10 text-green-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="font-medium text-center">Sistemas de Gestão</h3>
+                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">ERPs e sistemas administrativos</p>
                 </div>
               </Link>
               
               <Link to="/submit-idea" className="group">
-                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
-                  <Hospital className="h-10 w-10 text-green-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="font-medium text-center">Seguro Saúde</h3>
-                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Cuidados médicos para você e sua família</p>
+                <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-amber-500/5">
+                  <BrainCircuit className="h-10 w-10 text-amber-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="font-medium text-center">Soluções com IA</h3>
+                  <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Inteligência artificial para seu negócio</p>
                 </div>
               </Link>
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
           <Card className="shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle>Ações Rápidas</CardTitle>
@@ -184,7 +166,46 @@ const UserDashboard = () => {
           </Card>
         </div>
 
-        {/* Recent Quotes */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle>Seguros Disponíveis</CardTitle>
+            <CardDescription>Escolha o tipo de seguro que deseja cotar</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-6">
+            <Link to="/submit-idea" className="group">
+              <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
+                <Heart className="h-10 w-10 text-pink-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                <h3 className="font-medium text-center">Seguro de Vida</h3>
+                <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Proteção financeira para você e sua família</p>
+              </div>
+            </Link>
+            
+            <Link to="/submit-idea" className="group">
+              <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
+                <Home className="h-10 w-10 text-blue-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                <h3 className="font-medium text-center">Seguro Residencial</h3>
+                <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Proteção completa para seu lar</p>
+              </div>
+            </Link>
+            
+            <Link to="/submit-idea" className="group">
+              <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
+                <Briefcase className="h-10 w-10 text-purple-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                <h3 className="font-medium text-center">Seguro Empresarial</h3>
+                <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Soluções para proteger seu negócio</p>
+              </div>
+            </Link>
+            
+            <Link to="/submit-idea" className="group">
+              <div className="flex flex-col items-center p-5 rounded-lg border border-border/60 transition-all duration-300 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 bg-gradient-to-br from-transparent to-primary/5">
+                <Hospital className="h-10 w-10 text-green-500 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                <h3 className="font-medium text-center">Seguro Saúde</h3>
+                <p className="text-xs text-center text-muted-foreground mt-1 line-clamp-2">Cuidados médicos para você e sua família</p>
+              </div>
+            </Link>
+          </CardContent>
+        </Card>
+
         <Card className="shadow-sm">
           <CardHeader>
             <div className="flex justify-between items-center">

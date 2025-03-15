@@ -4,24 +4,28 @@ import ProjectForm from '@/components/ProjectForm';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import MainLayout from '@/layouts/MainLayout';
 
 const SubmitIdea = () => {
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center mb-6">
-          <Button variant="ghost" size="sm" asChild className="mr-4">
-            <Link to="/dashboard">
+    <MainLayout className="max-w-4xl mx-auto">
+      <div className="space-y-6 py-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/user-dashboard">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold">Nova Ideia de Projeto</h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Nova Ideia</h1>
+            <p className="text-muted-foreground">Descreva seu projeto para receber uma proposta personalizada</p>
+          </div>
         </div>
         
         <ProjectForm />
       </div>
-    </div>
+    </MainLayout>
   );
 };
 
