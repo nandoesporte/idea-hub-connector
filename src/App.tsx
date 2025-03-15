@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { Route, Routes, Navigate } from 'react-router-dom';
 import Index from '@/pages/Index';
 import SubmitIdea from '@/pages/SubmitIdea';
 import Register from '@/pages/Register';
@@ -54,7 +55,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, admin = false
 
 function App() {
   return (
-    <Router>
+    <>
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/submit-idea" element={<SubmitIdea />} />
@@ -93,7 +94,7 @@ function App() {
         <Route path="/admin/dashboard" element={<ProtectedRoute admin><AdminDashboard /></ProtectedRoute>} />
       </Routes>
       <Toaster richColors />
-    </Router>
+    </>
   );
 }
 
