@@ -11,7 +11,7 @@ interface VoiceCommandResult {
   duration?: number;
   type: 'meeting' | 'deadline' | 'task' | 'other';
   contactPhone?: string;
-  reminderScheduledFor?: Date; // Added this property
+  reminderScheduledFor?: Date; // Now properly defined in the interface
 }
 
 /**
