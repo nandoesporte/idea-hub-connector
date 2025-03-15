@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import UserDashboard from "./pages/UserDashboard";
 import SubmitIdea from "./pages/SubmitIdea";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -51,9 +52,9 @@ const App = () => (
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/portfolio/:id" element={<PortfolioDetails />} />
               
-              {/* Protected routes */}
+              {/* Protected routes for regular users */}
               <Route element={<ProtectedRoute />}>
-                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/user-dashboard" element={<UserDashboard />} />
                 <Route path="/submit-idea" element={<SubmitIdea />} />
                 <Route path="/projects" element={<ProjectTracking />} />
                 <Route path="/projects/:id" element={<ProjectDetails />} />
@@ -61,8 +62,9 @@ const App = () => (
                 <Route path="/project-ideas/new" element={<Navigate to="/submit-idea" replace />} />
               </Route>
               
-              {/* Admin routes */}
+              {/* Protected routes for admin users only */}
               <Route element={<ProtectedRoute requireAdmin={true} />}>
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/admin" element={<AdminPanel />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/projects" element={<AdminProjects />} />

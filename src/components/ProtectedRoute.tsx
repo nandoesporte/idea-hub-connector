@@ -32,7 +32,7 @@ const ProtectedRoute = ({ redirectPath = '/login', requireAdmin = false }: Prote
   // Check for admin role if required
   if (requireAdmin && user.user_metadata?.role !== 'admin') {
     toast.error('Acesso restrito a administradores');
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/user-dashboard" replace />;
   }
 
   // If we got here, it means the user is authenticated and has the right permissions

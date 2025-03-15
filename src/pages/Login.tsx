@@ -33,7 +33,7 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const { error } = await signIn(formData.email, formData.password);
+      const { error, data } = await signIn(formData.email, formData.password);
       
       if (error) {
         toast.error("Credenciais inválidas. Por favor, verifique seu email e senha.");
@@ -42,7 +42,14 @@ const Login = () => {
       }
       
       toast.success("Login realizado com sucesso!");
-      navigate('/dashboard');
+      
+      // Redirect based on user role
+      const isAdmin = data?.user?.user_metadata?.role === 'admin';
+      if (isAdmin) {
+        navigate('/dashboard');
+      } else {
+        navigate('/user-dashboard');
+      }
       
     } catch (error) {
       toast.error("Ocorreu um erro ao fazer login. Por favor, verifique suas credenciais.");
