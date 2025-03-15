@@ -1,62 +1,157 @@
-
 import { DashboardComponent, DashboardConfig, DashboardItem } from '@/types/dashboard';
 
-// Configuração real do dashboard
+// Mock data - em uma aplicação real, isso viria do Supabase
 const defaultDashboardConfig: DashboardConfig = {
   components: [
+    {
+      id: 'tech-solutions',
+      title: 'Soluções Tecnológicas',
+      description: 'Transforme suas ideias em soluções digitais',
+      type: 'tech',
+      enabled: true,
+      order: 1,
+      size: 'large',
+      layout: 'grid',
+      items: [
+        {
+          id: 'web-dev',
+          title: 'Desenvolvimento Web',
+          description: 'Sites, aplicações e portais personalizados',
+          icon: 'Cpu',
+          link: '/submit-idea',
+          color: 'blue',
+          enabled: true
+        },
+        {
+          id: 'mobile-apps',
+          title: 'Apps Móveis',
+          description: 'Aplicativos para iOS e Android',
+          icon: 'Code',
+          link: '/submit-idea',
+          color: 'purple',
+          enabled: true
+        },
+        {
+          id: 'management-systems',
+          title: 'Sistemas de Gestão',
+          description: 'ERPs e sistemas administrativos',
+          icon: 'Database',
+          link: '/submit-idea',
+          color: 'green',
+          enabled: true
+        },
+        {
+          id: 'ai-solutions',
+          title: 'Soluções com IA',
+          description: 'Inteligência artificial para seu negócio',
+          icon: 'BrainCircuit',
+          link: '/submit-idea',
+          color: 'amber',
+          enabled: true
+        }
+      ]
+    },
+    {
+      id: 'insurance-options',
+      title: 'Seguros Disponíveis',
+      description: 'Escolha o tipo de seguro que deseja cotar',
+      type: 'insurance',
+      enabled: true,
+      order: 2,
+      size: 'medium',
+      layout: 'grid',
+      items: [
+        {
+          id: 'life-insurance',
+          title: 'Seguro de Vida',
+          description: 'Proteção financeira para você e sua família',
+          icon: 'Heart',
+          link: '/submit-idea',
+          color: 'pink',
+          enabled: true
+        },
+        {
+          id: 'home-insurance',
+          title: 'Seguro Residencial',
+          description: 'Proteção completa para seu lar',
+          icon: 'Home',
+          link: '/submit-idea',
+          color: 'blue',
+          enabled: true
+        },
+        {
+          id: 'business-insurance',
+          title: 'Seguro Empresarial',
+          description: 'Soluções para proteger seu negócio',
+          icon: 'Briefcase',
+          link: '/submit-idea',
+          color: 'purple',
+          enabled: true
+        },
+        {
+          id: 'health-insurance',
+          title: 'Seguro Saúde',
+          description: 'Cuidados médicos para você e sua família',
+          icon: 'Hospital',
+          link: '/submit-idea',
+          color: 'green',
+          enabled: true
+        }
+      ]
+    },
     {
       id: 'quick-actions',
       title: 'Ações Rápidas',
       description: 'O que você precisa hoje?',
       type: 'action',
       enabled: true,
-      order: 1,
-      size: 'medium',
+      order: 3,
+      size: 'full',
       layout: 'list',
       items: [
         {
           id: 'new-quote',
-          title: 'Novo Projeto',
-          icon: 'PlusCircle',
-          link: '/project-ideas/new',
+          title: 'Solicitar Nova Cotação',
+          icon: 'Shield',
+          link: '/submit-idea',
           color: 'primary',
           enabled: true
         },
         {
           id: 'view-quotes',
-          title: 'Meus Projetos',
-          icon: 'LayoutGrid',
+          title: 'Ver Minhas Cotações',
+          icon: 'Clock',
           link: '/projects',
           color: 'secondary',
           enabled: true
         },
         {
-          id: 'settings',
-          title: 'Configurações',
-          icon: 'Settings',
-          link: '/dashboard/settings',
+          id: 'phone',
+          title: 'Contato Telefônico',
+          icon: 'Phone',
+          link: 'tel:+5511999999999',
           color: 'muted',
           enabled: true
         },
         {
-          id: 'help',
-          title: 'Ajuda',
-          icon: 'HelpCircle',
-          link: '/contact',
+          id: 'email',
+          title: 'Enviar E-mail',
+          icon: 'Mail',
+          link: 'mailto:contato@idealhub.com.br',
           color: 'muted',
           enabled: true
         }
       ]
     },
     {
-      id: 'recent-projects',
-      title: 'Projetos Recentes',
-      description: 'Seus projetos em andamento',
-      type: 'project',
+      id: 'recent-quotes',
+      title: 'Cotações Recentes',
+      description: 'Acompanhe o status das suas solicitações',
+      type: 'quote',
       enabled: true,
-      order: 2,
-      size: 'large',
-      layout: 'grid'
+      order: 4,
+      size: 'full',
+      layout: 'card'
     }
   ],
   lastUpdated: new Date().toISOString()

@@ -3,7 +3,7 @@ export interface DashboardComponent {
   id: string;
   title: string;
   description?: string;
-  type: 'insurance' | 'tech' | 'action' | 'quote' | 'project';
+  type: 'insurance' | 'tech' | 'action' | 'quote';
   enabled: boolean;
   order: number;
   icon?: string;
