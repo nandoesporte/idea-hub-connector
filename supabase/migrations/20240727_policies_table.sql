@@ -23,23 +23,24 @@ CREATE TABLE IF NOT EXISTS public.policies (
 ALTER TABLE public.policies ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies
-CREATE POLICY IF NOT EXISTS "Users can view their own policies"
+-- The syntax error was in these policy statements - removed "IF NOT EXISTS"
+CREATE POLICY "Users can view their own policies"
   ON public.policies
   FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can insert their own policies"
+CREATE POLICY "Users can insert their own policies"
   ON public.policies
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can update their own policies"
+CREATE POLICY "Users can update their own policies"
   ON public.policies
   FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can delete their own policies"
+CREATE POLICY "Users can delete their own policies"
   ON public.policies
   FOR DELETE
   USING (auth.uid() = user_id);
