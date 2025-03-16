@@ -465,21 +465,6 @@ export function useVoiceCommandEvents() {
         }
       }
 
-      if (result.contactPhone && isWhatsAppConfigured() && apiConnected !== false) {
-        try {
-          await sendEventReminder({
-            title: result.title,
-            date: result.date,
-            time: `${result.date.getHours().toString().padStart(2, '0')}:${result.date.getMinutes().toString().padStart(2, '0')}`,
-            duration: result.duration || 60,
-            contactPhone: result.contactPhone
-          });
-          toast.success('Notificação enviada via WhatsApp!');
-        } catch (error) {
-          console.error('Error sending WhatsApp notification:', error);
-        }
-      }
-      
       if (isWhatsAppConfigured() && apiConnected !== false) {
         try {
           const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
