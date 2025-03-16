@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -424,13 +423,11 @@ export function useVoiceCommandEvents() {
       
       console.log('Voice command processed:', result);
       
-      // Mapeia os tipos conforme necessário
       let eventType = result.type;
       
-      // Garante que o tipo esteja entre os valores aceitáveis
-      if (result.type === "meeting") {
+      if (result.type === "meeting" || result.type === "appointment") {
         eventType = "appointment";
-      } else if (result.type === "deadline") {
+      } else if (result.type === "deadline" || result.type === "reminder") {
         eventType = "reminder";
       }
       

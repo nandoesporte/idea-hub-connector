@@ -33,8 +33,10 @@ const CategoryGrid: React.FC<CategoryGridProps> = ({ type, title, className }) =
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchCategories(type);
-        setCategories(data);
+        const data = await fetchCategories();
+        // Filter categories by type if needed
+        const filteredData = data.filter(category => category.type === type);
+        setCategories(filteredData);
       } catch (err) {
         console.error(`Failed to load ${type} categories:`, err);
         setError(`Falha ao carregar categorias. Por favor, recarregue a página.`);
