@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 import { InsurancePolicy } from '@/types';
 import { createNotification } from './notificationService';
@@ -8,24 +7,29 @@ export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy
   try {
     console.log('Fetching policies for user:', userId);
     
-    // Check if table exists before querying
-    console.log('Checking if insurance_policies table exists');
-    const { data: tableExists, error: tableCheckError } = await supabase
+    // Check if table exists and has user_id column
+    console.log('Checking if insurance_policies table exists with user_id column');
+    
+    // First, check if table exists
+    const { data: tableInfo, error: schemaError } = await supabase
       .from('insurance_policies')
-      .select('count', { count: 'exact', head: true });
-
-    if (tableCheckError) {
-      console.error('Error checking if table exists:', tableCheckError);
-      // Create table if it doesn't exist
-      if (tableCheckError.message.includes('does not exist')) {
-        console.error('Table does not exist:', tableCheckError.message);
-        toast.error('Tabela de apólices não configurada. Contate o administrador.');
+      .select('id')
+      .limit(1);
+      
+    if (schemaError) {
+      console.error('Error checking if table exists:', schemaError);
+      
+      if (schemaError.message.includes('does not exist')) {
+        console.error('Table does not exist:', schemaError.message);
+        toast.error('Tabela de apólices não existe. Contate o administrador.');
         return [];
       }
-      throw tableCheckError;
+      
+      throw schemaError;
     }
     
-    // Check if user_id column exists
+    console.log('Table exists, checking columns structure');
+    
     try {
       console.log('Querying insurance_policies for user:', userId);
       const { data, error } = await supabase
@@ -207,7 +211,7 @@ interface AnalyzeResult {
   type: string;
 }
 
-export const analyzePolicyDocument = async (url: string): Promise<AnalyzeResult> => {
+export const analyzePolicyDocument = async (url: string): Promise<any> => {
   try {
     console.log('Analyzing policy document:', url);
     

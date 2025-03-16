@@ -31,7 +31,7 @@ serve(async (req) => {
     if (!openaiApiKey) {
       console.error('OpenAI API key is not set');
       return new Response(
-        JSON.stringify({ error: 'Configuração de API ausente. Contate o administrador.' }),
+        JSON.stringify({ error: 'Configuração de API do OpenAI ausente. Contate o administrador.' }),
         { status: 500, headers: responseHeaders }
       );
     }
@@ -161,11 +161,17 @@ serve(async (req) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { raw: errorText };
+        }
         console.error('OpenAI API error:', errorData);
         return new Response(
           JSON.stringify({ 
-            error: 'Erro na análise do documento', 
+            error: 'Erro na análise do documento com OpenAI', 
             details: errorData,
             status: response.status,
             statusText: response.statusText

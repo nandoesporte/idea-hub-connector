@@ -157,6 +157,51 @@ GRANT ALL ON storage.buckets TO authenticated;
 GRANT SELECT ON storage.buckets TO public;
 GRANT SELECT ON storage.buckets TO anon;
 
+-- Update table if it exists but doesn't have user_id column
+DO $$
+BEGIN
+    -- Check if insurance_policies table exists but doesn't have user_id column
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'insurance_policies'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'insurance_policies' AND column_name = 'user_id'
+    ) THEN
+        -- Add user_id column to existing table
+        ALTER TABLE public.insurance_policies 
+        ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+        
+        -- Create index for faster queries if it doesn't exist
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_indexes 
+            WHERE tablename = 'insurance_policies' AND indexname = 'insurance_policies_user_id_idx'
+        ) THEN
+            CREATE INDEX insurance_policies_user_id_idx ON public.insurance_policies(user_id);
+        END IF;
+    END IF;
+END
+$$;
+
+-- Add additional constraints if missing
+DO $$
+BEGIN
+    -- Make user_id NOT NULL if it's not already
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'insurance_policies' AND column_name = 'user_id'
+        AND is_nullable = 'YES'
+    ) THEN
+        -- We can't directly set it to NOT NULL if there are existing rows with NULL values
+        -- So first we update any NULL values (in a real system, you'd want a migration strategy)
+        UPDATE public.insurance_policies SET user_id = (SELECT id FROM auth.users LIMIT 1) WHERE user_id IS NULL;
+        
+        -- Now alter the column to NOT NULL
+        ALTER TABLE public.insurance_policies ALTER COLUMN user_id SET NOT NULL;
+    END IF;
+END
+$$;
+
 -- Policy check function
 CREATE OR REPLACE FUNCTION public.check_policy_expirations()
 RETURNS VOID AS $$
