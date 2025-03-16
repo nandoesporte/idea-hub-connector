@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import VoiceCommandsSection from '@/components/VoiceCommandsSection';
 import { useUser } from '@/contexts/UserContext';
@@ -5,10 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarDays, FileText, Lightbulb, ListChecks, Plus, User, LayoutDashboard, Shield } from 'lucide-react';
+import { CalendarDays, FileText, Lightbulb, ListChecks, Plus, User, LayoutDashboard, Shield, FileCheck } from 'lucide-react';
 import EventsList from '@/components/EventsList';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
 import { isWhatsAppConfigured } from '@/lib/whatsgwService';
+import PolicyTab from '@/components/PolicyTab';
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -94,15 +96,23 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="events" className="w-full">
-              <TabsList className="grid grid-cols-4 mb-6 bg-muted/30 p-1">
+              <TabsList className="grid grid-cols-{isAdmin ? 4 : 5} mb-6 bg-muted/30 p-1">
                 <TabsTrigger value="events" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
                   <CalendarDays className="h-4 w-4 mr-2" />
                   <span className="hidden sm:inline">Eventos</span>
                 </TabsTrigger>
-                <TabsTrigger value="ideas" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <Lightbulb className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Ideias</span>
-                </TabsTrigger>
+                {!isAdmin && (
+                  <TabsTrigger value="ideas" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <Lightbulb className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Ideias</span>
+                  </TabsTrigger>
+                )}
+                {isAdmin && (
+                  <TabsTrigger value="policies" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <FileCheck className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Apólices</span>
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="tasks" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
                   <ListChecks className="h-4 w-4 mr-2" />
                   <span className="hidden sm:inline">Tarefas</span>
@@ -135,6 +145,10 @@ export default function Dashboard() {
                     <Plus className="h-4 w-4" /> Adicionar Ideia
                   </Button>
                 </div>
+              </TabsContent>
+              
+              <TabsContent value="policies" className="mt-0">
+                <PolicyTab />
               </TabsContent>
               
               <TabsContent value="tasks" className="mt-0">
