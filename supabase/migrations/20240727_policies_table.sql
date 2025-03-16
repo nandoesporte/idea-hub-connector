@@ -22,8 +22,13 @@ CREATE TABLE IF NOT EXISTS public.policies (
 -- Enable Row Level Security
 ALTER TABLE public.policies ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own policies" ON public.policies;
+DROP POLICY IF EXISTS "Users can insert their own policies" ON public.policies;
+DROP POLICY IF EXISTS "Users can update their own policies" ON public.policies;
+DROP POLICY IF EXISTS "Users can delete their own policies" ON public.policies;
+
 -- Create RLS policies
--- The syntax error was in these policy statements - removed "IF NOT EXISTS"
 CREATE POLICY "Users can view their own policies"
   ON public.policies
   FOR SELECT
