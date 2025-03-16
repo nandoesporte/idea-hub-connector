@@ -5,11 +5,6 @@ import { toast } from "sonner";
 
 const STORAGE_BUCKET = 'policy_documents';
 
-// Função simplificada que apenas retorna true
-export const initializeStorage = async () => {
-  return true;
-};
-
 // Fetch policies
 export const fetchPolicies = async (userId: string) => {
   if (!userId) return [];
@@ -57,7 +52,7 @@ export const deletePolicy = async (id: string) => {
   return id;
 };
 
-// Upload and process policy - simplificada para foco no upload e análise
+// Upload and process policy
 export const uploadAndProcessPolicy = async (
   file: File, 
   userId: string, 
@@ -85,12 +80,18 @@ export const uploadAndProcessPolicy = async (
     }, 100);
 
     try {
-      // Upload do arquivo para o Supabase Storage
-      const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `${userId}/${fileName}`; // Simplificado: pasta direta com o ID do usuário
+      // Gerar nome de arquivo único sem caracteres especiais
+      const timestamp = Date.now();
+      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+      const fileName = `${timestamp}_${cleanFileName}`;
+      
+      // Criar caminho seguro para o arquivo
+      const filePath = `${userId}/${fileName}`;
+      
+      console.log("Iniciando upload para:", filePath);
       
       // Upload do arquivo
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -105,6 +106,8 @@ export const uploadAndProcessPolicy = async (
         toast.error("Erro ao fazer upload do arquivo");
         return;
       }
+      
+      console.log("Upload concluído com sucesso, path:", uploadData?.path);
   
       // Set progress to 100% for upload complete
       setUploadingFile(prev => prev ? { ...prev, progress: 100, status: 'processing' } : null);

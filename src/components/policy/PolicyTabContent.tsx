@@ -1,7 +1,6 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Search, FileUp, Loader2 } from "lucide-react";
 import { PolicyFile } from "@/types";
 import { useQueryClient } from '@tanstack/react-query';
@@ -35,107 +34,68 @@ const PolicyTabContent = ({
   userId
 }: PolicyTabContentProps) => {
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
-  const [componentMounted, setComponentMounted] = useState(false);
-  
-  useEffect(() => {
-    // Mark component as mounted to ensure refs are established
-    setComponentMounted(true);
-    console.log("Component mounted, fileInputRef should be available soon");
-  }, []);
 
-  // Second useEffect to check if the ref is available after the component is mounted
-  useEffect(() => {
-    if (componentMounted) {
-      console.log("File input reference status:", fileInputRef.current ? "Available" : "Not available");
-    }
-  }, [componentMounted]);
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0) return;
-    
-    const file = event.target.files[0];
-    if (file.type !== 'application/pdf') {
-      toast.error("Por favor, selecione um arquivo PDF");
+  // Função simples que cria um input de arquivo temporário, 
+  // registra os manipuladores de eventos e simula um clique
+  const triggerFileSelection = () => {
+    // Não permitir múltiplos uploads simultâneos
+    if (uploadingFile) {
+      toast.info("Aguarde o término do upload atual");
       return;
     }
-
-    setUploadingFile({
-      file,
-      progress: 0,
-      status: 'pending'
-    });
-
-    // Start the upload process
-    uploadAndProcessPolicy(
-      file, 
-      userId, 
-      setUploadingFile, 
-      () => {
-        // Success callback
-        queryClient.invalidateQueries({ queryKey: ['policies'] });
-        // Clear the file input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-      }
-    );
-  };
-
-  // Esta função controla o clique no botão de upload
-  const handleUploadButtonClick = () => {
-    console.log("Botão de upload clicado"); // Debug para confirmar que o clique está acontecendo
-    console.log("Status da referência:", fileInputRef.current ? "Disponível" : "Indisponível");
     
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    } else {
-      console.error("Referência ao input de arquivo é nula");
-      // Criando um input temporário caso a referência falhe
-      const tempInput = document.createElement('input');
-      tempInput.type = 'file';
-      tempInput.accept = '.pdf';
-      tempInput.style.display = 'none';
-      
-      // Corrigindo o problema de tipo aqui
-      tempInput.onchange = (e) => {
-        // Convertendo para o formato esperado pelo handler
-        const files = (e.target as HTMLInputElement).files;
-        if (files && files.length > 0) {
-          const file = files[0];
-          // Criar um evento sintético simplificado que é compatível com nossa função handler
-          const syntheticEvent = {
-            target: {
-              files: files
-            }
-          } as React.ChangeEvent<HTMLInputElement>;
-          
-          handleFileUpload(syntheticEvent);
-        }
-      };
-      
-      document.body.appendChild(tempInput);
-      tempInput.click();
-      // Remover após uso
-      setTimeout(() => {
-        document.body.removeChild(tempInput);
-      }, 1000);
+    if (!bucketReady) {
+      toast.error("Sistema de armazenamento não está pronto");
+      return;
     }
-  };
-
-  // Renderização inline do input para garantir que esteja no DOM
-  const renderFileInput = () => {
-    return (
-      <input
-        type="file"
-        accept=".pdf"
-        className="hidden"
-        onChange={handleFileUpload}
-        ref={fileInputRef}
-        id="policyFileInput"
-      />
-    );
+    
+    console.log("Criando input temporário para seleção de arquivo");
+    
+    // Criamos um input temporário para cada uso, evitando problemas de referência
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.pdf';
+    fileInput.style.display = 'none';
+    
+    fileInput.addEventListener('change', (e) => {
+      const input = e.target as HTMLInputElement;
+      if (!input.files || input.files.length === 0) return;
+      
+      const file = input.files[0];
+      if (file.type !== 'application/pdf') {
+        toast.error("Por favor, selecione um arquivo PDF");
+        return;
+      }
+      
+      console.log("Arquivo selecionado:", file.name);
+      
+      setUploadingFile({
+        file,
+        progress: 0,
+        status: 'pending'
+      });
+      
+      // Start the upload process
+      uploadAndProcessPolicy(
+        file, 
+        userId, 
+        setUploadingFile, 
+        () => {
+          // Success callback
+          queryClient.invalidateQueries({ queryKey: ['policies'] });
+        }
+      );
+    });
+    
+    // Adicionar ao DOM, acionar clique e depois remover
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    
+    // Remover após o clique
+    setTimeout(() => {
+      document.body.removeChild(fileInput);
+    }, 1000);
   };
 
   return (
@@ -150,7 +110,7 @@ const PolicyTabContent = ({
         <EmptyPolicyState 
           searchTerm={searchTerm}
           onClearSearch={onClearSearch}
-          onUploadClick={handleUploadButtonClick}
+          onUploadClick={triggerFileSelection}
         />
       ) : (
         <>
@@ -160,10 +120,8 @@ const PolicyTabContent = ({
           />
           
           <div className="flex justify-center mt-4">
-            {/* Render the file input directly in the component */}
-            {renderFileInput()}
             <Button 
-              onClick={handleUploadButtonClick}
+              onClick={triggerFileSelection}
               disabled={uploadingFile !== null || !bucketReady}
               className="w-full sm:w-auto"
             >
