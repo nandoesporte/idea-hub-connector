@@ -227,23 +227,6 @@ const PolicyTab = () => {
                 className="flex-1"
               />
             </div>
-            <Button 
-              className="ml-4"
-              onClick={handleUploadPolicy}
-              disabled={uploadingPolicy}
-            >
-              {uploadingPolicy ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <FileUp className="h-4 w-4 mr-2" /> 
-                  Enviar Apólice
-                </>
-              )}
-            </Button>
             <input 
               ref={fileInputRef}
               type="file" 
@@ -276,9 +259,8 @@ const PolicyTab = () => {
               )}
               {!databaseError && (
                 <Button 
-                  variant="outline" 
                   onClick={handleUploadPolicy} 
-                  className="ml-2"
+                  className="bg-blue-600 hover:bg-blue-700 text-white ml-2"
                   disabled={uploadingPolicy}
                 >
                   <Upload className="h-4 w-4 mr-2" /> 
@@ -349,6 +331,26 @@ const PolicyTab = () => {
               </Table>
             </div>
           )}
+          
+          <div className="flex justify-center mt-6">
+            <Button 
+              onClick={handleUploadPolicy}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={uploadingPolicy}
+            >
+              {uploadingPolicy ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <FileUp className="h-4 w-4 mr-2" /> 
+                  Enviar apólice para análise
+                </>
+              )}
+            </Button>
+          </div>
           
           <div className="bg-muted/30 rounded-lg p-4 mt-6">
             <h3 className="text-sm font-medium flex items-center gap-2 mb-2">
