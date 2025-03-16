@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -114,7 +113,7 @@ const AdminCategories = () => {
           description: categoryState.description,
           icon: categoryState.icon,
           link: categoryState.link,
-          type: 'tech', // Restrict to 'tech' type
+          type: categoryState.type,
           iconColor: categoryState.iconColor,
           order: categoryState.order
         }
@@ -152,9 +151,9 @@ const AdminCategories = () => {
         description: newCategory.description,
         icon: newCategory.icon,
         link: newCategory.link || "",
-        type: "tech", // Restricting to only 'tech'
+        type: "tech",
         iconColor: newCategory.iconColor || "#000000",
-        order: Array.isArray(categories) ? categories.length + 1 : 1 // Adding order automatically
+        order: Array.isArray(categories) ? categories.length + 1 : 1
       });
 
       setShowAddDialog(false);
@@ -188,17 +187,16 @@ const AdminCategories = () => {
     }
   }) : [];
 
-  // Ajustando o tipo para ser apenas 'tech' onde há erro de tipo
   const handleResetForm = () => {
     setCategoryState({
-      type: "tech", // Forçando o tipo para ser apenas 'tech'
       id: categoryState.id,
       link: categoryState.link,
       title: categoryState.title,
       icon: categoryState.icon,
       description: categoryState.description,
       iconColor: categoryState.iconColor,
-      order: categoryState.order // Garantindo que order esteja presente
+      type: categoryState.type,
+      order: categoryState.order
     });
   };
 
@@ -288,7 +286,6 @@ const AdminCategories = () => {
           </div>
         )}
 
-        {/* Add Category Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -356,7 +353,6 @@ const AdminCategories = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Category Dialog */}
         <Dialog open={!!categoryState.id} onOpenChange={() => setCategoryState({ ...categoryState, id: '' })}>
           <DialogContent className="max-w-md">
             <DialogHeader>

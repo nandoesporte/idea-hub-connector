@@ -1,21 +1,17 @@
-
 import { supabase } from './supabase';
 import { CategoryItem } from '@/types';
 
-export const fetchCategories = async (type?: 'tech') => {
-  let query = supabase.from('categories').select('*');
-  
-  if (type) {
-    query = query.eq('type', type);
-  }
-  
-  const { data, error } = await query.order('title');
-  
+export const fetchCategories = async () => {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('order', { ascending: true });
+
   if (error) {
     console.error('Error fetching categories:', error);
     throw error;
   }
-  
+
   return data as CategoryItem[];
 };
 

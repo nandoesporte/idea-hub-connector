@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   email: string;
@@ -103,7 +104,7 @@ export type VoiceCommandEvent = {
   duration?: number;
   contactName?: string;
   contactPhone?: string;
-  type: 'appointment' | 'reminder' | 'task' | 'other';
+  type: 'appointment' | 'reminder' | 'task' | 'other' | 'meeting' | 'deadline';
   status: 'pending' | 'completed' | 'cancelled';
   userId: string;
   createdAt: Date;

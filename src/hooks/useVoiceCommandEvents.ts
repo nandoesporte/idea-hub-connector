@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -423,10 +424,14 @@ export function useVoiceCommandEvents() {
       
       console.log('Voice command processed:', result);
       
+      // Mapeia os tipos conforme necessário
+      let eventType = result.type;
+      
+      // Garante que o tipo esteja entre os valores aceitáveis
       if (result.type === "meeting") {
-        result.type = "appointment";
+        eventType = "appointment";
       } else if (result.type === "deadline") {
-        result.type = "reminder";
+        eventType = "reminder";
       }
       
       if (!result.contactPhone) {
@@ -441,6 +446,7 @@ export function useVoiceCommandEvents() {
       
       const saveResult = await saveVoiceCommandEvent({
         ...result,
+        type: eventType as VoiceCommandEvent['type'],
         reminderScheduledFor: reminderTime
       });
       
@@ -459,9 +465,11 @@ export function useVoiceCommandEvents() {
         description: result.description || '',
         date: result.date,
         duration: result.duration || 60,
-        type: result.type,
+        type: eventType as VoiceCommandEvent['type'],
         contactPhone: result.contactPhone,
-        createdAt: new Date()
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       if (isWhatsAppConfigured()) {
