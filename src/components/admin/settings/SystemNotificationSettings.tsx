@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Bell, Calendar, Clock, FileBarChart, Users, Briefcase, AlarmClock } from 'lucide-react';
+import { Bell, Calendar, Clock, FileBarChart, Users, Briefcase, AlarmClock, FileText } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -18,6 +18,7 @@ interface NotificationSettings {
     newProjects: boolean;
     newUsers: boolean;
     dailyReport: boolean;
+    policyRenewals: boolean;
   };
   channels: {
     email: boolean;
@@ -159,7 +160,7 @@ const SystemNotificationSettings: React.FC<SystemNotificationSettingsProps> = ({
                 />
                 <div className="space-y-1 leading-none">
                   <Label htmlFor="notifyPolicyRenewals" className="flex items-center gap-2">
-                    <FileCheck className="h-4 w-4" />
+                    <FileText className="h-4 w-4" />
                     Renovações de Apólices
                   </Label>
                   <p className="text-sm text-muted-foreground">
