@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { Policy, PolicyFile } from "@/types";
 import { toast } from "sonner";
@@ -16,15 +17,24 @@ export const checkStorageAccess = async (userId: string): Promise<boolean> => {
       return false;
     }
     
-    // Skip bucket checking/creation entirely and directly test file access
-    // Try to access user folder directly without attempting to create the bucket
+    // Get bucket information to verify it exists
+    const { error: bucketError } = await supabase.storage
+      .getBucket(STORAGE_BUCKET);
+      
+    if (bucketError) {
+      console.error("Error getting bucket info:", bucketError);
+      return false;
+    }
+    
+    // Try to list files in the user folder to verify access
     try {
       const { error: listError } = await supabase.storage
         .from(STORAGE_BUCKET)
         .list(userId);
       
       if (listError) {
-        // If we can't access the folder, try to create it with a placeholder file
+        // If we can't list files, try to create user folder with a placeholder
+        console.log("Attempting to create user folder with placeholder file");
         const emptyFile = new Blob([''], { type: 'text/plain' });
         const placeholderPath = `${userId}/.placeholder`;
         
@@ -33,14 +43,16 @@ export const checkStorageAccess = async (userId: string): Promise<boolean> => {
           .upload(placeholderPath, emptyFile, { upsert: true });
         
         if (uploadError) {
-          console.error("Error creating user folder:", uploadError);
+          console.error("Failed to create user folder:", uploadError);
           return false;
         }
+        
+        return true;
       }
       
       return true;
     } catch (error) {
-      console.error("Error in storage access check:", error);
+      console.error("Error checking user folder access:", error);
       return false;
     }
   } catch (error) {
@@ -96,7 +108,7 @@ export const deletePolicy = async (id: string) => {
   return id;
 };
 
-// Upload and process policy
+// Upload and process policy with simplified storage handling
 export const uploadAndProcessPolicy = async (
   file: File, 
   userId: string, 
@@ -110,7 +122,7 @@ export const uploadAndProcessPolicy = async (
   }
 
   try {
-    // Verify storage is accessible first
+    // Verify storage access first
     const storageAccessible = await checkStorageAccess(userId);
     if (!storageAccessible) {
       toast.error("Sistema de armazenamento não está disponível");
@@ -142,7 +154,7 @@ export const uploadAndProcessPolicy = async (
       
       console.log("Starting upload to:", filePath);
       
-      // Upload file
+      // Upload file with error handling
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
         .upload(filePath, file, {

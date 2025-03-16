@@ -14,22 +14,29 @@ const PolicyTab = () => {
   const [bucketReady, setBucketReady] = useState(false);
   const [configuringStorage, setConfiguringStorage] = useState(false);
 
-  // Use React Query to fetch policies
-  const { data: policies = [], isLoading, refetch } = useQuery({
+  // Use React Query to fetch policies with proper error handling
+  const { data: policies = [], isLoading, refetch, error } = useQuery({
     queryKey: ['policies', user?.id],
     queryFn: async () => fetchPolicies(user?.id || ''),
-    enabled: !!user && bucketReady
+    enabled: !!user && bucketReady,
+    retry: 2,
+    onError: (err) => {
+      console.error("Error fetching policies:", err);
+    }
   });
 
-  // Verify storage access when component mounts or when bucketReady changes
+  // Continuously check storage access if not ready
   useEffect(() => {
     if (user?.id && !bucketReady && !configuringStorage) {
       const verifyAccess = async () => {
         try {
           const isAccessible = await checkStorageAccess(user.id);
           if (isAccessible) {
+            console.log("Storage access verified successfully");
             setBucketReady(true);
             refetch();
+          } else {
+            console.log("Storage access check failed");
           }
         } catch (error) {
           console.error("Error verifying storage access:", error);

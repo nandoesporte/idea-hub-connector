@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Search, FileUp, Loader2, AlertTriangle, RefreshCcw } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -106,10 +106,13 @@ const PolicyTabContent = ({
   const retryStorageSetup = async () => {
     setRetryingStorage(true);
     try {
+      console.log("Retrying storage setup for user:", userId);
       const isAccessible = await checkStorageAccess(userId);
       if (isAccessible) {
         queryClient.invalidateQueries({ queryKey: ['policies'] });
         toast.success("Sistema de armazenamento disponível agora");
+        // Update parent component state
+        window.location.reload(); // Force reload to update all states
       } else {
         toast.error("Sistema de armazenamento ainda não está disponível");
       }

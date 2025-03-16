@@ -36,58 +36,70 @@ const StorageBucketInitializer = ({
           return;
         }
         
-        // Skip bucket creation and directly try to access the user's folder
-        // This is the critical change - we don't try to create the bucket at all,
-        // since we know it exists at the database level
-        console.log("Directly checking user folder access");
-        await verifyUserFolder();
-      } catch (err) {
-        console.error("Unexpected error initializing storage:", err);
-        toast.error("Erro ao configurar sistema de armazenamento");
-        setBucketReady(false);
-        setConfiguringStorage(false);
-      }
-    };
-    
-    const verifyUserFolder = async () => {
-      try {
-        // Try to list files in the user's folder to verify access
-        const { error: folderError } = await supabase.storage
+        // Get bucket information without trying to create it
+        const { data: bucketData, error: bucketError } = await supabase.storage
+          .getBucket('policy_documents');
+          
+        if (bucketError) {
+          console.error("Error getting bucket info:", bucketError);
+          
+          // We don't have access to the bucket or it doesn't exist
+          // This is a critical error that needs admin attention
+          setBucketReady(false);
+          setConfiguringStorage(false);
+          toast.error("Erro de acesso ao sistema de armazenamento. Entre em contato com o suporte.");
+          return;
+        }
+        
+        console.log("Bucket exists, checking user folder access");
+        
+        // Try to list files in the user folder
+        const { data: folderData, error: folderError } = await supabase.storage
           .from('policy_documents')
           .list(userId);
           
         if (folderError) {
-          console.error("Error accessing user folder:", folderError);
+          console.error("Error listing user folder:", folderError);
           
-          // Try to create an empty placeholder file to establish the folder
-          const emptyFile = new Blob([''], { type: 'text/plain' });
-          const placeholderPath = `${userId}/.placeholder`;
+          // Try to create user folder by uploading a placeholder file
+          console.log("Attempting to create user folder with placeholder file");
           
-          const { error: uploadError } = await supabase.storage
-            .from('policy_documents')
-            .upload(placeholderPath, emptyFile, { upsert: true });
-          
-          if (uploadError) {
-            console.error("Error creating user folder:", uploadError);
+          try {
+            const emptyFile = new Blob([''], { type: 'text/plain' });
+            const placeholderPath = `${userId}/.placeholder`;
+            
+            const { error: placeholderError } = await supabase.storage
+              .from('policy_documents')
+              .upload(placeholderPath, emptyFile, { upsert: true });
+              
+            if (placeholderError) {
+              console.error("Failed to create user folder:", placeholderError);
+              setBucketReady(false);
+              setConfiguringStorage(false);
+              toast.error("Erro de permissão no sistema de armazenamento. Entre em contato com o suporte.");
+              return;
+            }
+            
+            console.log("Successfully created user folder");
+            setBucketReady(true);
+            setConfiguringStorage(false);
+          } catch (placeholderErr) {
+            console.error("Exception creating user folder:", placeholderErr);
             setBucketReady(false);
             setConfiguringStorage(false);
-            toast.error("Erro ao criar pasta do usuário. Permissão negada.");
-            return;
+            toast.error("Erro ao configurar pasta do usuário. Entre em contato com o suporte.");
           }
-          
-          console.log("User folder created successfully");
         } else {
+          // User folder exists and is accessible
           console.log("User folder exists and is accessible");
+          setBucketReady(true);
+          setConfiguringStorage(false);
         }
-        
-        // Storage is ready
-        setBucketReady(true);
-        setConfiguringStorage(false);
-      } catch (folderError) {
-        console.error("Error checking user folder:", folderError);
+      } catch (err) {
+        console.error("Unexpected error initializing storage:", err);
         setBucketReady(false);
         setConfiguringStorage(false);
-        toast.error("Erro ao verificar pasta do usuário");
+        toast.error("Erro inesperado ao configurar armazenamento. Entre em contato com o suporte.");
       }
     };
     
