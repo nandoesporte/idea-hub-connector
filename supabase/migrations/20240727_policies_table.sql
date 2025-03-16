@@ -57,34 +57,59 @@ WHERE NOT EXISTS (
   SELECT 1 FROM storage.buckets WHERE name = 'policy_documents'
 );
 
--- Create bucket policies using the correct approach
-DO $$
-BEGIN
-  -- Create storage policy for authenticated users to read their own files
+-- Create storage policies for policy documents
+BEGIN;
+  -- Policy: Allow authenticated users to read their own files
+  DELETE FROM storage.policies WHERE name = 'policy_documents_read';
   INSERT INTO storage.policies (name, definition)
-  SELECT 
+  VALUES (
     'policy_documents_read',
-    '{"version": "1.0", "statements": [{"effect": "allow", "principal": {"id": "authenticated"}, "action": "object:read", "resource": "policy_documents/policies/${auth.uid}/*"}]}'
-  WHERE NOT EXISTS (
-    SELECT 1 FROM storage.policies WHERE name = 'policy_documents_read'
+    jsonb_build_object(
+      'version', '1.0',
+      'statements', jsonb_build_array(
+        jsonb_build_object(
+          'effect', 'allow',
+          'principal', jsonb_build_object('id', 'authenticated'),
+          'action', 'object:read',
+          'resource', 'policy_documents/policies/${auth.uid}/*'
+        )
+      )
+    )
   );
-  
-  -- Create storage policy for authenticated users to upload their own files
+
+  -- Policy: Allow authenticated users to upload their own files
+  DELETE FROM storage.policies WHERE name = 'policy_documents_create';
   INSERT INTO storage.policies (name, definition)
-  SELECT 
+  VALUES (
     'policy_documents_create',
-    '{"version": "1.0", "statements": [{"effect": "allow", "principal": {"id": "authenticated"}, "action": "object:create", "resource": "policy_documents/policies/${auth.uid}/*"}]}'
-  WHERE NOT EXISTS (
-    SELECT 1 FROM storage.policies WHERE name = 'policy_documents_create'
+    jsonb_build_object(
+      'version', '1.0',
+      'statements', jsonb_build_array(
+        jsonb_build_object(
+          'effect', 'allow',
+          'principal', jsonb_build_object('id', 'authenticated'),
+          'action', 'object:create',
+          'resource', 'policy_documents/policies/${auth.uid}/*'
+        )
+      )
+    )
   );
-  
-  -- Create storage policy for authenticated users to delete their own files
+
+  -- Policy: Allow authenticated users to delete their own files
+  DELETE FROM storage.policies WHERE name = 'policy_documents_delete';
   INSERT INTO storage.policies (name, definition)
-  SELECT 
+  VALUES (
     'policy_documents_delete',
-    '{"version": "1.0", "statements": [{"effect": "allow", "principal": {"id": "authenticated"}, "action": "object:delete", "resource": "policy_documents/policies/${auth.uid}/*"}]}'
-  WHERE NOT EXISTS (
-    SELECT 1 FROM storage.policies WHERE name = 'policy_documents_delete'
+    jsonb_build_object(
+      'version', '1.0',
+      'statements', jsonb_build_array(
+        jsonb_build_object(
+          'effect', 'allow',
+          'principal', jsonb_build_object('id', 'authenticated'),
+          'action', 'object:delete',
+          'resource', 'policy_documents/policies/${auth.uid}/*'
+        )
+      )
+    )
   );
-END
-$$;
+COMMIT;
