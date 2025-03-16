@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,12 +27,42 @@ import { supabase } from "@/lib/supabase";
 import { useUser } from "@/contexts/UserContext";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+const STORAGE_BUCKET = 'policy_documents';
+
 const PolicyTab = () => {
   const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+
+  // Ensure the storage bucket exists
+  useEffect(() => {
+    const createBucketIfNotExists = async () => {
+      try {
+        // Check if the bucket already exists
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const bucketExists = buckets?.some(bucket => bucket.name === STORAGE_BUCKET);
+        
+        if (!bucketExists) {
+          // Create the bucket if it doesn't exist
+          const { error } = await supabase.storage.createBucket(STORAGE_BUCKET, {
+            public: true
+          });
+          
+          if (error) {
+            console.error("Error creating storage bucket:", error);
+          } else {
+            console.log("Storage bucket created successfully");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking/creating bucket:", error);
+      }
+    };
+    
+    createBucketIfNotExists();
+  }, []);
 
   // Use React Query to fetch policies
   const { data: policies = [], isLoading } = useQuery({
@@ -137,11 +168,19 @@ const PolicyTab = () => {
         });
       }, 100);
 
+      // Ensure the user folder exists
+      const userFolderPath = `policies/${user.id}`;
+      
       // 1. Upload the file to Supabase Storage
       const fileName = `${Date.now()}_${file.name}`;
+      const filePath = `${userFolderPath}/${fileName}`;
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('policy_documents')
-        .upload(`policies/${user.id}/${fileName}`, file);
+        .from(STORAGE_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
       clearInterval(progressInterval);
       
@@ -157,8 +196,8 @@ const PolicyTab = () => {
 
       // Get the file URL
       const { data: { publicUrl } } = supabase.storage
-        .from('policy_documents')
-        .getPublicUrl(`policies/${user.id}/${fileName}`);
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(filePath);
 
       // 2. Convert PDF to base64 for GPT-4 Vision
       const reader = new FileReader();
