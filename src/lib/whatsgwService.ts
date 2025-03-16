@@ -1,586 +1,441 @@
 import { supabase } from './supabase';
 
 // Store API key in localStorage
-export const setApiKey = (apiKey: string) => {
-  localStorage.setItem('whatsgw_api_key', apiKey);
-  console.log('API key saved');
+const API_KEY_STORAGE_KEY = 'whatsgw_api_key';
+const API_URL_STORAGE_KEY = 'whatsgw_api_url';
+const LOGS_STORAGE_KEY = 'whatsgw_logs';
+
+// Check if WhatsApp is configured
+export const isWhatsAppConfigured = () => {
+  try {
+    // Use import.meta.env for Vite instead of process.env
+    const envApiKey = import.meta.env.VITE_WHATSGW_API_KEY;
+    const envApiUrl = import.meta.env.VITE_WHATSGW_API_URL;
+    
+    // First check for environment variables
+    if (envApiKey && envApiUrl) {
+      return true;
+    }
+    
+    // Then check localStorage
+    const storedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+    const storedApiUrl = localStorage.getItem(API_URL_STORAGE_KEY);
+    
+    return !!(storedApiKey && storedApiUrl);
+  } catch (error) {
+    console.error('Error checking WhatsApp configuration:', error);
+    return false;
+  }
 };
 
-// Get API key from localStorage
-export const getApiKey = (): string => {
-  return localStorage.getItem('whatsgw_api_key') || '';
+// Set API key and URL
+export const setApiKey = (apiKey: string, apiUrl: string) => {
+  localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
+  localStorage.setItem(API_URL_STORAGE_KEY, apiUrl);
 };
 
-// Log history management
-interface LogEntry {
-  timestamp: Date;
-  type: 'info' | 'error' | 'warning';
-  operation: string;
-  message: string;
-  details?: any;
-}
+// Get API key
+export const getApiKey = () => {
+  // Try to get from environment first
+  const envApiKey = import.meta.env.VITE_WHATSGW_API_KEY;
+  const envApiUrl = import.meta.env.VITE_WHATSGW_API_URL;
+  
+  if (envApiKey && envApiUrl) {
+    return { apiKey: envApiKey, apiUrl: envApiUrl };
+  }
+  
+  // Fall back to localStorage
+  return {
+    apiKey: localStorage.getItem(API_KEY_STORAGE_KEY) || '',
+    apiUrl: localStorage.getItem(API_URL_STORAGE_KEY) || ''
+  };
+};
 
 // Add a log entry
-export const addLogEntry = (entry: LogEntry) => {
+export const addLogEntry = (entry: { action: string; status: 'success' | 'error'; message: string; timestamp: string; details?: any }) => {
   try {
-    const existingLogs = getLogHistory();
-    const updatedLogs = [entry, ...existingLogs];
-    localStorage.setItem('whatsgw_logs', JSON.stringify(updatedLogs));
+    const logs = getLogHistory();
+    logs.unshift(entry);
+    
+    // Keep only the last 100 logs
+    const trimmedLogs = logs.slice(0, 100);
+    localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(trimmedLogs));
   } catch (error) {
     console.error('Error adding log entry:', error);
   }
 };
 
 // Get log history
-export const getLogHistory = (): LogEntry[] => {
+export const getLogHistory = () => {
   try {
-    const savedLogs = localStorage.getItem('whatsgw_logs');
-    if (savedLogs) {
-      const parsedLogs = JSON.parse(savedLogs);
-      return Array.isArray(parsedLogs) ? parsedLogs.map(log => ({
-        ...log,
-        timestamp: new Date(log.timestamp)
-      })) : [];
-    }
+    const logsJson = localStorage.getItem(LOGS_STORAGE_KEY);
+    return logsJson ? JSON.parse(logsJson) : [];
   } catch (error) {
     console.error('Error getting log history:', error);
+    return [];
   }
-  return [];
 };
 
 // Clear log history
 export const clearLogHistory = () => {
-  localStorage.removeItem('whatsgw_logs');
+  localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify([]));
 };
 
-// Test connection to the API
-export const sendTestMessage = async (phone: string): Promise<boolean> => {
+// Send a test message
+export const sendTestMessage = async () => {
   try {
-    const apiKey = getApiKey();
-    const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
+    const { apiKey, apiUrl } = getApiKey();
     
-    if (!apiKey || !apiURL) {
-      addLogEntry({
-        timestamp: new Date(),
-        type: 'error',
-        operation: 'send-message',
-        message: 'API key or URL not configured'
-      });
-      return false;
+    if (!apiKey || !apiUrl) {
+      throw new Error('API key or URL not configured');
     }
-
-    const formattedPhone = phone.startsWith('55') ? phone : `55${phone}`;
     
-    addLogEntry({
-      timestamp: new Date(),
-      type: 'info',
-      operation: 'send-message',
-      message: `Sending test message to ${formattedPhone}`
-    });
-    
-    const response = await fetch(`${apiURL}/message`, {
+    const response = await fetch(`${apiUrl}/send`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        phone: '5511999999999', // Default test number
+        message: 'Test message from WhatsGW integration',
+        isGroup: false
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to send test message');
+    }
+    
+    addLogEntry({
+      action: 'TEST_MESSAGE',
+      status: 'success',
+      message: 'Test message sent successfully',
+      timestamp: new Date().toISOString(),
+      details: data
+    });
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error sending test message:', error);
+    
+    addLogEntry({
+      action: 'TEST_MESSAGE',
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+    
+    return { success: false, error };
+  }
+};
+
+// Send a test message to a specific number
+export const sendTestToSpecificNumber = async (phoneNumber: string) => {
+  try {
+    const { apiKey, apiUrl } = getApiKey();
+    
+    if (!apiKey || !apiUrl) {
+      throw new Error('API key or URL not configured');
+    }
+    
+    // Format the phone number (remove any non-digit characters)
+    const formattedPhone = phoneNumber.replace(/\D/g, '');
+    
+    const response = await fetch(`${apiUrl}/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         phone: formattedPhone,
-        message: "🔔 *Mensagem de Teste*\n\nEsta é uma mensagem automática para testar a integração com o WhatsApp. Se você está recebendo esta mensagem, a conexão foi estabelecida com sucesso!"
+        message: 'Test message from WhatsGW integration',
+        isGroup: false
       })
     });
     
+    const data = await response.json();
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      addLogEntry({
-        timestamp: new Date(),
-        type: 'error',
-        operation: 'send-message',
-        message: `Failed to send test message: ${response.status} ${response.statusText}`,
-        details: errorText
-      });
-      return false;
+      throw new Error(data.message || 'Failed to send test message');
     }
     
-    const data = await response.json();
     addLogEntry({
-      timestamp: new Date(),
-      type: 'info',
-      operation: 'send-message',
-      message: 'Test message sent successfully',
+      action: 'TEST_MESSAGE_SPECIFIC',
+      status: 'success',
+      message: `Test message sent successfully to ${phoneNumber}`,
+      timestamp: new Date().toISOString(),
       details: data
     });
-    return true;
+    
+    return { success: true, data };
   } catch (error) {
-    addLogEntry({
-      timestamp: new Date(),
-      type: 'error',
-      operation: 'send-message',
-      message: 'Error sending test message',
-      details: error
-    });
-    console.error('Error sending test message:', error);
-    return false;
-  }
-};
-
-// Send test to specific number for direct testing
-export const sendTestToSpecificNumber = async (): Promise<boolean> => {
-  try {
-    const apiKey = getApiKey();
-    const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
-    
-    if (!apiKey || !apiURL) {
-      addLogEntry({
-        timestamp: new Date(),
-        type: 'error',
-        operation: 'direct-test',
-        message: 'API key or URL not configured'
-      });
-      return false;
-    }
-    
-    const testNumber = '5544988057213'; // Hardcoded test number
+    console.error(`Error sending test message to ${phoneNumber}:`, error);
     
     addLogEntry({
-      timestamp: new Date(),
-      type: 'info',
-      operation: 'direct-test',
-      message: `Sending direct test message to ${testNumber}`
+      action: 'TEST_MESSAGE_SPECIFIC',
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
     });
     
-    const response = await fetch(`${apiURL}/message`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        phone: testNumber,
-        message: "🔔 *Teste Direto*\n\nEsta é uma mensagem de teste direto para o número 44988057213. Se você está recebendo esta mensagem, a conexão foi estabelecida com sucesso!"
-      })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      addLogEntry({
-        timestamp: new Date(),
-        type: 'error',
-        operation: 'direct-test',
-        message: `Failed to send direct test message: ${response.status} ${response.statusText}`,
-        details: errorText
-      });
-      return false;
-    }
-    
-    const data = await response.json();
-    addLogEntry({
-      timestamp: new Date(),
-      type: 'info',
-      operation: 'direct-test',
-      message: 'Direct test message sent successfully',
-      details: data
-    });
-    return true;
-  } catch (error) {
-    addLogEntry({
-      timestamp: new Date(),
-      type: 'error',
-      operation: 'direct-test',
-      message: 'Error sending direct test message',
-      details: error
-    });
-    console.error('Error sending direct test message:', error);
-    return false;
+    return { success: false, error };
   }
 };
 
-export const registerWhatsAppWebhook = (webhookUrl: string) => {
-  localStorage.setItem('whatsgw_webhook_url', webhookUrl);
-  console.log('Webhook URL saved:', webhookUrl);
-};
-
-export const isWhatsAppConfigured = (): boolean => {
-  const apiKey = process.env.NEXT_PUBLIC_WHATSGW_API_KEY;
-  const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
-  return !!apiKey && !!apiURL;
-};
-
-export const testApiConnection = async (): Promise<boolean> => {
-  try {
-    const apiKey = process.env.NEXT_PUBLIC_WHATSGW_API_KEY;
-    const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
-    
-    if (!apiKey || !apiURL) {
-      console.warn('WhatsApp API key or URL not configured.');
-      return false;
-    }
-    
-    const response = await fetch(`${apiURL}/health`, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      console.error('API health check failed:', response.status, response.statusText);
-      return false;
-    }
-    
-    const data = await response.json();
-    
-    if (data.status !== 'ok') {
-      console.warn('API health status not OK:', data.status);
-      return false;
-    }
-    
-    console.log('API health check successful');
-    return true;
-  } catch (error) {
-    console.error('Error testing API connection:', error);
-    return false;
+// Send a reminder message for an event
+export const sendEventReminder = async (
+  event: { 
+    title: string; 
+    description: string; 
+    date: Date; 
+    duration: number; 
+    contactPhone: string; 
   }
-};
-
-export const sendWhatsAppMessage = async ({ phone, message }: { phone: string; message: string; }): Promise<boolean> => {
+) => {
   try {
-    const apiKey = process.env.NEXT_PUBLIC_WHATSGW_API_KEY;
-    const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
-    
-    if (!apiKey || !apiURL) {
-      console.warn('WhatsApp API key or URL not configured.');
-      return false;
+    if (!isWhatsAppConfigured()) {
+      console.log('WhatsApp not configured, skipping reminder');
+      return { success: false, error: 'WhatsApp not configured' };
     }
-    
-    const response = await fetch(`${apiURL}/message`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        phone: phone.startsWith('55') ? phone : `55${phone}`,
-        message: message
-      })
-    });
-    
-    if (!response.ok) {
-      console.error('Failed to send WhatsApp message:', response.status, response.statusText);
-      return false;
-    }
-    
-    const data = await response.json();
-    console.log('WhatsApp message sent:', data);
-    return true;
-  } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
-    return false;
-  }
-};
 
-export const sendEventReminder = async ({ phone, eventTitle, eventDate }: { phone: string; eventTitle: string; eventDate: Date; }): Promise<boolean> => {
-  try {
-    const apiKey = process.env.NEXT_PUBLIC_WHATSGW_API_KEY;
-    const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
+    const { apiKey, apiUrl } = getApiKey();
     
-    if (!apiKey || !apiURL) {
-      console.warn('WhatsApp API key or URL not configured.');
-      return false;
-    }
-    
-    const formattedDate = new Intl.DateTimeFormat('pt-BR', { 
-      day: '2-digit', month: '2-digit', year: 'numeric' 
-    }).format(eventDate);
-    
-    const time = `${eventDate.getHours().toString().padStart(2, '0')}:${eventDate.getMinutes().toString().padStart(2, '0')}`;
-    
-    const message = `🗓️ *Lembrete de Compromisso*\n\n` +
-      `Olá! Este é um lembrete para o seu compromisso:\n\n` +
-      `*${eventTitle}*\n` +
-      `📅 Data: ${formattedDate}\n` +
-      `⏰ Horário: ${time}\n\n` +
-      `Para mais detalhes ou para cancelar, entre em contato conosco.`;
-    
-    const response = await fetch(`${apiURL}/message`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        phone: phone.startsWith('55') ? phone : `55${phone}`,
-        message: message
-      })
-    });
-    
-    if (!response.ok) {
-      console.error('Failed to send WhatsApp reminder:', response.status, response.statusText);
-      return false;
-    }
-    
-    const data = await response.json();
-    console.log('WhatsApp reminder sent:', data);
-    return true;
-  } catch (error) {
-    console.error('Error sending WhatsApp reminder:', error);
-    return false;
-  }
-};
-
-export const notifyAdminsAboutEvent = async (event: { title: string; description: string; date: Date; duration: number; contactPhone: string; }): Promise<number> => {
-  try {
-    const apiKey = process.env.NEXT_PUBLIC_WHATSGW_API_KEY;
-    const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
-    
-    if (!apiKey || !apiURL) {
-      console.warn('WhatsApp API key or URL not configured.');
-      return 0;
-    }
-    
-    const formattedDate = new Intl.DateTimeFormat('pt-BR', { 
-      day: '2-digit', month: '2-digit', year: 'numeric' 
+    // Format the date for the message
+    const formattedDate = new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     }).format(event.date);
+
+    // Format the phone number (remove any non-digit characters)
+    const formattedPhone = event.contactPhone.replace(/\D/g, '');
     
-    const time = `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`;
+    // Create the message
+    const message = `🔔 *Lembrete de Evento*\n\n*${event.title}*\n${event.description}\n\n📅 Data: ${formattedDate}\n⏱️ Duração: ${event.duration} minutos`;
     
-    const message = `🔔 *Novo Evento Criado*\n\n` +
-      `*${event.title}*\n` +
-      `📅 Data: ${formattedDate}\n` +
-      `⏰ Horário: ${time}\n` +
-      `⏱️ Duração: ${event.duration || 60} minutos\n` +
-      `📞 Contato: ${event.contactPhone || 'Não especificado'}\n` +
-      `📝 Descrição: ${event.description || 'Nenhuma descrição'}`;
+    // Send the reminder via WhatsApp
+    const response = await fetch(`${apiUrl}/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        phone: formattedPhone,
+        message: message,
+        isGroup: false
+      })
+    });
     
-    const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');
-    if (!savedNumbers) {
-      console.warn('No admin numbers saved in localStorage.');
-      return 0;
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to send reminder');
     }
     
-    let adminNumbers: string[] = [];
-    try {
-      adminNumbers = JSON.parse(savedNumbers);
-      if (!Array.isArray(adminNumbers)) {
-        console.warn('Invalid admin numbers in localStorage.');
-        return 0;
-      }
-    } catch (error) {
-      console.error('Error parsing admin numbers from localStorage:', error);
-      return 0;
-    }
+    addLogEntry({
+      action: 'EVENT_REMINDER',
+      status: 'success',
+      message: `Reminder sent for event "${event.title}" to ${formattedPhone}`,
+      timestamp: new Date().toISOString(),
+      details: { event, response: data }
+    });
     
-    let successCount = 0;
-    for (const number of adminNumbers) {
-      if (!number || number.trim() === '') continue;
-      
-      const success = await sendWhatsAppMessage({
-        phone: number,
-        message: message
-      });
-      
-      if (success) {
-        successCount++;
-      }
-    }
-    
-    return successCount;
+    return { success: true, data };
   } catch (error) {
-    console.error('Error notifying admins about event:', error);
-    return 0;
+    console.error('Error sending event reminder:', error);
+    
+    addLogEntry({
+      action: 'EVENT_REMINDER',
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+    
+    return { success: false, error };
   }
 };
 
-export const notifyAdminsAboutSystemEvent = async (messageType: string, content: string): Promise<number> => {
-  try {
-    const apiKey = process.env.NEXT_PUBLIC_WHATSGW_API_KEY;
-    const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
-    
-    if (!apiKey || !apiURL) {
-      console.warn('WhatsApp API key or URL not configured.');
-      return 0;
-    }
-    
-    const now = new Intl.DateTimeFormat('pt-BR', { 
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    }).format(new Date());
-    
-    const message = `🔔 *${messageType || 'Notificação do Sistema'}*\n\n${content}\n\n⏱️ ${now}`;
-    
-    const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');
-    if (!savedNumbers) {
-      console.warn('No admin numbers saved in localStorage.');
-      return 0;
-    }
-    
-    let adminNumbers: string[] = [];
-    try {
-      adminNumbers = JSON.parse(savedNumbers);
-      if (!Array.isArray(adminNumbers)) {
-        console.warn('Invalid admin numbers in localStorage.');
-        return 0;
-      }
-    } catch (error) {
-      console.error('Error parsing admin numbers from localStorage:', error);
-      return 0;
-    }
-    
-    let successCount = 0;
-    for (const number of adminNumbers) {
-      if (!number || number.trim() === '') continue;
-      
-      const success = await sendWhatsAppMessage({
-        phone: number,
-        message: message
-      });
-      
-      if (success) {
-        successCount++;
-      }
-    }
-    
-    return successCount;
-  } catch (error) {
-    console.error('Error notifying admins about system event:', error);
-    return 0;
-  }
-};
-
+// Interface for policy data
 export interface PolicyData {
   id?: string;
-  policyNumber: string;
-  customer: string;
-  insurer: string;
-  startDate: Date;
-  endDate: Date;
-  premiumValue: string;
-  documentUrl?: string;
-  whatsappMessageId?: string;
-  status?: 'active' | 'pending' | 'expired';
-  processedAt?: Date;
-  processedByUserId?: string;
+  user_id?: string;
+  policy_number: string;
+  policy_type: string;
+  expiry_date: string;
+  premium_amount: number;
+  status: 'active' | 'expired' | 'pending';
+  details?: any;
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Mock function to simulate processing a WhatsApp message with a policy document
-export const simulateWhatsAppPolicyMessage = async (): Promise<PolicyData | null> => {
+// Save policy
+export const savePolicy = async (policyData: PolicyData) => {
   try {
-    console.log('[simulate-whatsapp] Simulating WhatsApp policy message...');
-    
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Create a mock policy
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setFullYear(endDate.getFullYear() + 1);
-    
-    const mockPolicy: PolicyData = {
-      policyNumber: `AP-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-      customer: `Cliente ${Math.floor(Math.random() * 100)}`,
-      insurer: ['Porto Seguro', 'Bradesco Seguros', 'SulAmérica', 'Allianz', 'Mapfre'][Math.floor(Math.random() * 5)],
-      startDate,
-      endDate,
-      premiumValue: `R$ ${(Math.random() * 10000).toFixed(2)}`,
-      whatsappMessageId: `msg_${Math.random().toString(36).substring(7)}`,
-      documentUrl: 'https://example.com/policy.pdf'
-    };
-    
-    // Save to database
     const { data, error } = await supabase
       .from('insurance_policies')
-      .insert({
-        policy_number: mockPolicy.policyNumber,
-        customer: mockPolicy.customer,
-        insurer: mockPolicy.insurer,
-        start_date: mockPolicy.startDate.toISOString(),
-        end_date: mockPolicy.endDate.toISOString(),
-        premium_value: mockPolicy.premiumValue,
-        document_url: mockPolicy.documentUrl,
-        whatsapp_message_id: mockPolicy.whatsappMessageId,
-        status: 'active',
-        processed_at: new Date().toISOString(),
-        processed_by_user_id: (await supabase.auth.getUser()).data.user?.id
-      })
-      .select()
-      .single();
+      .insert([{
+        ...policyData,
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      }]);
     
-    if (error) {
-      console.error('[simulate-whatsapp] Error saving policy to database:', error);
-      return null;
-    }
+    if (error) throw error;
     
-    console.log('[simulate-whatsapp] Policy saved to database:', data);
-    
-    return {
-      id: data.id,
-      policyNumber: data.policy_number,
-      customer: data.customer,
-      insurer: data.insurer,
-      startDate: new Date(data.start_date),
-      endDate: new Date(data.end_date),
-      premiumValue: data.premium_value,
-      documentUrl: data.document_url,
-      whatsappMessageId: data.whatsapp_message_id,
-      status: data.status,
-      processedAt: new Date(data.processed_at),
-      processedByUserId: data.processed_by_user_id
-    };
+    return { success: true, data };
   } catch (error) {
-    console.error('[simulate-whatsapp] Error simulating WhatsApp policy message:', error);
-    return null;
+    console.error('Error saving policy:', error);
+    return { success: false, error };
   }
 };
 
-// Get all policies from the database
-export const getAllPolicies = async (): Promise<PolicyData[]> => {
+// Get policies for current user
+export const getPolicies = async () => {
   try {
     const { data, error } = await supabase
       .from('insurance_policies')
       .select('*')
       .order('created_at', { ascending: false });
     
-    if (error) {
-      console.error('[get-policies] Error fetching policies from database:', error);
-      return [];
-    }
+    if (error) throw error;
     
-    return data.map(policy => ({
-      id: policy.id,
-      policyNumber: policy.policy_number,
-      customer: policy.customer,
-      insurer: policy.insurer,
-      startDate: new Date(policy.start_date),
-      endDate: new Date(policy.end_date),
-      premiumValue: policy.premium_value,
-      documentUrl: policy.document_url,
-      whatsappMessageId: policy.whatsapp_message_id,
-      status: policy.status,
-      processedAt: new Date(policy.processed_at),
-      processedByUserId: policy.processed_by_user_id
-    }));
+    return { success: true, data };
   } catch (error) {
-    console.error('[get-policies] Error retrieving policies:', error);
-    return [];
+    console.error('Error fetching policies:', error);
+    return { success: false, error, data: [] };
   }
 };
 
-// Delete a policy from the database
-export const deletePolicy = async (policyId: string): Promise<boolean> => {
+// Delete policy
+export const deletePolicy = async (policyId: string) => {
   try {
     const { error } = await supabase
       .from('insurance_policies')
       .delete()
       .eq('id', policyId);
     
-    if (error) {
-      console.error('[delete-policy] Error deleting policy from database:', error);
-      return false;
+    if (error) throw error;
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting policy:', error);
+    return { success: false, error };
+  }
+};
+
+// Update policy
+export const updatePolicy = async (policyId: string, updates: Partial<PolicyData>) => {
+  try {
+    const { data, error } = await supabase
+      .from('insurance_policies')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', policyId)
+      .select();
+    
+    if (error) throw error;
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error updating policy:', error);
+    return { success: false, error };
+  }
+};
+
+// Send policy information via WhatsApp
+export const sendPolicyInfo = async (policy: PolicyData, phoneNumber: string) => {
+  try {
+    if (!isWhatsAppConfigured()) {
+      console.log('WhatsApp not configured, skipping policy info');
+      return { success: false, error: 'WhatsApp not configured' };
+    }
+
+    const { apiKey, apiUrl } = getApiKey();
+    
+    // Format the expiry date
+    const expiryDate = new Date(policy.expiry_date);
+    const formattedExpiryDate = new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(expiryDate);
+
+    // Format the phone number (remove any non-digit characters)
+    const formattedPhone = phoneNumber.replace(/\D/g, '');
+    
+    // Create the message
+    const message = `📋 *Informações da Apólice*\n\n*Número da Apólice:* ${policy.policy_number}\n*Tipo:* ${policy.policy_type}\n*Validade:* ${formattedExpiryDate}\n*Valor do Prêmio:* R$ ${policy.premium_amount.toFixed(2)}\n*Status:* ${policy.status === 'active' ? 'Ativa' : policy.status === 'expired' ? 'Expirada' : 'Pendente'}`;
+    
+    // Send the policy info via WhatsApp
+    const response = await fetch(`${apiUrl}/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        phone: formattedPhone,
+        message: message,
+        isGroup: false
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to send policy information');
     }
     
-    return true;
+    // Log the action
+    addLogEntry({
+      action: 'POLICY_INFO',
+      status: 'success',
+      message: `Policy information for "${policy.policy_number}" sent to ${formattedPhone}`,
+      timestamp: new Date().toISOString(),
+      details: { policy, response: data }
+    });
+    
+    // Also save to the policy_reminder_logs table
+    await supabase
+      .from('policy_reminder_logs')
+      .insert([{
+        policy_id: policy.id,
+        sent_at: new Date().toISOString(),
+        sent_to: formattedPhone,
+        message: message,
+        status: 'success'
+      }]);
+    
+    return { success: true, data };
   } catch (error) {
-    console.error('[delete-policy] Error deleting policy:', error);
-    return false;
+    console.error('Error sending policy information:', error);
+    
+    // Log the error
+    addLogEntry({
+      action: 'POLICY_INFO',
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+    
+    // Also save the error to the policy_reminder_logs table if we have a policy ID
+    if (policy.id) {
+      await supabase
+        .from('policy_reminder_logs')
+        .insert([{
+          policy_id: policy.id,
+          sent_at: new Date().toISOString(),
+          sent_to: phoneNumber,
+          status: 'error',
+          error_message: error instanceof Error ? error.message : 'Unknown error'
+        }]);
+    }
+    
+    return { success: false, error };
   }
 };

@@ -388,6 +388,26 @@ export function useVoiceCommandEvents() {
     }
   };
 
+  const sendWhatsAppReminder = async (event: VoiceCommandEvent) => {
+    try {
+      const phoneNumber = event.contact_phone;
+      if (!phoneNumber) {
+        console.log('No phone number to send reminder to');
+        return;
+      }
+
+      await sendEventReminder({
+        title: event.title,
+        description: event.description || '',
+        date: new Date(event.date),
+        duration: event.duration,
+        contactPhone: phoneNumber
+      });
+    } catch (error) {
+      console.error('Error sending WhatsApp reminder:', error);
+    }
+  };
+
   const getAdminNumbers = (): string[] => {
     try {
       const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');
