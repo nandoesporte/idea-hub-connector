@@ -68,3 +68,47 @@ BEGIN
     END IF;
 END
 $$;
+
+-- Create policy_documents storage bucket if it doesn't exist
+-- Note: This assumes the storage extension is installed
+DO $$
+DECLARE
+    bucket_exists BOOLEAN;
+BEGIN
+    -- Check if the bucket exists
+    SELECT EXISTS (
+        SELECT 1 FROM storage.buckets WHERE name = 'policy_documents'
+    ) INTO bucket_exists;
+    
+    -- Create the bucket if it doesn't exist
+    IF NOT bucket_exists THEN
+        INSERT INTO storage.buckets (id, name, public, avif_autodetection)
+        VALUES ('policy_documents', 'policy_documents', true, false);
+        
+        -- Bucket policies to allow users to manage their own files
+        -- Allow users to read any file in the bucket (needed for downloading policies)
+        INSERT INTO storage.policies (name, definition, bucket_id)
+        VALUES (
+            'Public Read',
+            '{"statement": {"effect": "allow", "actions": ["s3:GetObject"], "principal": "*"}}',
+            'policy_documents'
+        );
+        
+        -- Allow authenticated users to upload files
+        INSERT INTO storage.policies (name, definition, bucket_id)
+        VALUES (
+            'Authenticated Upload',
+            '{"statement": {"effect": "allow", "actions": ["s3:PutObject"], "principal": {"id": "authenticated"}}}',
+            'policy_documents'
+        );
+        
+        -- Allow users to manage their own folders
+        INSERT INTO storage.policies (name, definition, bucket_id)
+        VALUES (
+            'Owner Access',
+            '{"statement": {"effect": "allow", "actions": ["s3:*"], "principal": {"id": "authenticated"}, "conditions": {"resource_prefix": {"prefix_match": ["policies/${auth.uid}/"]}}}}',
+            'policy_documents'
+        );
+    END IF;
+END
+$$;

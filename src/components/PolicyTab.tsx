@@ -35,33 +35,32 @@ const PolicyTab = () => {
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const [bucketReady, setBucketReady] = useState(false);
 
-  // Ensure the storage bucket exists
+  // Check if bucket exists - no creation attempt
   useEffect(() => {
-    const createBucketIfNotExists = async () => {
+    const checkBucketExists = async () => {
       try {
-        // Check if the bucket already exists
-        const { data: buckets } = await supabase.storage.listBuckets();
-        const bucketExists = buckets?.some(bucket => bucket.name === STORAGE_BUCKET);
+        const { data: buckets, error } = await supabase.storage.listBuckets();
         
-        if (!bucketExists) {
-          // Create the bucket if it doesn't exist
-          const { error } = await supabase.storage.createBucket(STORAGE_BUCKET, {
-            public: true
-          });
-          
-          if (error) {
-            console.error("Error creating storage bucket:", error);
-          } else {
-            console.log("Storage bucket created successfully");
-          }
+        if (error) {
+          console.error("Error checking buckets:", error);
+          return;
+        }
+        
+        const exists = buckets?.some(bucket => bucket.name === STORAGE_BUCKET);
+        setBucketReady(exists);
+        
+        if (!exists) {
+          console.log("Policy documents bucket does not exist. Please contact administrator.");
+          toast.error("Bucket de armazenamento não existe. Contate o administrador.");
         }
       } catch (error) {
-        console.error("Error checking/creating bucket:", error);
+        console.error("Error checking bucket:", error);
       }
     };
     
-    createBucketIfNotExists();
+    checkBucketExists();
   }, []);
 
   // Use React Query to fetch policies
@@ -137,6 +136,11 @@ const PolicyTab = () => {
       return;
     }
 
+    if (!bucketReady) {
+      toast.error("Sistema de armazenamento não está disponível. Contate o administrador.");
+      return;
+    }
+
     setUploadingFile({
       file,
       progress: 0,
@@ -150,6 +154,12 @@ const PolicyTab = () => {
   const uploadAndProcessPDF = async (file: File) => {
     if (!user) {
       toast.error("Usuário não autenticado");
+      setUploadingFile(null);
+      return;
+    }
+
+    if (!bucketReady) {
+      toast.error("Sistema de armazenamento não está disponível");
       setUploadingFile(null);
       return;
     }
@@ -168,13 +178,28 @@ const PolicyTab = () => {
         });
       }, 100);
 
-      // Ensure the user folder exists
+      // Get the user folder path
       const userFolderPath = `policies/${user.id}`;
       
       // 1. Upload the file to Supabase Storage
       const fileName = `${Date.now()}_${file.name}`;
       const filePath = `${userFolderPath}/${fileName}`;
       
+      // First, check if the user folder exists and create it if needed
+      try {
+        const { data: folderExists, error: folderCheckError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .list(userFolderPath);
+          
+        if (folderCheckError && folderCheckError.message !== "The resource was not found") {
+          console.error("Error checking folder:", folderCheckError);
+        }
+      } catch (folderError) {
+        // If folder doesn't exist, it's fine - the upload will create it
+        console.log("Folder doesn't exist yet, will be created with upload");
+      }
+      
+      // Now upload the file
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
         .upload(filePath, file, {
@@ -353,6 +378,16 @@ const PolicyTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!bucketReady && (
+            <div className="bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-3 rounded mb-4 flex items-start">
+              <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Sistema de armazenamento não configurado</p>
+                <p className="text-sm">O bucket de armazenamento não está disponível. Contate o administrador para criar o bucket "{STORAGE_BUCKET}".</p>
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center space-x-2 mb-4">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
