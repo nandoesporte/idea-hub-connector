@@ -17,11 +17,14 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [progress, setProgress] = useState<'idle' | 'uploading' | 'analyzing' | 'complete'>('idle');
+  const [progress, setProgress] = useState<'idle' | 'uploading' | 'analyzing' | 'complete' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      setErrorMessage(null);
+      setProgress('idle');
     }
   };
 
@@ -34,10 +37,25 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     try {
       setUploading(true);
       setProgress('uploading');
+      setErrorMessage(null);
       toast.info('Enviando arquivo...');
 
       // 1. Fazer upload do arquivo
-      const fileUrl = await uploadPolicyAttachment(file, user.id);
+      let fileUrl;
+      try {
+        fileUrl = await uploadPolicyAttachment(file, user.id);
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        setProgress('error');
+        setErrorMessage('Não foi possível fazer upload do arquivo. Verifique se o armazenamento está configurado.');
+        return;
+      }
+      
+      if (!fileUrl) {
+        setProgress('error');
+        setErrorMessage('Falha ao obter URL do arquivo.');
+        return;
+      }
       
       setUploading(false);
       setAnalyzing(true);
@@ -45,7 +63,15 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       toast.info('Analisando documento com IA...');
 
       // 2. Analisar o documento com GPT-4
-      const policyData = await analyzePolicyDocument(fileUrl);
+      let policyData;
+      try {
+        policyData = await analyzePolicyDocument(fileUrl);
+      } catch (error) {
+        console.error('Error analyzing policy:', error);
+        setProgress('error');
+        setErrorMessage('Falha ao analisar o documento. Serviço de IA pode estar indisponível.');
+        return;
+      }
       
       // 3. Criar a apólice com os dados extraídos
       if (policyData) {
@@ -66,21 +92,35 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           notes: policyData.notes || 'Informações extraídas automaticamente via IA'
         };
         
-        await createPolicy(policyToCreate);
-        
-        setProgress('complete');
-        toast.success('Apólice cadastrada com sucesso!');
-        
-        // Chamar callback de sucesso se fornecido
-        if (onSuccess) onSuccess();
+        try {
+          await createPolicy(policyToCreate);
+          setProgress('complete');
+          toast.success('Apólice cadastrada com sucesso!');
+          
+          // Chamar callback de sucesso se fornecido
+          if (onSuccess) onSuccess();
+        } catch (error) {
+          console.error('Error creating policy:', error);
+          setProgress('error');
+          setErrorMessage('Falha ao cadastrar a apólice. A tabela pode não existir no banco de dados.');
+          return;
+        }
       }
     } catch (error) {
       console.error('Erro ao processar documento:', error);
       toast.error('Falha ao processar o documento');
+      setProgress('error');
+      setErrorMessage('Ocorreu um erro inesperado ao processar o documento.');
     } finally {
       setUploading(false);
       setAnalyzing(false);
     }
+  };
+
+  const resetForm = () => {
+    setFile(null);
+    setProgress('idle');
+    setErrorMessage(null);
   };
 
   const formatDate = (date: Date) => {
@@ -150,11 +190,39 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             
             <Button 
               variant="outline" 
-              onClick={() => setProgress('idle')}
+              onClick={resetForm}
               className="mt-2"
             >
               Processar outro documento
             </Button>
+          </div>
+        )}
+
+        {progress === 'error' && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="bg-red-500 text-white p-3 rounded-full mb-4">
+              <FileText className="h-8 w-8" />
+            </div>
+            <p className="font-medium text-red-600">Erro no processamento</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              {errorMessage || 'Ocorreu um erro ao processar seu documento.'}
+            </p>
+            
+            <div className="flex gap-2 mt-2">
+              <Button 
+                variant="outline" 
+                onClick={resetForm}
+              >
+                Voltar
+              </Button>
+              <Button 
+                variant="default"
+                onClick={handleUpload}
+                disabled={!file}
+              >
+                Tentar novamente
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
