@@ -10,6 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Loader2, Upload, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Policy } from '@/types';
 
 const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { user } = useUser();
@@ -48,12 +49,24 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       
       // 3. Criar a apólice com os dados extraídos
       if (policyData) {
-        await createPolicy({
-          ...policyData,
+        // Ensure all required fields exist before creating the policy
+        const policyToCreate: Omit<Policy, "id" | "created_at" | "updated_at" | "reminder_sent"> = {
           user_id: user.id,
+          policy_number: policyData.policy_number || `AP${Math.floor(Math.random() * 1000000)}`,
+          customer_name: policyData.customer_name || 'Nome do Cliente',
+          customer_phone: policyData.customer_phone,
+          issue_date: policyData.issue_date || new Date(),
+          expiry_date: policyData.expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+          insurer: policyData.insurer || 'Seguradora',
+          coverage_amount: policyData.coverage_amount || 0,
+          premium: policyData.premium || 0,
+          status: 'active',
+          type: policyData.type || 'auto',
           attachment_url: fileUrl,
-          status: 'active'
-        });
+          notes: policyData.notes || 'Informações extraídas automaticamente via IA'
+        };
+        
+        await createPolicy(policyToCreate);
         
         setProgress('complete');
         toast.success('Apólice cadastrada com sucesso!');
