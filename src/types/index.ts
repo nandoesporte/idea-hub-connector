@@ -1,4 +1,5 @@
 
+
 export interface PolicyFile {
   file: File;
   progress: number;
@@ -120,3 +121,4 @@ export interface Policy {
   reminderSent?: boolean;
   attachmentUrl?: string;
 }
+

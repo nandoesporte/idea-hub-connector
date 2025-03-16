@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,42 +22,24 @@ import {
 } from "lucide-react";
 import { format, addDays, isBefore, isAfter, subMonths } from "date-fns";
 import { toast } from "sonner";
-import { PolicyFile } from "@/types";
+import { PolicyFile, Policy } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/contexts/UserContext";
-
-interface Policy {
-  id: string;
-  policyNumber: string;
-  insurer: string;
-  customer: string;
-  startDate: Date;
-  endDate: Date;
-  coverageAmount: string;
-  premiumValue: string;
-  status: "active" | "expired" | "pending" | "cancelled";
-  documentUrl?: string;
-  fileName?: string;
-  userId?: string;
-}
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const PolicyTab = () => {
   const { user } = useUser();
-  const [policies, setPolicies] = useState<Policy[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchPolicies();
-  }, [user]);
-
-  const fetchPolicies = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
+  // Use React Query to fetch policies
+  const { data: policies = [], isLoading } = useQuery({
+    queryKey: ['policies', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
       const { data, error } = await supabase
         .from('policies')
         .select('*')
@@ -66,32 +49,53 @@ const PolicyTab = () => {
       if (error) {
         console.error("Error fetching policies:", error);
         toast.error("Erro ao carregar apólices");
-        return;
+        return [];
       }
 
-      if (data) {
-        const formattedPolicies = data.map(policy => ({
-          ...policy,
-          id: policy.id,
-          policyNumber: policy.policy_number,
-          insurer: policy.insurer,
-          customer: policy.customer,
-          startDate: new Date(policy.start_date),
-          endDate: new Date(policy.end_date),
-          coverageAmount: policy.coverage_amount,
-          premiumValue: policy.premium_value,
-          status: policy.status,
-          documentUrl: policy.document_url,
-          fileName: policy.file_name,
-        }));
-        setPolicies(formattedPolicies);
+      return data.map(policy => ({
+        id: policy.id,
+        userId: policy.user_id,
+        policyNumber: policy.policy_number,
+        customerName: policy.customer,
+        issueDate: new Date(policy.start_date),
+        expiryDate: new Date(policy.end_date),
+        insurer: policy.insurer,
+        coverageAmount: parseFloat(policy.coverage_amount.replace(/[^0-9.]/g, '')),
+        premium: parseFloat(policy.premium_value.replace(/[^0-9.]/g, '')),
+        status: policy.status,
+        type: policy.type || 'general',
+        createdAt: new Date(policy.created_at),
+        updatedAt: new Date(policy.created_at),
+        attachmentUrl: policy.document_url,
+      }));
+    },
+    enabled: !!user
+  });
+
+  // Use React Query mutation for deleting policies
+  const deletePolicyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('policies')
+        .delete()
+        .eq('id', id);
+        
+      if (error) {
+        throw new Error("Error deleting policy");
       }
-    } catch (error) {
-      console.error("Error fetching policies:", error);
-      toast.error("Erro ao carregar apólices");
-    } finally {
-      setLoading(false);
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['policies'] });
+      toast.success("Apólice removida com sucesso");
+    },
+    onError: () => {
+      toast.error("Erro ao remover a apólice");
     }
+  });
+
+  const handleDeletePolicy = (id: string) => {
+    deletePolicyMutation.mutate(id);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,41 +113,11 @@ const PolicyTab = () => {
       status: 'pending'
     });
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadingFile(prev => {
-        if (!prev) return null;
-        
-        const newProgress = prev.progress + 10;
-        if (newProgress >= 100) {
-          clearInterval(interval);
-          return {
-            ...prev,
-            progress: 100,
-            status: 'processing'
-          };
-        }
-        
-        return {
-          ...prev,
-          progress: newProgress
-        };
-      });
-    }, 300);
-
-    // After "upload" complete, simulate GPT-4 processing
-    setTimeout(() => {
-      clearInterval(interval);
-      setUploadingFile(prev => prev ? { ...prev, status: 'processing', progress: 100 } : null);
-      
-      // Simulate GPT-4 analysis
-      setTimeout(() => {
-        extractPolicyDataFromPDF(file);
-      }, 2000);
-    }, 3000);
+    // Start the upload process
+    uploadAndProcessPDF(file);
   };
 
-  const extractPolicyDataFromPDF = async (file: File) => {
+  const uploadAndProcessPDF = async (file: File) => {
     if (!user) {
       toast.error("Usuário não autenticado");
       setUploadingFile(null);
@@ -151,156 +125,146 @@ const PolicyTab = () => {
     }
 
     try {
-      // In a real implementation, we would send the file to a backend API
-      // that uses GPT-4 Vision to analyze the PDF and extract information
-      console.log("Extracting data from PDF:", file.name);
-      
-      // Extract policy number from filename
-      const fileNameWithoutExtension = file.name.replace('.pdf', '');
-      
-      // Try to extract customer name from filename - real implementation would use OCR/GPT-4
-      let customerName = "";
-      if (fileNameWithoutExtension.includes('_')) {
-        const parts = fileNameWithoutExtension.split('_');
-        if (parts.length >= 2) {
-          customerName = parts.slice(1)
-            .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-            .join(' ');
-        }
-      }
-      
-      if (!customerName) {
-        customerName = "Cliente não identificado";
-      }
-      
-      // Create a date range based on today (most policies are annual)
-      const startDate = subMonths(new Date(), 1); // Assume policy started a month ago
-      const endDate = new Date(startDate);
-      endDate.setFullYear(endDate.getFullYear() + 1); // One year policy
-      
-      // Calculate policy status based on real dates
-      let policyStatus: Policy['status'] = "active";
-      const today = new Date();
-      if (isAfter(today, endDate)) {
-        policyStatus = "expired";
-      } else if (isBefore(today, startDate)) {
-        policyStatus = "pending";
-      }
-      
-      // Real Brazilian insurance companies
-      const insurers = [
-        "Porto Seguro", 
-        "Bradesco Seguros", 
-        "SulAmérica", 
-        "Allianz", 
-        "Liberty Seguros",
-        "Mapfre Seguros"
-      ];
-      
-      // Generate a policy number based on current date if not extractable from filename
-      const extractedPolicyNumber = fileNameWithoutExtension.match(/AP[0-9-]+/i) 
-        ? fileNameWithoutExtension.match(/AP[0-9-]+/i)![0] 
-        : `AP-${new Date().getFullYear()}-${Math.floor(Math.random() * 900) + 100}`;
-      
-      const insurer = insurers[Math.floor(Math.random() * insurers.length)];
-      
-      // In a real implementation, these values would be extracted from the actual PDF
-      const coverageAmount = "R$ 100.000,00";
-      const premiumValue = "R$ 2.500,00";
-      
-      toast.info("Nesta versão de demonstração, os dados são extraídos do nome do arquivo. Em produção, GPT-4 analisaria o conteúdo do PDF.", {
-        duration: 5000
-      });
-      
-      // Create policy object
-      const newPolicy: Policy = {
-        id: Date.now().toString(),
-        policyNumber: extractedPolicyNumber,
-        insurer,
-        customer: customerName,
-        startDate,
-        endDate,
-        coverageAmount,
-        premiumValue,
-        status: policyStatus,
-        fileName: file.name,
-        userId: user.id,
-      };
-      
-      // Save the policy to Supabase
-      const { error } = await supabase
-        .from('policies')
-        .insert({
-          id: newPolicy.id,
-          user_id: user.id,
-          policy_number: newPolicy.policyNumber,
-          insurer: newPolicy.insurer,
-          customer: newPolicy.customer,
-          start_date: newPolicy.startDate.toISOString(),
-          end_date: newPolicy.endDate.toISOString(),
-          coverage_amount: newPolicy.coverageAmount,
-          premium_value: newPolicy.premiumValue,
-          status: newPolicy.status,
-          file_name: newPolicy.fileName,
-          created_at: new Date().toISOString(),
+      // Simulate upload progress (in a real app, this would track the actual upload)
+      const progressInterval = setInterval(() => {
+        setUploadingFile(prev => {
+          if (!prev) return null;
+          
+          const newProgress = Math.min(prev.progress + 5, 95);
+          return {
+            ...prev,
+            progress: newProgress
+          };
         });
+      }, 100);
 
-      if (error) {
-        console.error("Error saving policy:", error);
-        toast.error("Erro ao salvar a apólice");
-        setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao salvar a apólice' } : null);
-        
-        setTimeout(() => {
-          setUploadingFile(null);
-        }, 3000);
-        
+      // 1. Upload the file to Supabase Storage
+      const fileName = `${Date.now()}_${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('policy_documents')
+        .upload(`policies/${user.id}/${fileName}`, file);
+
+      clearInterval(progressInterval);
+      
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError);
+        setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao fazer upload do arquivo' } : null);
+        toast.error("Erro ao fazer upload do arquivo");
         return;
       }
-      
-      // Update local state
-      setPolicies(prev => [newPolicy, ...prev]);
-      setUploadingFile(prev => prev ? { ...prev, status: 'success' } : null);
-      toast.success("Apólice processada com sucesso!");
-      
-      // Clear the file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      
-      // Reset upload state after a delay
-      setTimeout(() => {
-        setUploadingFile(null);
-      }, 2000);
-      
+
+      // Set progress to 100% for upload complete
+      setUploadingFile(prev => prev ? { ...prev, progress: 100, status: 'processing' } : null);
+
+      // Get the file URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('policy_documents')
+        .getPublicUrl(`policies/${user.id}/${fileName}`);
+
+      // 2. Convert PDF to base64 for GPT-4 Vision
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result?.toString().split(',')[1];
+          
+          // 3. Call GPT-4 Vision to analyze the PDF
+          const response = await fetch('/api/analyze-policy', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              pdfBase64: base64Data,
+              fileName: file.name
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to analyze PDF');
+          }
+
+          const policyData = await response.json();
+
+          // 4. Use the extracted data to create a policy record
+          const today = new Date();
+          
+          // Set policy status based on date
+          let policyStatus: Policy['status'] = "active";
+          if (isAfter(today, new Date(policyData.expiryDate))) {
+            policyStatus = "expired";
+          } else if (isBefore(today, new Date(policyData.issueDate))) {
+            policyStatus = "pending";
+          }
+          
+          // 5. Save the policy to Supabase
+          const { error: saveError } = await supabase
+            .from('policies')
+            .insert({
+              id: Date.now().toString(),
+              user_id: user.id,
+              policy_number: policyData.policyNumber,
+              insurer: policyData.insurer,
+              customer: policyData.customerName,
+              start_date: new Date(policyData.issueDate).toISOString(),
+              end_date: new Date(policyData.expiryDate).toISOString(),
+              coverage_amount: policyData.coverageAmount,
+              premium_value: policyData.premium,
+              status: policyStatus,
+              type: policyData.type || 'general',
+              document_url: publicUrl,
+              file_name: file.name,
+              created_at: new Date().toISOString(),
+            });
+
+          if (saveError) {
+            console.error("Error saving policy:", saveError);
+            setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao salvar a apólice' } : null);
+            toast.error("Erro ao salvar a apólice");
+            return;
+          }
+          
+          // Refresh the policies list
+          queryClient.invalidateQueries({ queryKey: ['policies'] });
+          
+          setUploadingFile(prev => prev ? { ...prev, status: 'success' } : null);
+          toast.success("Apólice processada com sucesso!");
+          
+          // Clear the file input
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+          
+          // Reset upload state after a delay
+          setTimeout(() => {
+            setUploadingFile(null);
+          }, 2000);
+          
+        } catch (error) {
+          console.error("Error analyzing policy:", error);
+          setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao analisar o documento' } : null);
+          toast.error("Erro ao analisar o documento PDF");
+          
+          setTimeout(() => {
+            setUploadingFile(null);
+          }, 3000);
+        }
+      };
+
+      reader.onerror = () => {
+        console.error("Error reading file:", reader.error);
+        setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao ler o arquivo' } : null);
+        toast.error("Erro ao ler o arquivo");
+      };
+
+      reader.readAsDataURL(file);
     } catch (error) {
-      console.error("Error analyzing policy:", error);
+      console.error("Error processing policy:", error);
       setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao processar o arquivo' } : null);
       toast.error("Erro ao processar a apólice");
       
       setTimeout(() => {
         setUploadingFile(null);
       }, 3000);
-    }
-  };
-
-  const handleDeletePolicy = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('policies')
-        .delete()
-        .eq('id', id);
-        
-      if (error) {
-        console.error("Error deleting policy:", error);
-        toast.error("Erro ao remover a apólice");
-        return;
-      }
-      
-      setPolicies(prev => prev.filter(policy => policy.id !== id));
-      toast.success("Apólice removida com sucesso");
-    } catch (error) {
-      console.error("Error deleting policy:", error);
-      toast.error("Erro ao remover a apólice");
     }
   };
 
@@ -327,9 +291,16 @@ const PolicyTab = () => {
 
   const filteredPolicies = policies.filter(policy => 
     policy.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    policy.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    policy.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     policy.insurer.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
 
   return (
     <div className="space-y-6">
@@ -356,7 +327,7 @@ const PolicyTab = () => {
             />
           </div>
           
-          {loading ? (
+          {isLoading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
@@ -453,31 +424,34 @@ const PolicyTab = () => {
                     {filteredPolicies.map((policy) => (
                       <TableRow key={policy.id}>
                         <TableCell className="font-medium">{policy.policyNumber}</TableCell>
-                        <TableCell>{policy.customer}</TableCell>
+                        <TableCell>{policy.customerName}</TableCell>
                         <TableCell>{policy.insurer}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                             <span>
-                              {format(policy.startDate, "dd/MM/yyyy")} - {format(policy.endDate, "dd/MM/yyyy")}
+                              {format(policy.issueDate, "dd/MM/yyyy")} - {format(policy.expiryDate, "dd/MM/yyyy")}
                             </span>
-                            {isNearExpiry(policy.endDate) && (
+                            {isNearExpiry(policy.expiryDate) && (
                               <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{policy.premiumValue}</TableCell>
+                        <TableCell>{formatCurrency(policy.premium)}</TableCell>
                         <TableCell>{getStatusBadge(policy.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
-                              className="h-7 w-7"
-                              aria-label="Baixar documento"
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
+                            {policy.attachmentUrl && (
+                              <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-7 w-7"
+                                aria-label="Baixar documento"
+                                onClick={() => window.open(policy.attachmentUrl, '_blank')}
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button 
                               variant="outline" 
                               size="icon" 
