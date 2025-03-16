@@ -24,8 +24,7 @@ import {
   getAllPolicies, 
   simulateWhatsAppPolicyMessage, 
   PolicyData,
-  registerWhatsAppWebhook,
-  deletePolicy
+  registerWhatsAppWebhook
 } from "@/lib/whatsgwService";
 
 const PolicyTab = () => {
@@ -45,18 +44,10 @@ const PolicyTab = () => {
     }
   }, []);
 
-  const loadPolicies = async () => {
-    setLoading(true);
-    try {
-      // Get policies from our service
-      const loadedPolicies = await getAllPolicies();
-      setPolicies(loadedPolicies);
-    } catch (error) {
-      console.error("Error loading policies:", error);
-      toast.error("Erro ao carregar apólices");
-    } finally {
-      setLoading(false);
-    }
+  const loadPolicies = () => {
+    // Get policies from our service
+    const loadedPolicies = getAllPolicies();
+    setPolicies(loadedPolicies);
   };
 
   const handleProcessWhatsAppMessage = async () => {
@@ -67,7 +58,7 @@ const PolicyTab = () => {
       
       if (newPolicy) {
         // Reload policies to include the new one
-        await loadPolicies();
+        loadPolicies();
         toast.success("Nova apólice recebida e processada com sucesso!");
       } else {
         toast.error("Erro ao processar a apólice. Verifique os logs para mais detalhes.");
@@ -95,25 +86,10 @@ const PolicyTab = () => {
     }
   };
 
-  const handleDeletePolicy = async (policyId: string) => {
-    if (!policyId) {
-      toast.error("ID da apólice inválido");
-      return;
-    }
-
-    try {
-      const result = await deletePolicy(policyId);
-      
-      if (result) {
-        setPolicies(prev => prev.filter(policy => policy.id !== policyId));
-        toast.success("Apólice removida com sucesso");
-      } else {
-        toast.error("Erro ao remover apólice");
-      }
-    } catch (error) {
-      console.error("Error deleting policy:", error);
-      toast.error("Erro ao remover apólice");
-    }
+  const handleDeletePolicy = (policyNumber: string) => {
+    // In a real app, this would call a delete API
+    setPolicies(prev => prev.filter(policy => policy.policyNumber !== policyNumber));
+    toast.success("Apólice removida com sucesso");
   };
 
   const getStatusBadge = (startDate: Date, endDate: Date) => {
@@ -182,12 +158,7 @@ const PolicyTab = () => {
             />
           </div>
           
-          {loading ? (
-            <div className="text-center py-10">
-              <RefreshCw className="h-16 w-16 mx-auto text-primary opacity-20 mb-4 animate-spin" />
-              <h3 className="text-lg font-medium">Carregando apólices...</h3>
-            </div>
-          ) : filteredPolicies.length === 0 ? (
+          {filteredPolicies.length === 0 ? (
             <div className="text-center py-10">
               <FileText className="h-16 w-16 mx-auto text-muted-foreground opacity-20 mb-4" />
               <h3 className="text-lg font-medium">Nenhuma apólice encontrada</h3>
@@ -218,7 +189,7 @@ const PolicyTab = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredPolicies.map((policy) => (
-                    <TableRow key={policy.id || policy.policyNumber}>
+                    <TableRow key={policy.policyNumber}>
                       <TableCell className="font-medium">{policy.policyNumber}</TableCell>
                       <TableCell>{policy.customer}</TableCell>
                       <TableCell>{policy.insurer}</TableCell>
@@ -237,23 +208,20 @@ const PolicyTab = () => {
                       <TableCell>{getStatusBadge(policy.startDate, policy.endDate)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {policy.documentUrl && (
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
-                              className="h-7 w-7"
-                              aria-label="Baixar documento"
-                              onClick={() => window.open(policy.documentUrl, '_blank')}
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-7 w-7"
+                            aria-label="Baixar documento"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
                           <Button 
                             variant="outline" 
                             size="icon" 
                             className="h-7 w-7 text-destructive hover:text-destructive"
                             aria-label="Remover"
-                            onClick={() => policy.id && handleDeletePolicy(policy.id)}
+                            onClick={() => handleDeletePolicy(policy.policyNumber)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
