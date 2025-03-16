@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   CalendarDays, FileText, Lightbulb, ListChecks, Plus, User, LayoutDashboard, 
-  Shield, FileCheck, Calendar, FileSpreadsheet 
+  Shield, Calendar, FileSpreadsheet, FileCheck
 } from 'lucide-react';
 import EventsList from '@/components/EventsList';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
@@ -99,109 +99,117 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="events" className="w-full">
-              <div className="flex gap-6">
-                <div className="w-56">
-                  <TabsList className="flex flex-col space-y-1 bg-transparent h-auto p-0 w-full">
-                    <TabsTrigger 
-                      value="events" 
-                      className="flex items-center gap-2 justify-start w-full p-2 text-left data-[state=active]:bg-muted"
-                    >
-                      <CalendarDays className="h-4 w-4 text-primary" />
-                      <span>Eventos</span>
-                    </TabsTrigger>
+              <div className="mb-6">
+                <div className="flex flex-col space-y-2">
+                  <TabsList className="w-full p-0 h-auto bg-transparent space-y-1">
+                    <div className="flex items-center gap-2">
+                      <TabsTrigger 
+                        value="events" 
+                        className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                      >
+                        <CalendarDays className="h-4 w-4 text-primary" />
+                        <span>Eventos</span>
+                      </TabsTrigger>
+                    </div>
                     
                     {isAdmin && (
-                      <TabsTrigger 
-                        value="policies" 
-                        className="flex items-center gap-2 justify-start w-full p-2 text-left data-[state=active]:bg-muted"
-                      >
-                        <FileCheck className="h-4 w-4 text-primary" />
-                        <span>Apólices</span>
-                      </TabsTrigger>
+                      <div className="flex items-center gap-2">
+                        <TabsTrigger 
+                          value="policies" 
+                          className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                        >
+                          <FileCheck className="h-4 w-4 text-primary" />
+                          <span>Apólices</span>
+                        </TabsTrigger>
+                      </div>
                     )}
                     
                     {!isAdmin && (
-                      <TabsTrigger 
-                        value="ideas" 
-                        className="flex items-center gap-2 justify-start w-full p-2 text-left data-[state=active]:bg-muted"
-                      >
-                        <Lightbulb className="h-4 w-4 text-primary" />
-                        <span>Ideias</span>
-                      </TabsTrigger>
+                      <div className="flex items-center gap-2">
+                        <TabsTrigger 
+                          value="ideas" 
+                          className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                        >
+                          <Lightbulb className="h-4 w-4 text-primary" />
+                          <span>Ideias</span>
+                        </TabsTrigger>
+                      </div>
                     )}
                     
-                    <TabsTrigger 
-                      value="tasks" 
-                      className="flex items-center gap-2 justify-start w-full p-2 text-left data-[state=active]:bg-muted"
-                    >
-                      <ListChecks className="h-4 w-4 text-primary" />
-                      <span>Tarefas</span>
-                    </TabsTrigger>
+                    <div className="flex items-center gap-2">
+                      <TabsTrigger 
+                        value="tasks" 
+                        className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                      >
+                        <ListChecks className="h-4 w-4 text-primary" />
+                        <span>Tarefas</span>
+                      </TabsTrigger>
+                    </div>
                     
-                    <TabsTrigger 
-                      value="docs" 
-                      className="flex items-center gap-2 justify-start w-full p-2 text-left data-[state=active]:bg-muted"
-                    >
-                      <FileText className="h-4 w-4 text-primary" />
-                      <span>Docs</span>
-                    </TabsTrigger>
+                    <div className="flex items-center gap-2">
+                      <TabsTrigger 
+                        value="docs" 
+                        className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                      >
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span>Docs</span>
+                      </TabsTrigger>
+                    </div>
                   </TabsList>
                 </div>
-                
-                <div className="flex-1 border-l pl-6">
-                  <TabsContent value="events" className="mt-0">
-                    <EventsList events={events} loading={loading} onDelete={deleteEvent} />
-                  </TabsContent>
-                  
-                  <TabsContent value="ideas" className="mt-0">
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
-                      <div className="bg-muted/30 rounded-full p-6 mb-4">
-                        <Lightbulb className="h-10 w-10 text-muted-foreground" />
-                      </div>
-                      <h3 className="font-medium text-lg mb-2">Sem ideias registradas</h3>
-                      <p className="text-sm text-muted-foreground max-w-xs mb-6">
-                        Suas ideias de projeto aparecerão aqui.
-                      </p>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => navigate('/project-ideas/new')}
-                        className="gap-1.5"
-                      >
-                        <Plus className="h-4 w-4" /> Adicionar Ideia
-                      </Button>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="policies" className="mt-0">
-                    <PolicyTab />
-                  </TabsContent>
-                  
-                  <TabsContent value="tasks" className="mt-0">
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
-                      <div className="bg-muted/30 rounded-full p-6 mb-4">
-                        <ListChecks className="h-10 w-10 text-muted-foreground" />
-                      </div>
-                      <h3 className="font-medium text-lg mb-2">Sem tarefas registradas</h3>
-                      <p className="text-sm text-muted-foreground max-w-xs">
-                        Suas tarefas aparecerão aqui quando forem criadas.
-                      </p>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="docs" className="mt-0">
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
-                      <div className="bg-muted/30 rounded-full p-6 mb-4">
-                        <FileText className="h-10 w-10 text-muted-foreground" />
-                      </div>
-                      <h3 className="font-medium text-lg mb-2">Sem documentos</h3>
-                      <p className="text-sm text-muted-foreground max-w-xs">
-                        Seus documentos aparecerão aqui quando forem adicionados.
-                      </p>
-                    </div>
-                  </TabsContent>
-                </div>
               </div>
+              
+              <TabsContent value="events" className="mt-0 pt-2 border-t">
+                <EventsList events={events} loading={loading} onDelete={deleteEvent} />
+              </TabsContent>
+              
+              <TabsContent value="policies" className="mt-0 pt-2 border-t">
+                <PolicyTab />
+              </TabsContent>
+              
+              <TabsContent value="ideas" className="mt-0 pt-2 border-t">
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="bg-muted/30 rounded-full p-6 mb-4">
+                    <Lightbulb className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-medium text-lg mb-2">Sem ideias registradas</h3>
+                  <p className="text-sm text-muted-foreground max-w-xs mb-6">
+                    Suas ideias de projeto aparecerão aqui.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigate('/project-ideas/new')}
+                    className="gap-1.5"
+                  >
+                    <Plus className="h-4 w-4" /> Adicionar Ideia
+                  </Button>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="tasks" className="mt-0 pt-2 border-t">
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="bg-muted/30 rounded-full p-6 mb-4">
+                    <ListChecks className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-medium text-lg mb-2">Sem tarefas registradas</h3>
+                  <p className="text-sm text-muted-foreground max-w-xs">
+                    Suas tarefas aparecerão aqui quando forem criadas.
+                  </p>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="docs" className="mt-0 pt-2 border-t">
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="bg-muted/30 rounded-full p-6 mb-4">
+                    <FileText className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-medium text-lg mb-2">Sem documentos</h3>
+                  <p className="text-sm text-muted-foreground max-w-xs">
+                    Seus documentos aparecerão aqui quando forem adicionados.
+                  </p>
+                </div>
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>

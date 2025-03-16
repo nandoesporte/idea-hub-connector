@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -217,7 +218,17 @@ export function useVoiceCommandEvents() {
         return false;
       }
       
-      const successCount = await notifyAdminsAboutSystemEvent(message);
+      let successCount = 0;
+      for (const number of adminNumbers) {
+        const success = await sendWhatsAppMessage({
+          phone: number,
+          message: message
+        });
+        
+        if (success) {
+          successCount++;
+        }
+      }
       
       if (successCount > 0) {
         toast.success(`Notificação enviada para ${successCount} número(s) de administrador`);
@@ -357,12 +368,12 @@ export function useVoiceCommandEvents() {
         `⏱️ Duração: ${event.duration || 60} minutos\n\n` +
         `Para remarcar ou cancelar, entre em contato conosco.`;
       
-      const success = await sendWhatsAppMessage({
+      const result = await sendWhatsAppMessage({
         phone: event.contactPhone,
         message: message
       });
       
-      if (success) {
+      if (result) {
         toast.success('Lembrete enviado com sucesso!');
         return true;
       } else {
@@ -375,22 +386,6 @@ export function useVoiceCommandEvents() {
       return false;
     } finally {
       setNotificationSending(false);
-    }
-  };
-
-  const sendWhatsAppReminder = async (event: VoiceCommandEvent) => {
-    try {
-      const phoneNumber = event.contactPhone;
-      if (!phoneNumber) {
-        console.log('No phone number to send reminder to');
-        return;
-      }
-
-      const success = await sendEventReminder(event);
-      return success;
-    } catch (error) {
-      console.error('Error sending WhatsApp reminder:', error);
-      return false;
     }
   };
 
@@ -429,6 +424,7 @@ export function useVoiceCommandEvents() {
       
       console.log('Voice command processed:', result);
       
+      // Use default phone number from settings if contact phone is not provided
       if (!result.contactPhone) {
         const defaultPhone = reminderSettings.defaultPhone || localStorage.getItem('default_whatsapp_number');
         if (defaultPhone) {
@@ -437,6 +433,7 @@ export function useVoiceCommandEvents() {
         }
       }
       
+      // Calculate reminder time based on admin settings
       const reminderTime = calculateReminderTime(result.date);
       
       const saveResult = await saveVoiceCommandEvent({
@@ -452,12 +449,16 @@ export function useVoiceCommandEvents() {
       console.log('Voice command event saved successfully');
       toast.success('Evento criado com sucesso!');
 
-      const eventForNotification = {
+      const eventForNotification: VoiceCommandEvent = {
+        id: '', 
+        userId: '', 
         title: result.title,
         description: result.description || '',
         date: result.date,
         duration: result.duration || 60,
-        contactPhone: result.contactPhone || ''
+        type: result.type,
+        contactPhone: result.contactPhone,
+        createdAt: new Date()
       };
 
       if (isWhatsAppConfigured()) {
@@ -470,11 +471,12 @@ export function useVoiceCommandEvents() {
         }
       }
 
+      // Notify admins about the new event, but don't send a reminder yet
       if (isWhatsAppConfigured() && apiConnected !== false) {
         try {
-          const adminNotificationCount = await notifyAdminsAboutEvent(eventForNotification);
-          if (adminNotificationCount > 0) {
-            toast.success(`Notificação enviada para ${adminNotificationCount} administrador(es)`);
+          const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
+          if (adminNotifications > 0) {
+            toast.success(`Notificação enviada para ${adminNotifications} administrador(es)`);
           }
         } catch (error) {
           console.error('Error sending admin notifications:', error);

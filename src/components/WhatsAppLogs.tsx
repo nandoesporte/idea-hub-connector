@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,10 +23,17 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { getLogHistory, clearLogHistory } from "@/lib/whatsgwService";
-import { WhatsAppLogEntry } from '@/types';
+
+interface LogEntry {
+  timestamp: Date;
+  type: 'info' | 'error' | 'warning';
+  operation: string;
+  message: string;
+  details?: any;
+}
 
 const WhatsAppLogs = () => {
-  const [logs, setLogs] = useState<WhatsAppLogEntry[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState<'all' | 'error' | 'warning' | 'info'>('all');
   const [operationFilter, setOperationFilter] = useState<string>('all');
   const [autoRefresh, setAutoRefresh] = useState(false);

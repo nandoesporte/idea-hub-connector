@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,15 +23,13 @@ const AdminWhatsAppSettings = () => {
   const [testPhone, setTestPhone] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [apiKey, setApiKeyState] = useState('');
-  const [apiUrl, setApiUrlState] = useState('');
   const [isApiKeySet, setIsApiKeySet] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   
   useEffect(() => {
-    const { apiKey, apiUrl } = getApiKey();
-    if (apiKey) {
-      setApiKeyState(apiKey);
-      setApiUrlState(apiUrl);
+    const savedApiKey = getApiKey();
+    if (savedApiKey) {
+      setApiKeyState(savedApiKey);
       setIsApiKeySet(true);
     }
     
@@ -61,10 +60,7 @@ const AdminWhatsAppSettings = () => {
       return;
     }
     
-    // Use default API URL if not provided
-    const urlToUse = apiUrl.trim() || 'https://app.whatsgw.com.br/api/v1';
-    
-    setApiKey(apiKey, urlToUse);
+    setApiKey(apiKey);
     setIsApiKeySet(true);
     
     toast.success("Chave de API do WhatsApp salva com sucesso!");
@@ -93,9 +89,9 @@ const AdminWhatsAppSettings = () => {
     setIsSending(true);
     
     try {
-      const result = await sendTestMessage(testPhone);
+      const success = await sendTestMessage(testPhone);
       
-      if (result.success) {
+      if (success) {
         toast.success("Mensagem de teste enviada com sucesso!");
       } else {
         toast.error("Falha ao enviar mensagem de teste. Verifique o número e tente novamente.");
@@ -117,9 +113,9 @@ const AdminWhatsAppSettings = () => {
     setIsSending(true);
     
     try {
-      const result = await sendTestToSpecificNumber();
+      const success = await sendTestToSpecificNumber();
       
-      if (result.success) {
+      if (success) {
         toast.success("Mensagem de teste enviada com sucesso para 44988057213!");
       } else {
         toast.error("Falha ao enviar mensagem de teste direta. Verifique a conexão e tente novamente.");

@@ -1,21 +1,42 @@
-
-export interface PolicyData {
-  id?: string;
-  policy_number: string;
-  customer: string;
-  insurer: string;
-  start_date: Date;
-  end_date: Date;
-  premium_amount: number;
-  document_url?: string;
-  status?: 'active' | 'pending' | 'expired';
-  whatsapp_message_id?: string;
-  processed_at?: Date;
-  created_at?: Date;
+export interface CategoryItem {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  iconColor?: string;
+  link: string;
+  type?: 'tech' | 'insurance';
 }
 
-// Project types
-export type ProjectCategory = 'website' | 'e-commerce' | 'mobile-app' | 'desktop-app' | 'automation' | 'integration' | 'ai-solution' | 'other';
+export type ProjectCategory = 
+  | 'website' 
+  | 'e-commerce' 
+  | 'mobile-app' 
+  | 'desktop-app' 
+  | 'automation' 
+  | 'integration' 
+  | 'ai-solution' 
+  | 'web-app' 
+  | 'other';
+
+export interface VoiceCommandEvent {
+  id: string;
+  userId: string;
+  title: string;
+  description: string;
+  date: Date;
+  duration?: number;
+  type: string;
+  contactPhone?: string;
+  createdAt: Date;
+  reminderScheduledFor?: Date;
+}
+
+export interface NavigationItem {
+  label: string;
+  href: string;
+  icon?: string;
+}
 
 export interface ProjectIdea {
   id: string;
@@ -24,66 +45,64 @@ export interface ProjectIdea {
   category: ProjectCategory;
   budget?: string;
   timeline?: string;
-  contactName: string;
-  contactEmail: string;
-  contactPhone?: string;
-  status: 'new' | 'reviewing' | 'approved' | 'in-progress' | 'completed' | 'rejected' | 'pending' | 'under-review';
-  priority?: 'low' | 'medium' | 'high';
-  notes?: string;
-  createdAt: Date;
-  updatedAt?: Date;
-  // Additional properties used in the code
   features?: string[];
-  urgency?: 'baixa' | 'normal' | 'alta';
+  userId: string;
   clientName?: string;
-  userId?: string;
-  statusUpdates?: Array<{date: Date, status: 'new' | 'reviewing' | 'approved' | 'in-progress' | 'completed' | 'rejected' | 'pending' | 'under-review', message: string}>;
+  status: 'pending' | 'under-review' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+  createdAt: Date;
+  updatedAt: Date;
+  urgency: 'baixa' | 'normal' | 'alta';
+  statusUpdates?: Array<{
+    date: Date;
+    status: 'pending' | 'under-review' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+    message: string;
+  }>;
   attachments?: string[];
 }
 
-// Portfolio types
+export interface InsurancePolicy {
+  id: string;
+  userId: string;
+  policyNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  issueDate: Date;
+  expiryDate: Date;
+  insurer: string;
+  coverageAmount: number;
+  premium: number;
+  status: 'active' | 'expired' | 'pending-renewal';
+  type: string;
+  createdAt: Date;
+  updatedAt: Date;
+  attachmentUrl?: string;
+  notes?: string;
+  reminderSent?: boolean;
+  reminderDate?: Date;
+}
+
 export interface PortfolioItem {
   id: string;
   title: string;
-  description?: string;
-  category: string;
-  client: string;
-  completed: Date | string;
-  technologies: string[];
-  featured: boolean;
-  featuredImage?: string;
-  images: string[];
-  link?: string;
-}
-
-// Category types
-export interface CategoryItem {
-  id: string;
-  title: string;
   description: string;
-  type: 'tech' | 'insurance';
-  icon: string;
-  iconColor?: string;
-  link: string;
-  order?: number;
-  enabled?: boolean;
+  category: string;
+  technologies: string[];
+  featuredImage?: string;
+  images?: string[];
+  link?: string;
+  client?: string;
+  completed: Date;
+  challenge?: string;
+  solution?: string;
+  results?: string;
+  featured?: boolean;
+  testimonial?: {
+    text: string;
+    author: string;
+    position?: string;
+  };
 }
 
-// Navigation types
-export interface NavigationItem {
-  id?: string;
-  title?: string;
-  path?: string;
-  // For compatibility with existing code
-  label?: string;
-  href?: string;
-  icon?: string;
-  children?: NavigationItem[];
-  requiresAuth?: boolean;
-  adminOnly?: boolean;
-}
-
-// Notification types
 export interface Notification {
   id: string;
   userId: string;
@@ -92,27 +111,7 @@ export interface Notification {
   type: 'info' | 'success' | 'warning' | 'error';
   isRead: boolean;
   createdAt: Date;
+  link?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
-}
-
-// Voice command event types
-export interface VoiceCommandEvent {
-  id: string;
-  title: string;
-  description?: string;
-  date: Date;
-  duration?: number;
-  contactPhone?: string;
-  reminderScheduledFor?: Date;
-  created_at: string | Date;
-  createdAt?: Date;
-}
-
-export interface WhatsAppLogEntry {
-  timestamp: Date;
-  type: 'info' | 'error' | 'warning';
-  operation: string;
-  message: string;
-  details?: any;
 }
