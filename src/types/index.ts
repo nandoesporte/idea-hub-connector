@@ -27,11 +27,18 @@ export interface ProjectIdea {
   contactName: string;
   contactEmail: string;
   contactPhone?: string;
-  status: 'new' | 'reviewing' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+  status: 'new' | 'reviewing' | 'approved' | 'in-progress' | 'completed' | 'rejected' | 'pending' | 'under-review';
   priority?: 'low' | 'medium' | 'high';
   notes?: string;
   createdAt: Date;
   updatedAt?: Date;
+  // Additional properties used in the code
+  features?: string[];
+  urgency?: 'baixa' | 'normal' | 'alta';
+  clientName?: string;
+  userId?: string;
+  statusUpdates?: Array<{date: Date, status: string, message: string}>;
+  attachments?: string[];
 }
 
 // Portfolio types
@@ -64,9 +71,12 @@ export interface CategoryItem {
 
 // Navigation types
 export interface NavigationItem {
-  id: string;
-  title: string;
-  path: string;
+  id?: string;
+  title?: string;
+  path?: string;
+  // For compatibility with existing code
+  label?: string;
+  href?: string;
   icon?: string;
   children?: NavigationItem[];
   requiresAuth?: boolean;
