@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
@@ -55,19 +54,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     };
 
-    const { data: {
-      subscription } } = supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          setSession(session);
-          setUser(session?.user ?? null);
-
-          if (session?.user && location.pathname === '/') {
-            navigate('/dashboard');
-          }
-
-          setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user && location.pathname === '/') {
+          navigate('/dashboard');
         }
-      );
+        
+        setLoading(false);
+      }
+    );
 
     setData();
 
@@ -82,7 +80,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         email,
         password,
       });
-
+      
       return { data: data.session, error };
     } catch (error) {
       console.error('Error signing in:', error);

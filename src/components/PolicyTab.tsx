@@ -1,601 +1,398 @@
-import React, { useState, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import { useUser } from '@/contexts/UserContext';
-import { InsurancePolicy } from '@/types';
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { 
-  fetchUserPolicies, 
-  uploadPolicyDocument, 
-  analyzePolicyDocument, 
-  createPolicy, 
-  deletePolicy 
-} from '@/lib/policyService';
-import { toast } from 'sonner';
-import { 
-  Table, 
-  TableBody, 
-  TableCaption, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Card, CardContent } from '@/components/ui/card';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { 
-  Eye, 
   FileText, 
-  FilePlus, 
-  Trash2, 
-  UploadCloud, 
-  Calendar as CalendarIcon, 
-  Loader2,
-  Camera
-} from 'lucide-react';
+  Calendar, 
+  Download, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Clock, 
+  Upload,
+  Trash2,
+  Search,
+  RefreshCw,
+  Database
+} from "lucide-react";
+import { format, addDays, isBefore, isAfter } from "date-fns";
+import { toast } from "sonner";
+import { PolicyData } from "@/types";
+import { 
+  getAllPolicies, 
+  simulateWhatsAppPolicyMessage, 
+  registerWhatsAppWebhook,
+  deletePolicy
+} from "@/lib/whatsgwService";
 
 const PolicyTab = () => {
-  const { user } = useUser();
-  const queryClient = useQueryClient();
-  const [uploadDialog, setUploadDialog] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [policyPreview, setPolicyPreview] = useState<Partial<InsurancePolicy> | null>(null);
-  const [issueDateOpen, setIssueDateOpen] = useState(false);
-  const [expiryDateOpen, setExpiryDateOpen] = useState(false);
-  const [fileName, setFileName] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const isMobile = useIsMobile();
+  const [policies, setPolicies] = useState<PolicyData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [databaseError, setDatabaseError] = useState<string | null>(null);
 
-  const { data: policies = [], isLoading } = useQuery({
-    queryKey: ['policies', user?.id],
-    queryFn: () => user?.id ? fetchUserPolicies(user.id) : Promise.resolve([]),
-    meta: {
-      onError: (error) => {
-        console.error('Error fetching policies:', error);
-        toast.error('Erro ao carregar as apólices. Tente novamente.');
-      }
+  useEffect(() => {
+    // Load policies when component mounts
+    loadPolicies();
+    
+    // Load saved webhook URL if any
+    const savedWebhookUrl = localStorage.getItem('whatsgw_webhook_url');
+    if (savedWebhookUrl) {
+      setWebhookUrl(savedWebhookUrl);
     }
-  });
+  }, []);
 
-  const uploadMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedFile || !user?.id) return null;
+  const loadPolicies = async () => {
+    setLoading(true);
+    setDatabaseError(null);
+    try {
+      // Get policies from our service
+      const loadedPolicies = await getAllPolicies();
+      setPolicies(loadedPolicies);
+    } catch (error) {
+      console.error("Error loading policies:", error);
       
-      setIsAnalyzing(true);
-      try {
-        const fileUrl = await uploadPolicyDocument(selectedFile, user.id);
-        
-        const analysisResult = await analyzePolicyDocument(fileUrl);
-        
-        setPolicyPreview({
-          userId: user.id,
-          policyNumber: analysisResult.policyNumber,
-          customerName: analysisResult.customerName,
-          customerPhone: analysisResult.customerPhone,
-          issueDate: new Date(analysisResult.issueDate),
-          expiryDate: new Date(analysisResult.expiryDate),
-          insurer: analysisResult.insurer,
-          coverageAmount: analysisResult.coverageAmount,
-          premium: analysisResult.premium,
-          status: 'active',
-          type: analysisResult.type,
-          attachmentUrl: fileUrl
-        });
-        
-        return fileUrl;
-      } catch (error) {
-        console.error('Error in upload and analysis:', error);
-        throw error;
-      } finally {
-        setIsAnalyzing(false);
+      // Check if this is the "table doesn't exist" error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("does not exist") || errorMessage.includes("Failed to get policies")) {
+        setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
+      } else {
+        toast.error("Erro ao carregar apólices");
       }
-    },
-    onError: () => {
-      toast.error('Erro ao processar o documento. Tente novamente.');
-    }
-  });
-
-  const createPolicyMutation = useMutation({
-    mutationFn: async (policyData: Omit<InsurancePolicy, 'id' | 'createdAt' | 'updatedAt'>) => {
-      return createPolicy(policyData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['policies'] });
-      toast.success('Apólice salva com sucesso!');
-      setUploadDialog(false);
-      setSelectedFile(null);
-      setPolicyPreview(null);
-    },
-    onError: () => {
-      toast.error('Erro ao salvar a apólice. Tente novamente.');
-    }
-  });
-
-  const deletePolicyMutation = useMutation({
-    mutationFn: (id: string) => deletePolicy(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['policies'] });
-      toast.success('Apólice excluída com sucesso!');
-    },
-    onError: () => {
-      toast.error('Erro ao excluir a apólice. Tente novamente.');
-    }
-  });
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setFileName(file.name);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCameraCapture = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+  const handleProcessWhatsAppMessage = async () => {
+    setLoading(true);
+    setDatabaseError(null);
+    
+    try {
+      const newPolicy = await simulateWhatsAppPolicyMessage();
+      
+      if (newPolicy) {
+        // Reload policies to include the new one
+        await loadPolicies();
+        toast.success("Nova apólice recebida e processada com sucesso!");
+      } else {
+        // Check the console logs to see if it's a database error
+        setDatabaseError("Não foi possível processar a apólice. A tabela 'insurance_policies' pode não existir no banco de dados.");
+        toast.error("Erro ao processar a apólice. Verifique os logs para mais detalhes.");
+      }
+    } catch (error) {
+      console.error("Error processing WhatsApp message:", error);
+      
+      // Check if this is the "table doesn't exist" error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("does not exist")) {
+        setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
+      }
+      
+      toast.error("Erro ao processar mensagem do WhatsApp");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpload = () => {
-    if (!selectedFile) {
-      toast.error('Selecione um arquivo para upload');
+  const handleSaveWebhook = () => {
+    if (!webhookUrl.trim()) {
+      toast.error("Por favor, insira uma URL de webhook válida");
       return;
     }
-    uploadMutation.mutate();
+    
+    try {
+      registerWhatsAppWebhook(webhookUrl);
+      toast.success("URL de webhook salva com sucesso!");
+    } catch (error) {
+      console.error("Error saving webhook URL:", error);
+      toast.error("Erro ao salvar URL de webhook");
+    }
   };
 
-  const handleSavePolicy = () => {
-    if (!policyPreview || !user?.id) return;
+  const handleDeletePolicy = async (policyId: string) => {
+    if (!policyId) {
+      toast.error("ID da apólice inválido");
+      return;
+    }
 
-    const requiredFields = [
-      'policyNumber', 
-      'customerName', 
-      'issueDate', 
-      'expiryDate', 
-      'insurer', 
-      'coverageAmount', 
-      'premium'
-    ];
+    try {
+      const result = await deletePolicy(policyId);
+      
+      if (result) {
+        setPolicies(prev => prev.filter(policy => policy.id !== policyId));
+        toast.success("Apólice removida com sucesso");
+      } else {
+        toast.error("Erro ao remover apólice");
+      }
+    } catch (error) {
+      console.error("Error deleting policy:", error);
+      toast.error("Erro ao remover apólice");
+    }
+  };
+
+  const getStatusBadge = (startDate: Date | undefined, endDate: Date | undefined) => {
+    if (!startDate || !endDate) return <Badge variant="outline">Desconhecido</Badge>;
     
-    const missingFields = requiredFields.filter(field => 
-      !policyPreview[field as keyof typeof policyPreview]
+    const today = new Date();
+    
+    if (isAfter(today, endDate)) {
+      return <Badge variant="destructive">Vencida</Badge>;
+    } else if (isBefore(today, startDate)) {
+      return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Pendente</Badge>;
+    } else {
+      return <Badge className="bg-green-500">Ativa</Badge>;
+    }
+  };
+
+  const isNearExpiry = (date: Date | undefined) => {
+    if (!date) return false;
+    
+    const today = new Date();
+    const thirtyDaysFromNow = addDays(today, 30);
+    return isAfter(date, today) && isBefore(date, thirtyDaysFromNow);
+  };
+
+  const filteredPolicies = policies.filter(policy => {
+    const policyNumber = policy.policy_number || '';
+    const customer = policy.customer || '';
+    const insurer = policy.insurer || '';
+    
+    return (
+      policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insurer.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    
-    if (missingFields.length > 0) {
-      toast.error(`Por favor, preencha todos os campos obrigatórios: ${missingFields.join(', ')}`);
-      return;
-    }
-
-    createPolicyMutation.mutate(policyPreview as Omit<InsurancePolicy, 'id' | 'createdAt' | 'updatedAt'>);
-  };
-
-  const handleFieldChange = (field: keyof InsurancePolicy, value: any) => {
-    setPolicyPreview(prev => prev ? { ...prev, [field]: value } : null);
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+  });
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Apólices de Seguro</h2>
-        <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
-          <DialogTrigger asChild>
-            <Button className="flex gap-2 items-center">
-              <FilePlus className="w-4 h-4" />
-              Nova Apólice
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <CardTitle>Apólices de Seguro</CardTitle>
+            </div>
+            <Button 
+              onClick={handleProcessWhatsAppMessage} 
+              disabled={loading}
+              size="sm"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" /> 
+                  Simular Recebimento
+                </>
+              )}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Adicionar Nova Apólice</DialogTitle>
-              <DialogDescription>
-                Faça o upload de um PDF da apólice para análise automática ou preencha os dados manualmente.
-              </DialogDescription>
-            </DialogHeader>
-            
-            {!policyPreview ? (
-              <div className="space-y-4 py-4">
-                <div className="flex flex-col space-y-2">
-                  <Label htmlFor="policyFile">Arquivo da Apólice (PDF)</Label>
-                  
-                  <div className="flex flex-col gap-2">
-                    <div className={`border-2 border-dashed rounded-lg p-4 ${selectedFile ? 'border-green-500 bg-green-50' : 'border-gray-300'} transition-all flex flex-col items-center justify-center gap-2`}>
-                      <input
-                        ref={fileInputRef}
-                        id="policyFile"
-                        type="file"
-                        accept=".pdf,image/*"
-                        capture={isMobile ? "environment" : undefined}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        disabled={isAnalyzing || uploadMutation.isPending}
-                      />
-                      
-                      {selectedFile ? (
-                        <>
-                          <div className="flex items-center gap-2 text-green-600">
-                            <FileText className="h-5 w-5" />
-                            <span className="font-medium text-sm truncate max-w-[200px]">{fileName}</span>
-                          </div>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => {
-                              setSelectedFile(null);
-                              setFileName('');
-                            }}
-                          >
-                            Alterar arquivo
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <UploadCloud className="h-8 w-8 text-gray-400" />
-                          <p className="text-sm text-center text-muted-foreground">
-                            Clique para escolher ou arraste um arquivo PDF aqui
-                          </p>
-                        </>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex-1"
-                        disabled={isAnalyzing || uploadMutation.isPending}
-                      >
-                        <UploadCloud className="mr-2 h-4 w-4" />
-                        Escolher Arquivo
-                      </Button>
-                      
-                      {isMobile && (
-                        <Button 
-                          variant="outline" 
-                          onClick={handleCameraCapture}
-                          className="flex-1"
-                          disabled={isAnalyzing || uploadMutation.isPending}
-                        >
-                          <Camera className="mr-2 h-4 w-4" />
-                          Usar Câmera
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-muted-foreground">
-                    Faça upload do documento da apólice para análise automática.
+          </div>
+          <CardDescription>
+            Gerencie apólices de seguro recebidas via WhatsApp
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {databaseError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Erro de banco de dados</AlertTitle>
+              <AlertDescription className="flex flex-col gap-2">
+                <p>{databaseError}</p>
+                <div className="mt-2 text-sm border-l-4 border-destructive/30 pl-4 py-2 bg-destructive/5 rounded">
+                  <p className="font-medium flex items-center gap-2">
+                    <Database className="h-4 w-4" /> Solução:
                   </p>
+                  <ol className="list-decimal list-inside mt-1 ml-2 space-y-1">
+                    <li>Acesse o painel do Supabase</li>
+                    <li>Vá para a seção SQL ou Migrations</li>
+                    <li>Execute a migração <code className="bg-black/10 px-1 rounded">20240726_insurance_policies.sql</code></li>
+                    <li>Volte e tente novamente</li>
+                  </ol>
                 </div>
-                
-                <Button 
-                  onClick={handleUpload}
-                  disabled={!selectedFile || isAnalyzing || uploadMutation.isPending} 
-                  className="w-full"
-                >
-                  {(isAnalyzing || uploadMutation.isPending) ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <UploadCloud className="mr-2 h-4 w-4" />
-                      Fazer Upload e Analisar
-                    </>
-                  )}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4 py-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="policyNumber">Número da Apólice</Label>
-                        <Input
-                          id="policyNumber"
-                          value={policyPreview.policyNumber || ''}
-                          onChange={(e) => handleFieldChange('policyNumber', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="insurer">Seguradora</Label>
-                        <Input
-                          id="insurer"
-                          value={policyPreview.insurer || ''}
-                          onChange={(e) => handleFieldChange('insurer', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="customerName">Nome do Segurado</Label>
-                        <Input
-                          id="customerName"
-                          value={policyPreview.customerName || ''}
-                          onChange={(e) => handleFieldChange('customerName', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="customerPhone">Telefone do Segurado</Label>
-                        <Input
-                          id="customerPhone"
-                          value={policyPreview.customerPhone || ''}
-                          onChange={(e) => handleFieldChange('customerPhone', e.target.value)}
-                          placeholder="Ex: 11999999999"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Data de Emissão</Label>
-                        <Popover open={issueDateOpen} onOpenChange={setIssueDateOpen}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-start text-left"
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {policyPreview.issueDate
-                                ? format(policyPreview.issueDate, 'dd/MM/yyyy')
-                                : "Selecionar Data"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={policyPreview.issueDate}
-                              onSelect={(date) => {
-                                handleFieldChange('issueDate', date);
-                                setIssueDateOpen(false);
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Data de Vencimento</Label>
-                        <Popover open={expiryDateOpen} onOpenChange={setExpiryDateOpen}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-start text-left"
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {policyPreview.expiryDate
-                                ? format(policyPreview.expiryDate, 'dd/MM/yyyy')
-                                : "Selecionar Data"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={policyPreview.expiryDate}
-                              onSelect={(date) => {
-                                handleFieldChange('expiryDate', date);
-                                setExpiryDateOpen(false);
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="coverageAmount">Valor de Cobertura (R$)</Label>
-                        <Input
-                          id="coverageAmount"
-                          type="number"
-                          value={policyPreview.coverageAmount || ''}
-                          onChange={(e) => handleFieldChange('coverageAmount', parseFloat(e.target.value))}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="premium">Prêmio (R$)</Label>
-                        <Input
-                          id="premium"
-                          type="number"
-                          value={policyPreview.premium || ''}
-                          onChange={(e) => handleFieldChange('premium', parseFloat(e.target.value))}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="type">Tipo de Seguro</Label>
-                        <Input
-                          id="type"
-                          value={policyPreview.type || ''}
-                          onChange={(e) => handleFieldChange('type', e.target.value)}
-                          placeholder="Ex: Auto, Residencial, Vida"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-            
-            <DialogFooter className={isMobile ? "flex-col space-y-2" : ""}>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setUploadDialog(false);
-                  setSelectedFile(null);
-                  setPolicyPreview(null);
-                  setFileName('');
-                }}
-                className={isMobile ? "w-full" : ""}
-              >
-                Cancelar
-              </Button>
-              
-              {policyPreview && (
-                <Button 
-                  onClick={handleSavePolicy}
-                  disabled={createPolicyMutation.isPending}
-                  className={isMobile ? "w-full" : ""}
-                >
-                  {createPolicyMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    'Salvar Apólice'
-                  )}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="flex items-center space-x-2 mb-4">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por cliente, seguradora ou número de apólice..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1"
+            />
+          </div>
+          
+          {loading ? (
+            <div className="text-center py-10">
+              <RefreshCw className="h-16 w-16 mx-auto text-primary opacity-20 mb-4 animate-spin" />
+              <h3 className="text-lg font-medium">Carregando apólices...</h3>
+            </div>
+          ) : filteredPolicies.length === 0 ? (
+            <div className="text-center py-10">
+              <FileText className="h-16 w-16 mx-auto text-muted-foreground opacity-20 mb-4" />
+              <h3 className="text-lg font-medium">Nenhuma apólice encontrada</h3>
+              <p className="text-sm text-muted-foreground mt-1 mb-4">
+                {searchTerm 
+                  ? "Nenhum resultado encontrado para sua busca" 
+                  : databaseError 
+                    ? "Corrija o erro de banco de dados para visualizar apólices" 
+                    : "Suas apólices de seguro aparecerão aqui"}
+              </p>
+              {searchTerm && (
+                <Button variant="outline" onClick={() => setSearchTerm("")}>
+                  Limpar busca
                 </Button>
               )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-      
-      {isLoading ? (
-        <div className="flex justify-center items-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : policies.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <div className="bg-muted/30 rounded-full p-6 mb-4">
-            <FileText className="h-10 w-10 text-muted-foreground" />
-          </div>
-          <h3 className="font-medium text-lg mb-2">Nenhuma apólice encontrada</h3>
-          <p className="text-sm text-muted-foreground max-w-xs mb-6">
-            Carregue e analise apólices de seguro para começar a gerenciá-las aqui.
-          </p>
-        </div>
-      ) : (
-        <Table>
-          <TableCaption>Lista de apólices de seguro</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Número</TableHead>
-              <TableHead>Segurado</TableHead>
-              <TableHead>Seguradora</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Vencimento</TableHead>
-              <TableHead>Valor</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {policies.map((policy) => (
-              <TableRow key={policy.id}>
-                <TableCell className="font-medium">{policy.policyNumber}</TableCell>
-                <TableCell>{policy.customerName}</TableCell>
-                <TableCell>{policy.insurer}</TableCell>
-                <TableCell>{policy.type}</TableCell>
-                <TableCell>{format(policy.expiryDate, 'dd/MM/yyyy')}</TableCell>
-                <TableCell>{formatCurrency(policy.coverageAmount)}</TableCell>
-                <TableCell>
-                  <span 
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      policy.status === 'active' 
-                        ? 'bg-green-100 text-green-800' 
-                        : policy.status === 'expired'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {policy.status === 'active' 
-                      ? 'Ativa' 
-                      : policy.status === 'expired' 
-                        ? 'Expirada' 
-                        : 'Pendente Renovação'}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end space-x-2">
-                    {policy.attachmentUrl && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a 
-                          href={policy.attachmentUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir Apólice</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir esta apólice? Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => deletePolicyMutation.mutate(policy.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              {!databaseError && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleProcessWhatsAppMessage} 
+                  className="ml-2"
+                  disabled={loading}
+                >
+                  <Upload className="h-4 w-4 mr-2" /> 
+                  Simular recebimento de apólice
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Número da Apólice</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Seguradora</TableHead>
+                    <TableHead>Vigência</TableHead>
+                    <TableHead>Valor do Prêmio</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPolicies.map((policy) => (
+                    <TableRow key={policy.id || policy.policy_number}>
+                      <TableCell className="font-medium">{policy.policy_number}</TableCell>
+                      <TableCell>{policy.customer || "N/A"}</TableCell>
+                      <TableCell>{policy.insurer || "N/A"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>
+                            {policy.start_date ? format(new Date(policy.start_date), "dd/MM/yyyy") : "N/A"} - {policy.end_date ? format(new Date(policy.end_date), "dd/MM/yyyy") : "N/A"}
+                          </span>
+                          {policy.end_date && isNearExpiry(new Date(policy.end_date)) && (
+                            <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{`R$ ${policy.premium_amount?.toFixed(2)}` || "N/A"}</TableCell>
+                      <TableCell>{getStatusBadge(policy.start_date ? new Date(policy.start_date) : undefined, policy.end_date ? new Date(policy.end_date) : undefined)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {policy.document_url && (
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-7 w-7"
+                              aria-label="Baixar documento"
+                              onClick={() => window.open(policy.document_url, '_blank')}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            aria-label="Remover"
+                            onClick={() => policy.id && handleDeletePolicy(policy.id)}
                           >
-                            {deletePolicyMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Excluindo...
-                              </>
-                            ) : (
-                              'Excluir'
-                            )}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          
+          <div className="bg-muted/30 rounded-lg p-4 mt-6">
+            <h3 className="text-sm font-medium flex items-center gap-2 mb-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Recebimento Automático via WhatsApp
+            </h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              Documentos de apólice recebidos via WhatsApp com a palavra "apolice" serão automaticamente processados e adicionados ao sistema.
+            </p>
+            
+            <div className="mt-4 border-t pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="webhook-url" className="text-xs">URL do Webhook para WhatsApp</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="webhook-url" 
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    placeholder="https://seu-webhook.com/whatsgw-events" 
+                    className="text-xs flex-1"
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={handleSaveWebhook}
+                    disabled={!webhookUrl.trim()}
+                  >
+                    Salvar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Configure esta URL no painel de controle do WhatsGW para receber automaticamente mensagens de documentos de apólice.
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <div>
+                <Label htmlFor="days-before" className="text-xs flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> Dias para lembrete antes do vencimento
+                </Label>
+                <Input 
+                  id="days-before" 
+                  type="number" 
+                  defaultValue={30} 
+                  min={1} 
+                  max={90}
+                  className="h-8 mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="default-phone" className="text-xs">Número padrão para lembretes</Label>
+                <Input 
+                  id="default-phone" 
+                  type="tel" 
+                  placeholder="Ex: 11987654321" 
+                  className="h-8 mt-1"
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { VoiceCommandEvent } from '@/types';
 import { format, isToday, isPast, isFuture } from 'date-fns';
@@ -141,7 +142,7 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
         return;
       }
       
-      const savedNumbers: string[] = JSON.parse(savedNumbersStr);
+      const savedNumbers = JSON.parse(savedNumbersStr);
       if (!Array.isArray(savedNumbers) || savedNumbers.length === 0) {
         toast.error("Nenhum número de notificação do sistema configurado");
         return;
@@ -185,6 +186,7 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
     }
   };
 
+  // Group events by date
   const groupedEvents = events.reduce((acc, event) => {
     const dateStr = format(event.date, 'yyyy-MM-dd');
     if (!acc[dateStr]) {

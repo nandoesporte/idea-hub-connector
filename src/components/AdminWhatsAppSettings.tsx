@@ -23,13 +23,15 @@ const AdminWhatsAppSettings = () => {
   const [testPhone, setTestPhone] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [apiKey, setApiKeyState] = useState('');
+  const [apiUrl, setApiUrlState] = useState('');
   const [isApiKeySet, setIsApiKeySet] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   
   useEffect(() => {
-    const savedApiKey = getApiKey();
-    if (savedApiKey) {
-      setApiKeyState(savedApiKey);
+    const { apiKey, apiUrl } = getApiKey();
+    if (apiKey) {
+      setApiKeyState(apiKey);
+      setApiUrlState(apiUrl);
       setIsApiKeySet(true);
     }
     
@@ -60,7 +62,10 @@ const AdminWhatsAppSettings = () => {
       return;
     }
     
-    setApiKey(apiKey);
+    // Use default API URL if not provided
+    const urlToUse = apiUrl.trim() || 'https://app.whatsgw.com.br/api/v1';
+    
+    setApiKey(apiKey, urlToUse);
     setIsApiKeySet(true);
     
     toast.success("Chave de API do WhatsApp salva com sucesso!");
@@ -89,9 +94,9 @@ const AdminWhatsAppSettings = () => {
     setIsSending(true);
     
     try {
-      const success = await sendTestMessage(testPhone);
+      const result = await sendTestMessage(testPhone);
       
-      if (success) {
+      if (result.success) {
         toast.success("Mensagem de teste enviada com sucesso!");
       } else {
         toast.error("Falha ao enviar mensagem de teste. Verifique o número e tente novamente.");
@@ -113,9 +118,9 @@ const AdminWhatsAppSettings = () => {
     setIsSending(true);
     
     try {
-      const success = await sendTestToSpecificNumber();
+      const result = await sendTestToSpecificNumber();
       
-      if (success) {
+      if (result.success) {
         toast.success("Mensagem de teste enviada com sucesso para 44988057213!");
       } else {
         toast.error("Falha ao enviar mensagem de teste direta. Verifique a conexão e tente novamente.");

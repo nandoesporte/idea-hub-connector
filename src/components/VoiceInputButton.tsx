@@ -1,10 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mic, Square, Send, Edit, Loader2 } from 'lucide-react';
+import { Mic, Square } from 'lucide-react';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
 import { toast } from 'sonner';
-import { Input } from '@/components/ui/input';
 
 // Properly define the SpeechRecognition type to fix the error
 type SpeechRecognitionType = typeof window.SpeechRecognition | typeof window.webkitSpeechRecognition;
@@ -12,8 +11,6 @@ type SpeechRecognitionType = typeof window.SpeechRecognition | typeof window.web
 const VoiceInputButton = () => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [editMode, setEditMode] = useState(false);
-  const [editedTranscript, setEditedTranscript] = useState('');
   const recognitionRef = useRef<InstanceType<SpeechRecognitionType> | null>(null);
   const finalTranscriptRef = useRef('');
   const { createEventFromVoiceCommand, processingCommand } = useVoiceCommandEvents();
@@ -47,8 +44,6 @@ const VoiceInputButton = () => {
       // Reset transcript
       setTranscript('');
       finalTranscriptRef.current = '';
-      setEditedTranscript('');
-      setEditMode(false);
       
       recognitionRef.current.onresult = (event) => {
         let interimTranscript = '';
@@ -78,14 +73,6 @@ const VoiceInputButton = () => {
       recognitionRef.current.onend = () => {
         console.log('Speech recognition ended');
         setIsListening(false);
-        
-        // If we have a transcript, enter edit mode
-        if (finalTranscriptRef.current && finalTranscriptRef.current.trim() !== '') {
-          setEditMode(true);
-          setEditedTranscript(finalTranscriptRef.current);
-        } else {
-          toast.warning('Nenhum comando de voz detectado');
-        }
       };
 
       recognitionRef.current.start();
@@ -96,49 +83,34 @@ const VoiceInputButton = () => {
     }
   };
 
-  const stopListening = () => {
+  const stopListening = async () => {
     if (recognitionRef.current) {
       console.log('Stop listening called, current transcript:', finalTranscriptRef.current);
+      
+      // First stop the recognition to prevent more updates
       recognitionRef.current.stop();
+      
+      // Process the command (using the finalTranscriptRef to ensure we have the complete text)
+      if (finalTranscriptRef.current) {
+        const success = await createEventFromVoiceCommand(finalTranscriptRef.current);
+        if (success) {
+          // Reset transcript after successful processing
+          setTranscript('');
+          finalTranscriptRef.current = '';
+        }
+      } else {
+        toast.warning('Nenhum comando de voz detectado');
+      }
+      
+      setIsListening(false);
     }
-  };
-  
-  const cancelEditing = () => {
-    setEditMode(false);
-    setTranscript('');
-    finalTranscriptRef.current = '';
-    setEditedTranscript('');
-  };
-  
-  const saveCommand = async () => {
-    if (!editedTranscript || editedTranscript.trim() === '') {
-      toast.warning('O comando não pode estar vazio');
-      return;
-    }
-    
-    const success = await createEventFromVoiceCommand(editedTranscript);
-    if (success) {
-      // Reset transcript after successful processing
-      setTranscript('');
-      finalTranscriptRef.current = '';
-      setEditedTranscript('');
-      setEditMode(false);
-    }
-  };
-  
-  const redoCommand = () => {
-    setEditMode(false);
-    setTranscript('');
-    finalTranscriptRef.current = '';
-    setEditedTranscript('');
-    startListening();
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4 w-full max-w-md">
+    <div className="flex flex-col items-center space-y-4">
       {isListening ? (
         <>
-          <div className="animate-pulse bg-red-100 text-red-800 px-4 py-2 rounded-md mb-2 text-sm font-medium w-full text-center">
+          <div className="animate-pulse bg-red-100 text-red-800 px-4 py-2 rounded-md mb-2 text-sm font-medium">
             Gravando comando de voz...
           </div>
           <Button 
@@ -150,49 +122,6 @@ const VoiceInputButton = () => {
             <span>Parar</span>
           </Button>
         </>
-      ) : editMode ? (
-        <>
-          <div className="w-full">
-            <div className="bg-muted/50 p-3 rounded-md mb-3 w-full">
-              <h3 className="text-sm font-medium mb-2">Editar comando:</h3>
-              <Input
-                value={editedTranscript}
-                onChange={(e) => setEditedTranscript(e.target.value)}
-                className="w-full mb-3"
-                placeholder="Edite seu comando de voz..."
-              />
-              <div className="flex flex-wrap gap-2 justify-end">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={cancelEditing}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={redoCommand}
-                >
-                  <Mic size={14} className="mr-1" />
-                  Refazer
-                </Button>
-                <Button 
-                  size="sm" 
-                  onClick={saveCommand}
-                  disabled={processingCommand}
-                >
-                  {processingCommand ? (
-                    <Loader2 size={14} className="mr-1 animate-spin" />
-                  ) : (
-                    <Send size={14} className="mr-1" />
-                  )}
-                  Salvar
-                </Button>
-              </div>
-            </div>
-          </div>
-        </>
       ) : (
         <Button 
           onClick={startListening} 
@@ -203,8 +132,8 @@ const VoiceInputButton = () => {
         </Button>
       )}
       
-      {isListening && transcript && (
-        <div className="mt-4 p-4 bg-gray-50 border rounded-md w-full">
+      {transcript && (
+        <div className="mt-4 p-4 bg-gray-50 border rounded-md w-full max-w-md">
           <p className="text-sm font-medium text-gray-500 mb-1">Transcrição:</p>
           <p className="text-sm">{transcript}</p>
         </div>

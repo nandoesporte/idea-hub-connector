@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -345,7 +344,7 @@ const UserDashboard = () => {
           Bem-vindo, {user?.user_metadata?.name?.split(' ')[0] || 'Cliente'}!
         </h1>
         <p className="text-muted-foreground">
-          Gerencie suas cotações e informações em um só lugar.
+          Gerencie suas apólices, cotações e informações de seguro em um só lugar.
         </p>
       </div>
 
