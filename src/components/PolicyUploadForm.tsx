@@ -1,13 +1,13 @@
 
 import React, { useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
-import { uploadPolicyAttachment, createPolicy } from '@/lib/policyService';
+import { uploadPolicyAttachment, createPolicy, runInsurancePoliciesMigration } from '@/lib/policyService';
 import { analyzePolicyDocument } from '@/api/analyze-policy';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Upload, FileText } from 'lucide-react';
+import { Loader2, Upload, FileText, DatabaseZap } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Policy } from '@/types';
@@ -17,14 +17,39 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [progress, setProgress] = useState<'idle' | 'uploading' | 'analyzing' | 'complete' | 'error'>('idle');
+  const [progress, setProgress] = useState<'idle' | 'uploading' | 'analyzing' | 'complete' | 'error' | 'migrating'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [needsMigration, setNeedsMigration] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
       setErrorMessage(null);
       setProgress('idle');
+      setNeedsMigration(false);
+    }
+  };
+
+  const handleMigration = async () => {
+    try {
+      setProgress('migrating');
+      toast.info('Criando tabela de apólices...');
+      
+      const result = await runInsurancePoliciesMigration();
+      
+      if (result.success) {
+        toast.success('Tabela de apólices criada com sucesso!');
+        setNeedsMigration(false);
+        // Retomar o upload depois da migração bem-sucedida
+        await handleUpload();
+      } else {
+        setProgress('error');
+        setErrorMessage('Não foi possível criar a tabela de apólices. Contate o administrador do sistema.');
+      }
+    } catch (error) {
+      console.error('Erro ao criar tabela:', error);
+      setProgress('error');
+      setErrorMessage('Erro ao criar tabela de apólices. Tente novamente mais tarde.');
     }
   };
 
@@ -100,9 +125,10 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           const result = await createPolicy(policyToCreate);
           
           if (result === null) {
-            // Se createPolicy retornar null, significa que a tabela não existe ou houve um erro
+            // Verifica se precisa executar a migração
+            setNeedsMigration(true);
             setProgress('error');
-            setErrorMessage('A tabela de apólices não existe no banco de dados. Execute as migrações necessárias ou ative o módulo de apólices no sistema.');
+            setErrorMessage('A tabela de apólices não existe no banco de dados. Clique no botão abaixo para criar a tabela.');
             setAnalyzing(false);
             return;
           }
@@ -139,6 +165,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     setFile(null);
     setProgress('idle');
     setErrorMessage(null);
+    setNeedsMigration(false);
   };
 
   const formatDate = (date: Date) => {
@@ -198,6 +225,14 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           </div>
         )}
 
+        {progress === 'migrating' && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <p className="font-medium">Criando tabela de apólices...</p>
+            <p className="text-sm text-muted-foreground">Configurando o banco de dados</p>
+          </div>
+        )}
+
         {progress === 'complete' && (
           <div className="flex flex-col items-center justify-center py-8">
             <div className="bg-green-500 text-white p-3 rounded-full mb-4">
@@ -233,13 +268,25 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
               >
                 Voltar
               </Button>
-              <Button 
-                variant="default"
-                onClick={handleUpload}
-                disabled={!file}
-              >
-                Tentar novamente
-              </Button>
+              
+              {needsMigration ? (
+                <Button 
+                  variant="default"
+                  onClick={handleMigration}
+                  className="gap-2"
+                >
+                  <DatabaseZap className="h-4 w-4" />
+                  Criar tabela e continuar
+                </Button>
+              ) : (
+                <Button 
+                  variant="default"
+                  onClick={handleUpload}
+                  disabled={!file}
+                >
+                  Tentar novamente
+                </Button>
+              )}
             </div>
           </div>
         )}

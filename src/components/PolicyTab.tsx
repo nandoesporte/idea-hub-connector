@@ -4,7 +4,8 @@ import { useUser } from '@/contexts/UserContext';
 import { Policy } from '@/types';
 import { 
   fetchPolicies, deletePolicy, 
-  uploadPolicyAttachment, checkPolicyReminders
+  uploadPolicyAttachment, checkPolicyReminders,
+  runInsurancePoliciesMigration
 } from '@/lib/policyService';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -12,7 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { 
   FileText, Upload, Trash2, AlertTriangle, CheckCircle, 
   Calendar, Download, PlusCircle, Loader2, FileLock,
-  AlertTriangle as AlertIcon
+  AlertTriangle as AlertIcon, DatabaseZap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +47,7 @@ const PolicyTab = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
   
   useEffect(() => {
     if (user) {
@@ -88,6 +90,29 @@ const PolicyTab = () => {
       }
     } catch (error) {
       console.error('Erro ao verificar lembretes:', error);
+    }
+  };
+
+  const handleCreateTable = async () => {
+    try {
+      setIsMigrating(true);
+      toast.info('Executando migração para criar tabela de apólices...');
+      
+      const result = await runInsurancePoliciesMigration();
+      
+      if (result.success) {
+        toast.success('Tabela de apólices criada com sucesso!');
+        setError(null);
+        loadPolicies();
+      } else {
+        toast.error('Não foi possível criar a tabela de apólices.');
+        setError('Falha ao criar tabela. Contate o administrador do sistema.');
+      }
+    } catch (error) {
+      console.error('Erro ao criar tabela:', error);
+      toast.error('Erro ao criar tabela de apólices');
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -163,8 +188,20 @@ const PolicyTab = () => {
             {error}
           </p>
           <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
-            A tabela de apólices pode não existir no banco de dados. Entre em contato com o administrador do sistema.
+            A tabela de apólices pode não existir no banco de dados. Clique no botão abaixo para criar a tabela.
           </p>
+          <Button 
+            onClick={handleCreateTable} 
+            disabled={isMigrating} 
+            className="gap-2"
+          >
+            {isMigrating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <DatabaseZap className="h-4 w-4" />
+            )}
+            {isMigrating ? 'Criando tabela...' : 'Criar tabela de apólices'}
+          </Button>
         </CardContent>
       </Card>
     );

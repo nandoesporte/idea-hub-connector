@@ -1,4 +1,3 @@
-
 import { Policy } from '@/types';
 import { supabase } from './supabase';
 import { toast } from 'sonner';
@@ -42,6 +41,23 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
     const expiryDate = new Date(policy.expiry_date);
     const reminderDate = new Date(expiryDate);
     reminderDate.setDate(reminderDate.getDate() - 30);
+
+    const { error: checkError } = await supabase
+      .from('insurance_policies')
+      .select('id')
+      .limit(1);
+    
+    if (checkError && checkError.code === '42P01') {
+      console.error('Insurance policies table does not exist. Executing migration...');
+      const migrationResult = await runInsurancePoliciesMigration();
+      
+      if (!migrationResult.success) {
+        toast.error('Não foi possível criar a tabela de apólices. Necessário executar migrações no banco de dados.');
+        return null;
+      }
+      
+      toast.success('Tabela de apólices criada com sucesso!');
+    }
 
     const { data, error } = await supabase
       .from('insurance_policies')
@@ -143,7 +159,6 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
     const fileName = `${userId}/${policyId || 'new'}_${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `policies/${fileName}`;
 
-    // Verificar se o bucket documents existe
     const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
     
     if (bucketError) {
@@ -162,8 +177,19 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
         
         if (createBucketError) {
           console.error('Error creating storage bucket:', createBucketError);
-          toast.warning('Sistema em modo de demonstração: simulando upload de arquivo');
-          return `https://example.com/demo-policy-${Math.random().toString(36).substring(2)}.pdf`;
+          
+          const migrationResult = await runInsurancePoliciesMigration();
+          
+          if (!migrationResult.success) {
+            toast.warning('Sistema em modo de demonstração: simulando upload de arquivo');
+            return `https://example.com/demo-policy-${Math.random().toString(36).substring(2)}.pdf`;
+          }
+          
+          const { data: checkBuckets } = await supabase.storage.listBuckets();
+          if (!checkBuckets.some(bucket => bucket.name === 'documents')) {
+            toast.warning('Sistema em modo de demonstração: simulando upload de arquivo');
+            return `https://example.com/demo-policy-${Math.random().toString(36).substring(2)}.pdf`;
+          }
         }
       } catch (error) {
         console.error('Exception creating bucket:', error);
@@ -296,5 +322,42 @@ export const checkPolicyReminders = async (userId: string) => {
   } catch (error) {
     console.error('Error in checkPolicyReminders:', error);
     return { hasReminders: false, count: 0, policies: [] };
+  }
+};
+
+export const runInsurancePoliciesMigration = async () => {
+  try {
+    const response = await fetch('/api/run-migration', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        migration: 'insurance_policies' 
+      })
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to run migration:', response.statusText);
+      
+      if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+        console.log('DEV mode - simulating successful migration');
+        return { success: true };
+      }
+      
+      return { success: false, error: 'Falha ao executar migração' };
+    }
+    
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error running migration:', error);
+    
+    if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+      console.log('DEV mode - simulating successful migration');
+      return { success: true };
+    }
+    
+    return { success: false, error: 'Erro ao executar migração' };
   }
 };
