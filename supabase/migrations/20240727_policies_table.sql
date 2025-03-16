@@ -13,33 +13,58 @@ CREATE TABLE IF NOT EXISTS public.policies (
   status text NOT NULL CHECK (status IN ('active', 'expired', 'pending', 'cancelled')),
   document_url text,
   file_name text,
-  created_at timestamp with time zone DEFAULT now() NOT NULL,
-  
-  CONSTRAINT policies_user_id_fkey FOREIGN KEY (user_id)
-    REFERENCES auth.users(id) ON DELETE CASCADE
+  created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 -- Enable RLS
 ALTER TABLE public.policies ENABLE ROW LEVEL SECURITY;
 
--- Create policies for RLS
-CREATE POLICY "Users can view their own policies"
-  ON public.policies
-  FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own policies"
-  ON public.policies
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own policies"
-  ON public.policies
-  FOR UPDATE
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own policies"
-  ON public.policies
-  FOR DELETE
-  USING (auth.uid() = user_id);
+-- Check if policies for RLS exist before creating them
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policy 
+        WHERE polrelid = 'public.policies'::regclass 
+        AND polname = 'Users can view their own policies'
+    ) THEN
+        CREATE POLICY "Users can view their own policies"
+          ON public.policies
+          FOR SELECT
+          USING (auth.uid() = user_id);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policy 
+        WHERE polrelid = 'public.policies'::regclass 
+        AND polname = 'Users can insert their own policies'
+    ) THEN
+        CREATE POLICY "Users can insert their own policies"
+          ON public.policies
+          FOR INSERT
+          WITH CHECK (auth.uid() = user_id);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policy 
+        WHERE polrelid = 'public.policies'::regclass 
+        AND polname = 'Users can update their own policies'
+    ) THEN
+        CREATE POLICY "Users can update their own policies"
+          ON public.policies
+          FOR UPDATE
+          USING (auth.uid() = user_id)
+          WITH CHECK (auth.uid() = user_id);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policy 
+        WHERE polrelid = 'public.policies'::regclass 
+        AND polname = 'Users can delete their own policies'
+    ) THEN
+        CREATE POLICY "Users can delete their own policies"
+          ON public.policies
+          FOR DELETE
+          USING (auth.uid() = user_id);
+    END IF;
+END
+$$;
