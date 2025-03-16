@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -168,10 +167,11 @@ const PolicyTab = () => {
           const base64Data = reader.result?.toString().split(',')[1];
           
           // 3. Call GPT-4 Vision to analyze the PDF
-          const response = await fetch('/api/analyze-policy', {
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-policy`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             },
             body: JSON.stringify({
               pdfBase64: base64Data,
@@ -200,7 +200,6 @@ const PolicyTab = () => {
           const { error: saveError } = await supabase
             .from('policies')
             .insert({
-              id: Date.now().toString(),
               user_id: user.id,
               policy_number: policyData.policyNumber,
               insurer: policyData.insurer,
@@ -210,10 +209,8 @@ const PolicyTab = () => {
               coverage_amount: policyData.coverageAmount,
               premium_value: policyData.premium,
               status: policyStatus,
-              type: policyData.type || 'general',
               document_url: publicUrl,
-              file_name: file.name,
-              created_at: new Date().toISOString(),
+              file_name: file.name
             });
 
           if (saveError) {
