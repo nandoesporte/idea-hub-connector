@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 
 // Store API key in localStorage
