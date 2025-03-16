@@ -390,7 +390,7 @@ export function useVoiceCommandEvents() {
 
   const sendWhatsAppReminder = async (event: VoiceCommandEvent) => {
     try {
-      const phoneNumber = event.contact_phone;
+      const phoneNumber = event.contactPhone;
       if (!phoneNumber) {
         console.log('No phone number to send reminder to');
         return;
@@ -400,7 +400,7 @@ export function useVoiceCommandEvents() {
         title: event.title,
         description: event.description || '',
         date: new Date(event.date),
-        duration: event.duration,
+        duration: event.duration || 60,
         contactPhone: phoneNumber
       });
     } catch (error) {

@@ -1,4 +1,3 @@
-
 export type ProjectCategory = 
   | 'automation'
   | 'website'
@@ -90,4 +89,24 @@ export interface VoiceCommandEvent {
   type: 'meeting' | 'deadline' | 'task' | 'other';
   contactPhone?: string;
   createdAt: Date;
+}
+
+export interface PolicyData {
+  id?: string;
+  user_id?: string;
+  policy_number: string;
+  policy_type: string;
+  expiry_date: string;
+  premium_amount: number;
+  status: 'active' | 'expired' | 'pending';
+  details?: any;
+  created_at?: string;
+  updated_at?: string;
+  policyNumber?: string;
+  customer?: string;
+  insurer?: string;
+  startDate?: Date;
+  endDate?: Date;
+  premiumValue?: string;
+  documentUrl?: string;
 }

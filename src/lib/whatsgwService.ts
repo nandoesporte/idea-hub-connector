@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { toast } from "sonner";
+import { VoiceCommandEvent } from '@/types';
 
 // Store API key in localStorage
 const API_KEY_STORAGE_KEY = 'whatsgw_api_key';
@@ -82,7 +84,7 @@ export const clearLogHistory = () => {
 };
 
 // Send a test message
-export const sendTestMessage = async () => {
+export const sendTestMessage = async (phoneNumber: string) => {
   try {
     const { apiKey, apiUrl } = getApiKey();
     
@@ -97,7 +99,7 @@ export const sendTestMessage = async () => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        phone: '5511999999999', // Default test number
+        phone: phoneNumber, // Use the provided phone number
         message: 'Test message from WhatsGW integration',
         isGroup: false
       })
@@ -133,16 +135,13 @@ export const sendTestMessage = async () => {
 };
 
 // Send a test message to a specific number
-export const sendTestToSpecificNumber = async (phoneNumber: string) => {
+export const sendTestToSpecificNumber = async () => {
   try {
     const { apiKey, apiUrl } = getApiKey();
     
     if (!apiKey || !apiUrl) {
       throw new Error('API key or URL not configured');
     }
-    
-    // Format the phone number (remove any non-digit characters)
-    const formattedPhone = phoneNumber.replace(/\D/g, '');
     
     const response = await fetch(`${apiUrl}/send`, {
       method: 'POST',
@@ -151,7 +150,7 @@ export const sendTestToSpecificNumber = async (phoneNumber: string) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        phone: formattedPhone,
+        phone: '5511999999999', // Default test number
         message: 'Test message from WhatsGW integration',
         isGroup: false
       })
@@ -166,14 +165,14 @@ export const sendTestToSpecificNumber = async (phoneNumber: string) => {
     addLogEntry({
       action: 'TEST_MESSAGE_SPECIFIC',
       status: 'success',
-      message: `Test message sent successfully to ${phoneNumber}`,
+      message: 'Test message sent successfully',
       timestamp: new Date().toISOString(),
       details: data
     });
     
     return { success: true, data };
   } catch (error) {
-    console.error(`Error sending test message to ${phoneNumber}:`, error);
+    console.error('Error sending test message:', error);
     
     addLogEntry({
       action: 'TEST_MESSAGE_SPECIFIC',
@@ -186,40 +185,15 @@ export const sendTestToSpecificNumber = async (phoneNumber: string) => {
   }
 };
 
-// Send a reminder message for an event
-export const sendEventReminder = async (
-  event: { 
-    title: string; 
-    description: string; 
-    date: Date; 
-    duration: number; 
-    contactPhone: string; 
-  }
-) => {
+// Send WhatsApp message for hooks
+export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: { phone: string; message: string; isGroup?: boolean }) => {
   try {
-    if (!isWhatsAppConfigured()) {
-      console.log('WhatsApp not configured, skipping reminder');
-      return { success: false, error: 'WhatsApp not configured' };
-    }
-
     const { apiKey, apiUrl } = getApiKey();
     
-    // Format the date for the message
-    const formattedDate = new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(event.date);
-
-    // Format the phone number (remove any non-digit characters)
-    const formattedPhone = event.contactPhone.replace(/\D/g, '');
+    if (!apiKey || !apiUrl) {
+      throw new Error('API key or URL not configured');
+    }
     
-    // Create the message
-    const message = `🔔 *Lembrete de Evento*\n\n*${event.title}*\n${event.description}\n\n📅 Data: ${formattedDate}\n⏱️ Duração: ${event.duration} minutos`;
-    
-    // Send the reminder via WhatsApp
     const response = await fetch(`${apiUrl}/send`, {
       method: 'POST',
       headers: {
@@ -227,38 +201,179 @@ export const sendEventReminder = async (
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        phone: formattedPhone,
-        message: message,
-        isGroup: false
+        phone,
+        message,
+        isGroup
       })
     });
     
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to send reminder');
+      throw new Error(data.message || 'Failed to send message');
     }
     
-    addLogEntry({
-      action: 'EVENT_REMINDER',
-      status: 'success',
-      message: `Reminder sent for event "${event.title}" to ${formattedPhone}`,
-      timestamp: new Date().toISOString(),
-      details: { event, response: data }
-    });
-    
-    return { success: true, data };
+    return true;
   } catch (error) {
-    console.error('Error sending event reminder:', error);
+    console.error('Error sending WhatsApp message:', error);
+    return false;
+  }
+};
+
+// Test API connection
+export const testApiConnection = async () => {
+  try {
+    const { apiKey, apiUrl } = getApiKey();
     
-    addLogEntry({
-      action: 'EVENT_REMINDER',
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
+    if (!apiKey || !apiUrl) {
+      return false;
+    }
+    
+    const response = await fetch(`${apiUrl}/status`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
     });
     
-    return { success: false, error };
+    return response.ok;
+  } catch (error) {
+    console.error('Error testing API connection:', error);
+    return false;
+  }
+};
+
+// Notify admins about event
+export const notifyAdminsAboutEvent = async (event: any) => {
+  try {
+    const adminNumbers = getAdminNumbers();
+    if (adminNumbers.length === 0) {
+      return 0;
+    }
+    
+    let successCount = 0;
+    for (const phone of adminNumbers) {
+      const success = await sendWhatsAppMessage({
+        phone,
+        message: `New event: ${event.title}`
+      });
+      
+      if (success) {
+        successCount++;
+      }
+    }
+    
+    return successCount;
+  } catch (error) {
+    console.error('Error notifying admins about event:', error);
+    return 0;
+  }
+};
+
+// Notify admins about system event
+export const notifyAdminsAboutSystemEvent = async (type: string, data: any) => {
+  try {
+    const adminNumbers = getAdminNumbers();
+    if (adminNumbers.length === 0) {
+      return 0;
+    }
+    
+    let successCount = 0;
+    for (const phone of adminNumbers) {
+      const success = await sendWhatsAppMessage({
+        phone,
+        message: `System event (${type}): ${JSON.stringify(data)}`
+      });
+      
+      if (success) {
+        successCount++;
+      }
+    }
+    
+    return successCount;
+  } catch (error) {
+    console.error('Error notifying admins about system event:', error);
+    return 0;
+  }
+};
+
+// Get admin numbers
+const getAdminNumbers = () => {
+  try {
+    const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');
+    if (savedNumbers) {
+      const parsedNumbers = JSON.parse(savedNumbers);
+      return Array.isArray(parsedNumbers) ? parsedNumbers.filter(num => num && num.trim() !== '') : [];
+    }
+  } catch (error) {
+    console.error('Error parsing admin numbers from localStorage:', error);
+  }
+  return [];
+};
+
+// Simulate WhatsApp policy message
+export const simulateWhatsAppPolicyMessage = async () => {
+  try {
+    // Create a sample policy
+    const policy = {
+      policy_number: `POL${Math.floor(Math.random() * 10000)}`,
+      policy_type: 'Auto Insurance',
+      expiry_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      premium_amount: Math.floor(Math.random() * 1000) + 500,
+      status: 'active',
+      // Additional fields for compatibility with PolicyTab
+      policyNumber: `POL${Math.floor(Math.random() * 10000)}`,
+      customer: 'John Doe',
+      insurer: 'Example Insurance Co.',
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      premiumValue: 'R$ ' + (Math.floor(Math.random() * 1000) + 500).toFixed(2),
+      documentUrl: 'https://example.com/policy.pdf'
+    };
+    
+    const result = await savePolicy(policy as PolicyData);
+    
+    return result.success ? policy : null;
+  } catch (error) {
+    console.error('Error simulating WhatsApp policy message:', error);
+    return null;
+  }
+};
+
+// Register WhatsApp webhook
+export const registerWhatsAppWebhook = (webhookUrl: string) => {
+  try {
+    localStorage.setItem('whatsgw_webhook_url', webhookUrl);
+    return true;
+  } catch (error) {
+    console.error('Error registering WhatsApp webhook:', error);
+    return false;
+  }
+};
+
+// Get all policies (alias for getPolicies)
+export const getAllPolicies = async () => {
+  try {
+    const { success, data } = await getPolicies();
+    
+    if (!success) {
+      throw new Error('Failed to get policies');
+    }
+    
+    // Transform the data to include the additional fields expected by PolicyTab
+    return data.map((policy: PolicyData) => ({
+      ...policy,
+      policyNumber: policy.policy_number,
+      customer: 'Customer Name', // Default or from policy.details
+      insurer: 'Insurance Company', // Default or from policy.details
+      startDate: new Date(new Date(policy.created_at || '').getTime() - 30 * 24 * 60 * 60 * 1000), // 30 days before created_at
+      endDate: new Date(policy.expiry_date),
+      premiumValue: `R$ ${policy.premium_amount.toFixed(2)}`,
+      documentUrl: policy.details?.documentUrl || null
+    }));
+  } catch (error) {
+    console.error('Error getting all policies:', error);
+    return [];
   }
 };
 
@@ -435,6 +550,82 @@ export const sendPolicyInfo = async (policy: PolicyData, phoneNumber: string) =>
           error_message: error instanceof Error ? error.message : 'Unknown error'
         }]);
     }
+    
+    return { success: false, error };
+  }
+};
+
+// Send a reminder message for an event
+export const sendEventReminder = async (
+  event: { 
+    title: string; 
+    description: string; 
+    date: Date; 
+    duration: number; 
+    contactPhone: string; 
+  }
+) => {
+  try {
+    if (!isWhatsAppConfigured()) {
+      console.log('WhatsApp not configured, skipping reminder');
+      return { success: false, error: 'WhatsApp not configured' };
+    }
+
+    const { apiKey, apiUrl } = getApiKey();
+    
+    // Format the date for the message
+    const formattedDate = new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(event.date);
+
+    // Format the phone number (remove any non-digit characters)
+    const formattedPhone = event.contactPhone.replace(/\D/g, '');
+    
+    // Create the message
+    const message = `🔔 *Lembrete de Evento*\n\n*${event.title}*\n${event.description}\n\n📅 Data: ${formattedDate}\n⏱️ Duração: ${event.duration} minutos`;
+    
+    // Send the reminder via WhatsApp
+    const response = await fetch(`${apiUrl}/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        phone: formattedPhone,
+        message: message,
+        isGroup: false
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to send reminder');
+    }
+    
+    addLogEntry({
+      action: 'EVENT_REMINDER',
+      status: 'success',
+      message: `Reminder sent for event "${event.title}" to ${formattedPhone}`,
+      timestamp: new Date().toISOString(),
+      details: { event, response: data }
+    });
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error sending event reminder:', error);
+    
+    addLogEntry({
+      action: 'EVENT_REMINDER',
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
     
     return { success: false, error };
   }
