@@ -1,10 +1,9 @@
 import { toast } from "sonner";
+import { PolicyData } from "@/types";
 
 // WhatsApp API configuration based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
 const WHATSGW_API_URL = "https://app.whatsgw.com.br/api/v1";
-// Proxy service URL for bypassing CORS - we'll use a proxy service that works for this purpose
 const CORS_PROXY_URL = "https://cors-anywhere.herokuapp.com/";
-// Alternative proxies if the primary one fails
 const ALTERNATIVE_PROXIES = [
   "https://api.allorigins.win/raw?url=",
   "https://thingproxy.freeboard.io/fetch/"
@@ -35,18 +34,6 @@ export interface EventReminder {
   time: string;
   duration: number;
   contactPhone: string;
-}
-
-export interface PolicyData {
-  id?: string;
-  policy_number?: string;
-  customer?: string;
-  insurer?: string;
-  start_date?: Date;
-  end_date?: Date;
-  premium_amount?: number;
-  document_url?: string;
-  created_at?: Date;
 }
 
 /**
@@ -889,7 +876,7 @@ export const getAllPolicies = async (): Promise<PolicyData[]> => {
     
     // Mock implementation - we would implement the actual API call here
     // In a real implementation, this would fetch from your database
-    return [
+    const policies: PolicyData[] = [
       {
         id: "1",
         policy_number: "POL-123456",
@@ -901,6 +888,8 @@ export const getAllPolicies = async (): Promise<PolicyData[]> => {
         document_url: "https://example.com/docs/policy-123456.pdf"
       }
     ];
+    
+    return policies;
   } catch (error) {
     addLogEntry('error', 'policies', "Error fetching insurance policies", error);
     throw new Error("Failed to get policies: " + (error instanceof Error ? error.message : String(error)));

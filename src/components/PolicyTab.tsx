@@ -45,7 +45,26 @@ const PolicyTab = () => {
     setDatabaseError(null);
     try {
       const loadedPolicies = await getAllPolicies();
-      setPolicies(loadedPolicies);
+      // Convert the service type to the component type
+      const convertedPolicies: PolicyData[] = loadedPolicies.map(policy => ({
+        id: policy.id || undefined,
+        policy_number: policy.policy_number || '',
+        customer: policy.customer || '',
+        insurer: policy.insurer || '',
+        start_date: policy.start_date || new Date(),
+        end_date: policy.end_date || new Date(),
+        premium_amount: policy.premium_amount || 0,
+        document_url: policy.document_url,
+        status: policy.start_date && policy.end_date 
+          ? isAfter(new Date(), policy.end_date) 
+            ? 'expired' 
+            : isBefore(new Date(), policy.start_date) 
+              ? 'pending' 
+              : 'active'
+          : undefined,
+        created_at: policy.created_at,
+      }));
+      setPolicies(convertedPolicies);
     } catch (error) {
       console.error("Error loading policies:", error);
       
