@@ -7,6 +7,33 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true
-  }
+    autoRefreshToken: true,
+    storageKey: 'supabase-auth-token',
+    storage: {
+      getItem: (key) => {
+        try {
+          return JSON.parse(localStorage.getItem(key) || '');
+        } catch (error) {
+          return null;
+        }
+      },
+      setItem: (key, value) => {
+        localStorage.setItem(key, JSON.stringify(value));
+      },
+      removeItem: (key) => {
+        localStorage.removeItem(key);
+      },
+    },
+  },
+  global: {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  },
+  realtime: {
+    timeout: 30000,
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
 });

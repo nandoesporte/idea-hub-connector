@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useUser } from '@/contexts/UserContext';
@@ -51,6 +51,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Card, CardContent } from '@/components/ui/card';
+import { useMobile } from '@/hooks/use-mobile';
 import { 
   Eye, 
   FileText, 
@@ -58,7 +59,8 @@ import {
   Trash2, 
   UploadCloud, 
   Calendar as CalendarIcon, 
-  Loader2 
+  Loader2,
+  Camera
 } from 'lucide-react';
 
 const PolicyTab = () => {
@@ -70,12 +72,16 @@ const PolicyTab = () => {
   const [policyPreview, setPolicyPreview] = useState<Partial<InsurancePolicy> | null>(null);
   const [issueDateOpen, setIssueDateOpen] = useState(false);
   const [expiryDateOpen, setExpiryDateOpen] = useState(false);
+  const [fileName, setFileName] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useMobile();
 
   const { data: policies = [], isLoading } = useQuery({
     queryKey: ['policies', user?.id],
     queryFn: () => user?.id ? fetchUserPolicies(user.id) : Promise.resolve([]),
     meta: {
-      onError: () => {
+      onError: (error) => {
+        console.error('Error fetching policies:', error);
         toast.error('Erro ao carregar as apólices. Tente novamente.');
       }
     }
@@ -151,7 +157,15 @@ const PolicyTab = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      setFileName(file.name);
+    }
+  };
+
+  const handleCameraCapture = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -222,15 +236,75 @@ const PolicyTab = () => {
               <div className="space-y-4 py-4">
                 <div className="flex flex-col space-y-2">
                   <Label htmlFor="policyFile">Arquivo da Apólice (PDF)</Label>
-                  <Input
-                    id="policyFile"
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileChange}
-                    disabled={isAnalyzing || uploadMutation.isPending}
-                  />
+                  
+                  {/* Mobile-optimized file upload UI */}
+                  <div className="flex flex-col gap-2">
+                    <div className={`border-2 border-dashed rounded-lg p-4 ${selectedFile ? 'border-green-500 bg-green-50' : 'border-gray-300'} transition-all flex flex-col items-center justify-center gap-2`}>
+                      <input
+                        ref={fileInputRef}
+                        id="policyFile"
+                        type="file"
+                        accept=".pdf,image/*"
+                        capture={isMobile ? "environment" : undefined}
+                        onChange={handleFileChange}
+                        className="hidden"
+                        disabled={isAnalyzing || uploadMutation.isPending}
+                      />
+                      
+                      {selectedFile ? (
+                        <>
+                          <div className="flex items-center gap-2 text-green-600">
+                            <FileText className="h-5 w-5" />
+                            <span className="font-medium text-sm truncate max-w-[200px]">{fileName}</span>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              setSelectedFile(null);
+                              setFileName('');
+                            }}
+                          >
+                            Alterar arquivo
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <UploadCloud className="h-8 w-8 text-gray-400" />
+                          <p className="text-sm text-center text-muted-foreground">
+                            Clique para escolher ou arraste um arquivo PDF aqui
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1"
+                        disabled={isAnalyzing || uploadMutation.isPending}
+                      >
+                        <UploadCloud className="mr-2 h-4 w-4" />
+                        Escolher Arquivo
+                      </Button>
+                      
+                      {isMobile && (
+                        <Button 
+                          variant="outline" 
+                          onClick={handleCameraCapture}
+                          className="flex-1"
+                          disabled={isAnalyzing || uploadMutation.isPending}
+                        >
+                          <Camera className="mr-2 h-4 w-4" />
+                          Usar Câmera
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  
                   <p className="text-sm text-muted-foreground">
-                    Faça upload do documento PDF da apólice para análise automática.
+                    Faça upload do documento da apólice para análise automática.
                   </p>
                 </div>
                 
@@ -385,14 +459,16 @@ const PolicyTab = () => {
               </div>
             )}
             
-            <DialogFooter>
+            <DialogFooter className={isMobile ? "flex-col space-y-2" : ""}>
               <Button 
                 variant="outline" 
                 onClick={() => {
                   setUploadDialog(false);
                   setSelectedFile(null);
                   setPolicyPreview(null);
+                  setFileName('');
                 }}
+                className={isMobile ? "w-full" : ""}
               >
                 Cancelar
               </Button>
@@ -401,6 +477,7 @@ const PolicyTab = () => {
                 <Button 
                   onClick={handleSavePolicy}
                   disabled={createPolicyMutation.isPending}
+                  className={isMobile ? "w-full" : ""}
                 >
                   {createPolicyMutation.isPending ? (
                     <>
