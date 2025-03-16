@@ -85,9 +85,9 @@ const PolicyTab = () => {
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("does not exist")) {
         setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
+      } else {
+        toast.error("Erro ao processar arquivo de apólice. Verifique os logs.");
       }
-      
-      toast.error("Erro ao processar arquivo de apólice");
     } finally {
       setUploadingPolicy(false);
       if (fileInputRef.current) {
@@ -204,6 +204,23 @@ const PolicyTab = () => {
               className="hidden"
               onChange={handleFileChange}
             />
+            <Button 
+              onClick={handleUploadPolicy} 
+              className="bg-blue-600 hover:bg-blue-700 text-white ml-2"
+              disabled={uploadingPolicy}
+            >
+              {uploadingPolicy ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <FileUp className="h-4 w-4 mr-2" /> 
+                  Enviar apólice para análise
+                </>
+              )}
+            </Button>
           </div>
           
           {loading ? (
