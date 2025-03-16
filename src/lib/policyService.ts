@@ -5,26 +5,10 @@ import { toast } from "sonner";
 
 const STORAGE_BUCKET = 'policy_documents';
 
-// Função simplificada que assume que o bucket já existe
+// Função simplificada que apenas retorna true
 export const initializeStorage = async () => {
-  try {
-    // Simplesmente verificamos se podemos listar objetos no bucket
-    // Se funcionar, assumimos que o bucket está pronto para uso
-    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list();
-    
-    if (error && error.message !== "The resource was not found") {
-      console.error("Erro ao acessar o bucket:", error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Erro ao inicializar armazenamento:", error);
-    return false;
-  }
+  return true;
 };
-
-// Funções que utilizam o bucket, atualizadas para simplificar o fluxo
 
 // Fetch policies
 export const fetchPolicies = async (userId: string) => {
@@ -73,7 +57,7 @@ export const deletePolicy = async (id: string) => {
   return id;
 };
 
-// Upload and process policy - simplificada para assumir que o bucket existe
+// Upload and process policy - simplificada para foco no upload e análise
 export const uploadAndProcessPolicy = async (
   file: File, 
   userId: string, 
@@ -101,14 +85,11 @@ export const uploadAndProcessPolicy = async (
     }, 100);
 
     try {
-      // Get the user folder path
-      const userFolderPath = `policies/${userId}`;
-      
-      // Upload the file to Supabase Storage
+      // Upload do arquivo para o Supabase Storage
       const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `${userFolderPath}/${fileName}`;
+      const filePath = `${userId}/${fileName}`; // Simplificado: pasta direta com o ID do usuário
       
-      // Upload the file
+      // Upload do arquivo
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
         .upload(filePath, file, {

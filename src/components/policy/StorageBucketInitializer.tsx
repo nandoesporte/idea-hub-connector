@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { initializeStorage } from '@/lib/policyService';
+import { supabase } from "@/lib/supabase";
 import { toast } from 'sonner';
 
 interface StorageBucketInitializerProps {
@@ -14,31 +14,26 @@ const StorageBucketInitializer = ({
   setBucketReady, 
   setConfiguringStorage 
 }: StorageBucketInitializerProps) => {
-  // Simplificado: assume que o armazenamento já está configurado
+  
   useEffect(() => {
-    const setupStorage = async () => {
-      if (!userId) return;
-      
-      setConfiguringStorage(true);
-      try {
-        const isReady = await initializeStorage();
-        setBucketReady(isReady);
-        
-        if (!isReady) {
-          toast.error("Não foi possível acessar o armazenamento. Por favor, contate o administrador.");
-        }
-      } catch (error) {
-        console.error("Erro ao inicializar armazenamento:", error);
-        toast.error("Erro ao verificar armazenamento");
-        setBucketReady(false);
-      } finally {
-        setConfiguringStorage(false);
-      }
-    };
+    if (!userId) return;
     
-    if (userId) {
-      setupStorage();
+    // Simplificado: apenas verificamos se o usuário está autenticado
+    // e assumimos que o upload funcionará
+    setConfiguringStorage(true);
+    
+    // Verificamos apenas se o usuário está autenticado
+    const { data: authData } = supabase.auth.getSession();
+    
+    // Se o usuário estiver autenticado, consideramos o sistema pronto
+    if (authData) {
+      setBucketReady(true);
+    } else {
+      toast.error("Usuário não autenticado. Faça login novamente.");
+      setBucketReady(false);
     }
+    
+    setConfiguringStorage(false);
   }, [userId, setBucketReady, setConfiguringStorage]);
 
   return null; // Este é um componente utilitário sem UI

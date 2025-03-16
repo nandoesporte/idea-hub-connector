@@ -47,11 +47,6 @@ const PolicyTabContent = ({
       return;
     }
 
-    if (!bucketReady) {
-      toast.error("Sistema de armazenamento não está disponível. Tente novamente em alguns instantes.");
-      return;
-    }
-
     setUploadingFile({
       file,
       progress: 0,
@@ -75,10 +70,6 @@ const PolicyTabContent = ({
   };
 
   const handleUploadButtonClick = () => {
-    if (!bucketReady) {
-      toast.error("Sistema de armazenamento não está disponível. Tente novamente em alguns instantes.");
-      return;
-    }
     fileInputRef.current?.click();
   };
 
@@ -113,20 +104,11 @@ const PolicyTabContent = ({
             />
             <Button 
               onClick={handleUploadButtonClick}
-              disabled={uploadingFile !== null || configuringStorage}
+              disabled={uploadingFile !== null}
               className="w-full sm:w-auto"
             >
-              {configuringStorage ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Verificando sistema...
-                </>
-              ) : (
-                <>
-                  <FileUp className="h-4 w-4 mr-2" /> 
-                  Fazer upload de apólice em PDF
-                </>
-              )}
+              <FileUp className="h-4 w-4 mr-2" /> 
+              Fazer upload de apólice em PDF
             </Button>
           </div>
         </>
