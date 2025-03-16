@@ -8,12 +8,12 @@ import { useUser } from '@/contexts/UserContext';
 import UserProfile from './UserProfile';
 
 const navigationItems: NavigationItem[] = [
-  { label: 'Início', href: '/' },
-  { label: 'Como Funciona', href: '/#how-it-works' },
-  { label: 'Projetos', href: '/projects' },
-  { label: 'Portfolio', href: '/portfolio' },
-  { label: 'Preços', href: '/#pricing' },
-  { label: 'Contato', href: '/#contact' },
+  { id: '1', title: 'Início', href: '/' },
+  { id: '2', title: 'Como Funciona', href: '/#how-it-works' },
+  { id: '3', title: 'Projetos', href: '/projects' },
+  { id: '4', title: 'Portfolio', href: '/portfolio' },
+  { id: '5', title: 'Preços', href: '/#pricing' },
+  { id: '6', title: 'Contato', href: '/#contact' },
 ];
 
 const Navbar = () => {
@@ -61,7 +61,7 @@ const Navbar = () => {
                     location.pathname === item.href ? 'text-primary after:scale-x-100' : 'text-muted-foreground'
                   }`}
                 >
-                  {item.label}
+                  {item.title}
                 </Link>
               </li>
             ))}
@@ -125,7 +125,7 @@ const Navbar = () => {
                     location.pathname === item.href ? 'text-primary' : 'text-foreground'
                   }`}
                 >
-                  {item.label}
+                  {item.title}
                 </Link>
               ))}
             </nav>

@@ -1,4 +1,3 @@
-
 export type User = {
   id: string;
   email: string;
@@ -9,7 +8,6 @@ export type User = {
   updated_at?: string;
 };
 
-// Atualizando o tipo ProjectIdea para resolver os erros
 export type ProjectIdea = {
   id: string;
   title: string;
@@ -18,8 +16,8 @@ export type ProjectIdea = {
   status: 'open' | 'in progress' | 'completed' | 'on hold' | 'pending' | 'under-review' | 'approved' | 'in-progress' | 'rejected';
   priority: 'low' | 'medium' | 'high';
   user_id: string;
-  created_at: string;
-  updated_at?: string;
+  created_at: string | Date;
+  updated_at?: string | Date;
   budget?: string;
   timeline?: string;
   urgency?: string;

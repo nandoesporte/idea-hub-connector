@@ -1,4 +1,3 @@
-
 import React from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { 
@@ -42,8 +41,8 @@ const recentProjects: ProjectIdea[] = [
     features: ['Catálogo de produtos', 'Formulário de contato', 'Responsivo'],
     userId: 'user123',
     status: 'pending',
-    createdAt: new Date('2023-10-15'),
-    updatedAt: new Date('2023-10-18'),
+    created_at: new Date('2023-10-15'),
+    updated_at: new Date('2023-10-18'),
     urgency: 'normal',
   },
   {
@@ -56,8 +55,8 @@ const recentProjects: ProjectIdea[] = [
     features: ['Pagamento online', 'Gestão de estoque', 'Painel administrativo'],
     userId: 'user456',
     status: 'under-review',
-    createdAt: new Date('2023-11-05'),
-    updatedAt: new Date('2023-11-10'),
+    created_at: new Date('2023-11-05'),
+    updated_at: new Date('2023-11-10'),
     urgency: 'alta',
   },
   {
@@ -70,8 +69,8 @@ const recentProjects: ProjectIdea[] = [
     features: ['Login e perfil', 'Notificações', 'Sincronização em nuvem'],
     userId: 'user789',
     status: 'in-progress',
-    createdAt: new Date('2023-09-20'),
-    updatedAt: new Date('2023-09-25'),
+    created_at: new Date('2023-09-20'),
+    updated_at: new Date('2023-09-25'),
     urgency: 'baixa',
   },
 ];
@@ -274,7 +273,7 @@ const AdminPanel = () => {
                       <span>•</span>
                       <span className="flex items-center">
                         <Clock className="h-3 w-3 mr-1" />
-                        {new Date(project.createdAt).toLocaleDateString('pt-BR')}
+                        {new Date(project.created_at).toLocaleDateString('pt-BR')}
                       </span>
                     </div>
                   </div>

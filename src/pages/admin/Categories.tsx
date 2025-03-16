@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,9 +14,8 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { 
-  Search, MoreHorizontal, Eye, Edit, Trash, 
-  ArrowUpDown, ExternalLink, Plus, Copy, CheckCircle,
-  Image as ImageIcon
+  Search, MoreHorizontal, Edit, Trash, 
+  ArrowUpDown, Copy, Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -28,7 +28,7 @@ import {
 import { CategoryItem } from '@/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  getCategories, createCategory, updateCategory, deleteCategory 
+  fetchCategories, createCategory, updateCategory, deleteCategory 
 } from '@/lib/categoryService';
 
 const AdminCategories = () => {
@@ -58,7 +58,7 @@ const AdminCategories = () => {
 
   const { data: categories = [], isLoading, error } = useQuery({
     queryKey: ['categories'],
-    queryFn: getCategories,
+    queryFn: fetchCategories,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -74,7 +74,8 @@ const AdminCategories = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: updateCategory,
+    mutationFn: (params: {id: string, category: Partial<Omit<CategoryItem, "id">>}) => 
+      updateCategory(params.id, params.category),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast.success('Categoria atualizada com sucesso!');
@@ -106,8 +107,18 @@ const AdminCategories = () => {
   const handleUpdateCategory = async () => {
     try {
       setIsSubmitting(true);
-      await updateCategory(categoryState);
-      toast.success('Categoria atualizada com sucesso!');
+      await updateMutation.mutateAsync({
+        id: categoryState.id,
+        category: {
+          title: categoryState.title,
+          description: categoryState.description,
+          icon: categoryState.icon,
+          link: categoryState.link,
+          type: 'tech', // Restrict to 'tech' type
+          iconColor: categoryState.iconColor,
+          order: categoryState.order
+        }
+      });
     } catch (error) {
       console.error("Erro ao atualizar categoria:", error);
       toast.error("Erro ao atualizar categoria");
@@ -136,22 +147,18 @@ const AdminCategories = () => {
 
     try {
       setIsSubmitting(true);
-      const result = await createCategory({
+      await addMutation.mutateAsync({
         title: newCategory.title,
         description: newCategory.description,
         icon: newCategory.icon,
         link: newCategory.link || "",
-        type: "tech", // Restringindo para apenas 'tech'
+        type: "tech", // Restricting to only 'tech'
         iconColor: newCategory.iconColor || "#000000",
-        order: categories.length + 1 // Adicionando ordem automaticamente
+        order: Array.isArray(categories) ? categories.length + 1 : 1 // Adding order automatically
       });
 
-      if (result) {
-        setCategories([...categories, result]);
-        setShowAddDialog(false);
-        resetNewCategory();
-        toast.success("Categoria adicionada com sucesso!");
-      }
+      setShowAddDialog(false);
+      resetNewCategory();
     } catch (error) {
       console.error("Erro ao adicionar categoria:", error);
       toast.error("Erro ao adicionar categoria");
@@ -170,7 +177,7 @@ const AdminCategories = () => {
     });
   };
 
-  const filteredCategories = categories.filter(category =>
+  const filteredCategories = Array.isArray(categories) ? categories.filter(category =>
     category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     category.description.toLowerCase().includes(searchQuery.toLowerCase())
   ).sort((a, b) => {
@@ -179,7 +186,7 @@ const AdminCategories = () => {
     } else {
       return b.title.localeCompare(a.title);
     }
-  });
+  }) : [];
 
   // Ajustando o tipo para ser apenas 'tech' onde há erro de tipo
   const handleResetForm = () => {

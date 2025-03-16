@@ -125,8 +125,14 @@ const AdminProjectCard = ({ project, onUpdateStatus }: {
         </div>
         
         <div className="flex justify-between items-center mt-4 pt-3 border-t">
-          <div className="text-xs text-gray-500">
-            Criado em {formatDate(project.createdAt)} • Atualizado em {formatDate(project.updatedAt)}
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+            <span>Criado: {new Date(project.created_at).toLocaleDateString('pt-BR')}</span>
+            {project.updated_at && (
+              <>
+                <span>•</span>
+                <span>Atualizado: {new Date(project.updated_at).toLocaleDateString('pt-BR')}</span>
+              </>
+            )}
           </div>
           <div className="flex gap-2">
             <Link to={`/admin/projects/${project.id}`}>
