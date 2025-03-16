@@ -14,7 +14,7 @@ import {
 import { PolicyFile } from "@/types";
 import { useUser } from "@/contexts/UserContext";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import PolicyList from './policy/PolicyList';
 import EmptyPolicyState from './policy/EmptyPolicyState';
 import FileUploadProgress from './policy/FileUploadProgress';

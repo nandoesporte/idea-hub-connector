@@ -1,7 +1,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { Policy, PolicyFile } from "@/types";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 const STORAGE_BUCKET = 'policy_documents';
 
@@ -44,33 +44,49 @@ export const createStorageBucket = async () => {
       
       // Then let's make sure the policies are created
       // These might fail if they already exist, which is fine
-      await supabase.rpc('create_storage_policy', { 
-        bucket: STORAGE_BUCKET,
-        policy_name: 'Users can read their own policy documents',
-        definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-        operation: 'SELECT'
-      }).catch(e => console.warn("Policy creation might have failed, but it's ok if it already exists:", e));
+      try {
+        await supabase.rpc('create_storage_policy', { 
+          bucket: STORAGE_BUCKET,
+          policy_name: 'Users can read their own policy documents',
+          definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+          operation: 'SELECT'
+        });
+      } catch (e) {
+        console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
+      }
       
-      await supabase.rpc('create_storage_policy', { 
-        bucket: STORAGE_BUCKET,
-        policy_name: 'Users can insert their own policy documents',
-        definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-        operation: 'INSERT'
-      }).catch(e => console.warn("Policy creation might have failed, but it's ok if it already exists:", e));
+      try {
+        await supabase.rpc('create_storage_policy', { 
+          bucket: STORAGE_BUCKET,
+          policy_name: 'Users can insert their own policy documents',
+          definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+          operation: 'INSERT'
+        });
+      } catch (e) {
+        console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
+      }
       
-      await supabase.rpc('create_storage_policy', { 
-        bucket: STORAGE_BUCKET,
-        policy_name: 'Users can update their own policy documents',
-        definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-        operation: 'UPDATE'
-      }).catch(e => console.warn("Policy creation might have failed, but it's ok if it already exists:", e));
+      try {
+        await supabase.rpc('create_storage_policy', { 
+          bucket: STORAGE_BUCKET,
+          policy_name: 'Users can update their own policy documents',
+          definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+          operation: 'UPDATE'
+        });
+      } catch (e) {
+        console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
+      }
       
-      await supabase.rpc('create_storage_policy', { 
-        bucket: STORAGE_BUCKET,
-        policy_name: 'Users can delete their own policy documents',
-        definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-        operation: 'DELETE'
-      }).catch(e => console.warn("Policy creation might have failed, but it's ok if it already exists:", e));
+      try {
+        await supabase.rpc('create_storage_policy', { 
+          bucket: STORAGE_BUCKET,
+          policy_name: 'Users can delete their own policy documents',
+          definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+          operation: 'DELETE'
+        });
+      } catch (e) {
+        console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
+      }
       
     } catch (policyError) {
       console.error("Error setting up bucket policies:", policyError);
