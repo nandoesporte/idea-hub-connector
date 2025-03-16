@@ -2,7 +2,7 @@
 import { supabase } from './supabase';
 import { CategoryItem } from '@/types';
 
-export const fetchCategories = async (): Promise<CategoryItem[]> {
+export const fetchCategories = async (): Promise<CategoryItem[]> => {
   try {
     const { data, error } = await supabase
       .from('categories')
