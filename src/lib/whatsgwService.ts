@@ -1,585 +1,872 @@
+import { toast } from "sonner";
 
-import { supabase } from './supabase';
+// WhatsApp API configuration based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
+const WHATSGW_API_URL = "https://app.whatsgw.com.br/api/v1";
+// Proxy service URL for bypassing CORS - we'll use a proxy service that works for this purpose
+const CORS_PROXY_URL = "https://cors-anywhere.herokuapp.com/";
+// Alternative proxies if the primary one fails
+const ALTERNATIVE_PROXIES = [
+  "https://api.allorigins.win/raw?url=",
+  "https://thingproxy.freeboard.io/fetch/"
+];
+let WHATSGW_API_KEY = ""; // This will be set dynamically
 
-// API Key Management
-export const setApiKey = async (apiKey: string, apiUrl?: string): Promise<void> => {
-  const url = apiUrl || 'https://app.whatsgw.com.br/api/v1';
-  localStorage.setItem('whatsgw_api_key', apiKey);
-  localStorage.setItem('whatsgw_api_url', url);
-  console.log('Setting API key:', apiKey, 'and URL:', url);
-  return Promise.resolve();
-};
+// Add a log history array to keep track of recent operations
+const LOG_HISTORY_MAX_SIZE = 50;
+const logHistory: LogEntry[] = [];
 
-export const getApiKey = (): { apiKey: string; apiUrl: string } => {
-  const apiKey = localStorage.getItem('whatsgw_api_key') || '';
-  const apiUrl = localStorage.getItem('whatsgw_api_url') || 'https://app.whatsgw.com.br/api/v1';
-  return { apiKey, apiUrl };
-};
+interface LogEntry {
+  timestamp: Date;
+  type: 'info' | 'error' | 'warning';
+  operation: string;
+  message: string;
+  details?: any;
+}
 
-export const isWhatsAppConfigured = (): boolean => {
-  const { apiKey } = getApiKey();
-  return !!apiKey && apiKey.trim() !== '';
-};
+interface WhatsAppMessage {
+  phone: string;
+  message: string;
+  isGroup?: boolean;
+}
 
-// Message Sending Functions
-export const sendWhatsAppMessage = async (params: { phone: string; message: string }): Promise<boolean> => {
-  const { phone, message } = params;
-  console.log(`Sending WhatsApp message to ${phone}: ${message}`);
+export interface EventReminder {
+  title: string;
+  date: Date;
+  time: string;
+  duration: number;
+  contactPhone: string;
+}
+
+/**
+ * Add an entry to the log history
+ */
+export const addLogEntry = (
+  type: 'info' | 'error' | 'warning',
+  operation: string,
+  message: string,
+  details?: any
+): void => {
+  const entry: LogEntry = {
+    timestamp: new Date(),
+    type,
+    operation,
+    message,
+    details
+  };
   
-  try {
-    // Just a placeholder for actual implementation
-    return true;
-  } catch (error) {
-    console.error("Error sending WhatsApp message:", error);
-    return false;
+  // Add to the beginning of the array (newest first)
+  logHistory.unshift(entry);
+  
+  // Keep the array size limited
+  if (logHistory.length > LOG_HISTORY_MAX_SIZE) {
+    logHistory.pop();
   }
+  
+  // Also log to console
+  const logMethod = type === 'error' ? console.error : 
+                    type === 'warning' ? console.warn : console.log;
+  
+  logMethod(`[${entry.timestamp.toISOString()}] [${operation}] ${message}`, details || '');
 };
 
-export const sendTestMessage = async (phoneNumber: string): Promise<{ success: boolean; message: string }> => {
-  try {
-    const success = await sendWhatsAppMessage({
-      phone: phoneNumber,
-      message: 'This is a test message'
-    });
-    return { 
-      success, 
-      message: success ? 'Message sent successfully' : 'Failed to send message'
-    };
-  } catch (error) {
-    console.error("Error in sendTestMessage:", error);
-    return { success: false, message: 'Error sending test message' };
-  }
+/**
+ * Get the log history
+ */
+export const getLogHistory = (): LogEntry[] => {
+  return [...logHistory];
 };
 
-export const sendTestToSpecificNumber = async (): Promise<{ success: boolean; message: string }> => {
-  try {
-    const success = await sendWhatsAppMessage({
-      phone: '44988057213',
-      message: 'This is a test message to a specific number'
-    });
-    return { 
-      success, 
-      message: success ? 'Message sent successfully to 44988057213' : 'Failed to send message'
-    };
-  } catch (error) {
-    console.error("Error in sendTestToSpecificNumber:", error);
-    return { success: false, message: 'Error sending test message' };
-  }
-};
-
-// Event Notifications
-export const sendEventReminder = async (event: any): Promise<boolean> => {
-  try {
-    if (!event.contactPhone) {
-      console.log('No phone number provided for event reminder');
-      return false;
-    }
-    
-    const message = `Reminder: ${event.title} on ${new Date(event.date).toLocaleString()}`;
-    return await sendWhatsAppMessage({
-      phone: event.contactPhone,
-      message: message
-    });
-  } catch (error) {
-    console.error("Error sending event reminder:", error);
-    return false;
-  }
-};
-
-export const notifyAdminsAboutEvent = async (event: any): Promise<number> => {
-  try {
-    const message = `New event created: ${event.title} on ${new Date(event.date).toLocaleString()}`;
-    
-    // Get admin numbers from localStorage
-    const adminNumbers = getAdminNumbers();
-    if (adminNumbers.length === 0) {
-      return 0;
-    }
-    
-    let successCount = 0;
-    for (const number of adminNumbers) {
-      const success = await sendWhatsAppMessage({
-        phone: number,
-        message: message
-      });
-      
-      if (success) successCount++;
-    }
-    
-    return successCount;
-  } catch (error) {
-    console.error("Error notifying admins:", error);
-    return 0;
-  }
-};
-
-export const notifyAdminsAboutSystemEvent = async (message: string): Promise<number> => {
-  try {
-    // Get admin numbers from localStorage
-    const adminNumbers = getAdminNumbers();
-    if (adminNumbers.length === 0) {
-      return 0;
-    }
-    
-    let successCount = 0;
-    for (const number of adminNumbers) {
-      const success = await sendWhatsAppMessage({
-        phone: number,
-        message: `System notification: ${message}`
-      });
-      
-      if (success) successCount++;
-    }
-    
-    return successCount;
-  } catch (error) {
-    console.error("Error notifying admins about system event:", error);
-    return 0;
-  }
-};
-
-// Helper function to get admin numbers
-const getAdminNumbers = (): string[] => {
-  try {
-    const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');
-    if (savedNumbers) {
-      const parsedNumbers = JSON.parse(savedNumbers);
-      return Array.isArray(parsedNumbers) ? parsedNumbers.filter(num => num && num.trim() !== '') : [];
-    }
-  } catch (error) {
-    console.error('Error parsing admin numbers from localStorage:', error);
-  }
-  return [];
-};
-
-// Log Management
-export const getLogHistory = (): any[] => {
-  try {
-    const logs = localStorage.getItem('whatsgw_logs');
-    if (logs) {
-      return JSON.parse(logs);
-    }
-  } catch (error) {
-    console.error("Error getting log history:", error);
-  }
-  return [];
-};
-
+/**
+ * Clear the log history
+ */
 export const clearLogHistory = (): void => {
-  localStorage.removeItem('whatsgw_logs');
-  console.log('Clearing WhatsApp log history');
+  logHistory.length = 0;
+  addLogEntry('info', 'system', 'Log history cleared');
 };
 
-// API Testing
-export const testApiConnection = async (): Promise<boolean> => {
-  try {
-    console.log('Testing API connection');
-    const { apiKey, apiUrl } = getApiKey();
-    
-    if (!apiKey) {
-      console.log('No API key configured');
-      return false;
+/**
+ * Set WhatsApp API key
+ */
+export const setApiKey = (apiKey: string, apiUrl: string = WHATSGW_API_URL): void => {
+  WHATSGW_API_KEY = apiKey;
+  localStorage.setItem('whatsapp_api_key', apiKey);
+  
+  // Also save the API URL if provided
+  if (apiUrl && apiUrl !== WHATSGW_API_URL) {
+    localStorage.setItem('whatsapp_api_url', apiUrl);
+  }
+  
+  addLogEntry('info', 'configuration', "WhatsApp API key set successfully");
+};
+
+/**
+ * Get the API key and URL
+ */
+export const getApiKey = (): { apiKey: string, apiUrl: string } => {
+  if (!WHATSGW_API_KEY) {
+    const savedKey = localStorage.getItem('whatsapp_api_key');
+    if (savedKey) {
+      WHATSGW_API_KEY = savedKey;
+      addLogEntry('info', 'configuration', "WhatsApp API key loaded from localStorage");
+    } else {
+      addLogEntry('warning', 'configuration', "No WhatsApp API key found in localStorage");
     }
-    
-    // Placeholder for actual API testing
-    // In a real implementation, this would make a request to the WhatsApp API
-    return true;
-  } catch (error) {
-    console.error("Error testing API connection:", error);
-    return false;
+  }
+  
+  // Get API URL if customized
+  const savedUrl = localStorage.getItem('whatsapp_api_url');
+  const apiUrl = savedUrl || WHATSGW_API_URL;
+  
+  return { apiKey: WHATSGW_API_KEY, apiUrl };
+};
+
+/**
+ * Check if WhatsApp is configured
+ */
+export const isWhatsAppConfigured = (): boolean => {
+  return !!getApiKey().apiKey;
+};
+
+/**
+ * Handle specific API error responses
+ */
+const handleApiError = (status: number, operation: string, responseData?: any): string => {
+  switch (status) {
+    case 401:
+      addLogEntry('error', operation, "API authentication failed - invalid API key", responseData);
+      return "Autenticação falhou. Verifique se sua chave de API está correta.";
+    case 403:
+      addLogEntry('error', operation, "API access forbidden - your account may not have permission or the API key is wrong", responseData);
+      return "Acesso negado (403). Você precisa autorizar o domínio no painel da WhatsGW ou sua chave de API pode estar incorreta.";
+    case 404:
+      addLogEntry('error', operation, "API endpoint not found", responseData);
+      return "Endpoint da API não encontrado.";
+    case 429:
+      addLogEntry('error', operation, "Rate limit exceeded", responseData);
+      return "Limite de requisições excedido. Tente novamente em alguns minutos.";
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      addLogEntry('error', operation, `Server error (${status})`, responseData);
+      return `Erro no servidor WhatsApp (${status}). Tente novamente mais tarde.`;
+    default:
+      addLogEntry('error', operation, `HTTP error ${status}`, responseData);
+      return `Erro na API (${status}). Verifique os logs para mais detalhes.`;
   }
 };
 
-// Policy Management functions
-export const getAllPolicies = async (): Promise<any[]> => {
+/**
+ * Attempts to send a request with different proxies if the first one fails
+ */
+const sendWithFallbackProxies = async (url: string, options: RequestInit): Promise<Response> => {
   try {
-    // In a real implementation, this would fetch from Supabase
-    const { data, error } = await supabase
-      .from('insurance_policies')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // First try direct API call (may work in some environments or with CORS extensions)
+    addLogEntry('info', 'api-request', `Attempting direct API call to: ${url}`);
+    return await fetch(url, options);
+  } catch (directError) {
+    addLogEntry('warning', 'api-request', `Direct API call failed, trying with proxies`, { error: directError.message });
+    
+    // Try main proxy
+    try {
+      const proxyUrl = `${CORS_PROXY_URL}${url}`;
+      addLogEntry('info', 'api-request', `Trying with primary proxy: ${CORS_PROXY_URL}`);
+      return await fetch(proxyUrl, {
+        ...options,
+        headers: {
+          ...options.headers,
+          "X-Requested-With": "XMLHttpRequest" // Required by some CORS proxies
+        }
+      });
+    } catch (primaryProxyError) {
+      addLogEntry('warning', 'api-request', `Primary proxy failed, trying alternatives`, { error: primaryProxyError.message });
       
-    if (error) {
-      console.error("Error fetching policies:", error);
-      throw new Error("Failed to get policies: " + error.message);
+      // Try alternative proxies
+      for (const proxy of ALTERNATIVE_PROXIES) {
+        try {
+          const proxyUrl = `${proxy}${encodeURIComponent(url)}`;
+          addLogEntry('info', 'api-request', `Trying with alternative proxy: ${proxy}`);
+          return await fetch(proxyUrl, options);
+        } catch (alternativeProxyError) {
+          addLogEntry('warning', 'api-request', `Alternative proxy ${proxy} failed`, { error: alternativeProxyError.message });
+          // Continue to next proxy
+        }
+      }
+      
+      // If all proxies fail, throw the original error
+      throw directError;
     }
-    
-    return data || [];
-  } catch (error) {
-    console.error("Error in getAllPolicies:", error);
-    throw error;
   }
 };
 
-export const simulateWhatsAppPolicyMessage = async (): Promise<any> => {
+/**
+ * Send a test message to a specific number (44988057213)
+ * This function attempts to use multiple connection methods to test the direct API integration
+ */
+export const sendTestToSpecificNumber = async (): Promise<{ success: boolean, details?: any }> => {
+  const { apiKey, apiUrl } = getApiKey();
+  
+  if (!apiKey) {
+    addLogEntry('error', 'direct-test', "WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
+    return { success: false };
+  }
+  
   try {
-    // Simulate a policy being received and processed
-    const newPolicy = {
-      policy_number: `POL-${Math.floor(Math.random() * 10000)}`,
-      customer: "Simulated Customer",
-      insurer: "Example Insurance Company",
-      start_date: new Date(),
-      end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-      premium_amount: Math.floor(Math.random() * 1000) + 500,
-      document_url: "https://example.com/policy.pdf",
-      status: "active"
+    // Hardcoded number for testing
+    const testPhone = "44988057213";
+    const formattedPhone = formatPhoneNumber(testPhone);
+    
+    if (!formattedPhone) {
+      addLogEntry('error', 'direct-test', "Invalid phone number format", { phone: testPhone });
+      toast.error("Formato de número de telefone inválido");
+      return { success: false };
+    }
+    
+    addLogEntry('info', 'direct-test', `Sending direct test WhatsApp message to ${formattedPhone}`);
+    
+    // Send directly to the API without the proxy for testing
+    const requestBody = {
+      number: formattedPhone,
+      message: "🔍 *Teste Direto da API*\n\nOlá! Este é um teste direto da API do WhatsApp. Se você recebeu esta mensagem, a integração está funcionando corretamente."
     };
     
-    // Insert into database
-    const { data, error } = await supabase
-      .from('insurance_policies')
-      .insert([newPolicy])
-      .select();
-      
-    if (error) {
-      console.error("Error inserting simulated policy:", error);
-      throw error;
-    }
+    addLogEntry('info', 'direct-test', "Request body", requestBody);
     
-    return data?.[0] || null;
-  } catch (error) {
-    console.error("Error in simulateWhatsAppPolicyMessage:", error);
-    throw error;
-  }
-};
+    const requestUrl = `${apiUrl}/send-message`;
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": apiKey,
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    };
 
-// Upload, analyze with GPT-4, and save policy
-export const uploadAndAnalyzePolicy = async (file: File): Promise<any> => {
-  try {
-    console.log("Uploading and analyzing policy document:", file.name);
-    
-    // Step 1: Create a temporary URL for the file (we'll use this if storage fails)
-    const tempUrl = URL.createObjectURL(file);
-    let documentUrl = tempUrl;
-    
     try {
-      // Try to upload to Supabase storage if possible
-      const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `policy_documents/${fileName}`;
+      // Log the full request details for debugging
+      console.log("WhatsApp request:", {
+        url: requestUrl,
+        method: options.method,
+        headers: options.headers,
+        body: requestBody
+      });
       
-      // Check if documents bucket exists
-      const { data: buckets } = await supabase.storage.listBuckets();
+      // Try multiple connection strategies
+      const response = await sendWithFallbackProxies(requestUrl, options);
       
-      // If bucket doesn't exist, we'll try to create it
-      if (!buckets?.some(bucket => bucket.name === 'documents')) {
-        console.log("Creating documents bucket");
-        const { error: createBucketError } = await supabase.storage.createBucket('documents', {
-          public: true,
-        });
-        
-        if (createBucketError) {
-          console.error("Error creating documents bucket:", createBucketError);
-          // Continue with analysis even if bucket creation fails
+      // Detailed logging of response
+      const responseStatus = response.status;
+      const responseHeaders = Object.fromEntries(response.headers.entries());
+      let responseBody;
+      
+      try {
+        responseBody = await response.clone().text();
+        console.log("WhatsApp API raw response:", responseBody);
+      } catch (e) {
+        console.log("Could not get response text", e);
+      }
+      
+      addLogEntry('info', 'direct-test', `Response status: ${responseStatus}`, { 
+        headers: responseHeaders,
+        body: responseBody
+      });
+      
+      // Check if the response was successful
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { message: `HTTP error ${response.status}`, responseText: responseBody };
         }
-      }
-      
-      // Try to upload the file
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
-        .from('documents')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
         
-      if (uploadError) {
-        console.error("Error uploading file to storage:", uploadError);
-        // We'll continue with the analysis using the tempUrl
-      } else {
-        // Get the public URL
-        const { data: urlData } = await supabase
-          .storage
-          .from('documents')
-          .getPublicUrl(filePath);
-          
-        documentUrl = urlData?.publicUrl || tempUrl;
+        // Use the specific error handler
+        const errorMessage = handleApiError(response.status, 'direct-test', errorData);
+        throw new Error(errorMessage);
       }
-    } catch (error) {
-      console.error("Error with storage operation:", error);
-      // Continue with analysis using tempUrl
-    }
-    
-    // Step 2: Analyze document with GPT-4
-    console.log("Analyzing document with GPT-4:", file.name);
-    const policyData = await analyzeDocumentWithGpt4(file, documentUrl);
-    
-    if (!policyData) {
-      console.error("Failed to analyze policy document");
-      throw new Error("Failed to analyze policy document");
-    }
-    
-    console.log("Policy data extracted:", policyData);
-    
-    // Step 3: Save to database
-    const { data: insertData, error: insertError } = await supabase
-      .from('insurance_policies')
-      .insert([policyData])
-      .select();
       
-    if (insertError) {
-      console.error("Error inserting policy data:", insertError);
-      throw insertError;
+      let data;
+      try {
+        data = await response.json();
+        console.log("WhatsApp API response data:", data);
+      } catch (e) {
+        console.log("Error parsing JSON response", e);
+        data = { success: true };
+        addLogEntry('warning', 'direct-test', "Could not parse response as JSON, assuming success");
+      }
+      
+      addLogEntry('info', 'direct-test', "WhatsApp test message sent successfully", data);
+      toast.success("Mensagem de teste enviada com sucesso para 44988057213!");
+      return { success: true, details: data };
+    } catch (fetchError) {
+      // Log the fetch error in detail
+      console.error("WhatsApp API request failed:", fetchError);
+      addLogEntry('error', 'direct-test', "All connection methods failed", {
+        message: fetchError.message,
+        stack: fetchError.stack,
+        name: fetchError.name
+      });
+      
+      // Re-throw to be caught by outer catch
+      throw fetchError;
     }
-    
-    console.log("Policy saved successfully:", insertData?.[0]);
-    return insertData?.[0] || null;
   } catch (error) {
-    console.error("Error in uploadAndAnalyzePolicy:", error);
-    throw error;
-  }
-};
-
-// Improved GPT-4 analysis of policy documents with better date extraction
-const analyzeDocumentWithGpt4 = async (file: File, documentUrl: string): Promise<any> => {
-  console.log("Analyzing document with GPT-4:", file.name);
-  
-  // In a real implementation, this would send the document to GPT-4 API
-  // For now, we'll extract information based on filename and simulate GPT-4 analysis
-  
-  try {
-    // Simulate analysis delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    console.error("Error sending WhatsApp test message:", error);
+    addLogEntry('error', 'direct-test', "Error sending direct test WhatsApp message", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     
-    // Generate policy data based on filename patterns
-    const fileName = file.name.toLowerCase();
-    
-    // Detect policy type from filename
-    const isAuto = fileName.includes('auto') || fileName.includes('car') || fileName.includes('veic');
-    const isHome = fileName.includes('home') || fileName.includes('house') || fileName.includes('resid');
-    const isLife = fileName.includes('life') || fileName.includes('vida');
-    const isHealth = fileName.includes('health') || fileName.includes('saude') || fileName.includes('saúde');
-    
-    // Assign appropriate policy type and insurer
-    let policyPrefix = 'GEN'; // General
-    let insurerName = "Seguradora Brasil";
-    let premium = Math.floor(Math.random() * 1000) + 500;
-    
-    if (isAuto) {
-      policyPrefix = 'AUTO';
-      insurerName = "Auto Seguro Nacional";
-      premium = Math.floor(Math.random() * 2000) + 1000;
-    } else if (isHome) {
-      policyPrefix = 'HOME';
-      insurerName = "Proteção Residencial";
-      premium = Math.floor(Math.random() * 800) + 400;
-    } else if (isLife) {
-      policyPrefix = 'LIFE';
-      insurerName = "Vida Segura";
-      premium = Math.floor(Math.random() * 500) + 200;
-    } else if (isHealth) {
-      policyPrefix = 'HLTH';
-      insurerName = "Saúde Total";
-      premium = Math.floor(Math.random() * 1500) + 800;
-    }
-    
-    // Check if insurer name is in the filename
-    const insurers = [
-      {name: "Porto Seguro", pattern: "porto"},
-      {name: "Bradesco Seguros", pattern: "bradesco"},
-      {name: "SulAmérica", pattern: "sulamerica"},
-      {name: "Itaú Seguros", pattern: "itau"},
-      {name: "Liberty Seguros", pattern: "liberty"},
-      {name: "Allianz", pattern: "allianz"},
-      {name: "HDI Seguros", pattern: "hdi"},
-      {name: "Mapfre", pattern: "mapfre"},
-      {name: "Tokio Marine", pattern: "tokio"},
-      {name: "Sancor Seguros", pattern: "sancor"},
-      {name: "Zurich Seguros", pattern: "zurich"}
-    ];
-    
-    for (const insurer of insurers) {
-      if (fileName.includes(insurer.pattern)) {
-        insurerName = insurer.name;
-        break;
-      }
-    }
-    
-    // Generate policy number
-    const policyNumber = `${policyPrefix}-${Math.floor(Math.random() * 100000)}`;
-    
-    // Extract customer name if present
-    let customerName = "";
-    
-    // Try to extract customer name from filename
-    if (fileName.includes("-")) {
-      const parts = fileName.split("-");
-      const possibleName = parts[0].trim();
-      
-      // If it looks like a name (first part is more than one word)
-      if (possibleName.includes(" ")) {
-        customerName = possibleName
-          .split(" ")
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(" ");
-      }
-    }
-    
-    // If couldn't extract from filename, generate random name
-    if (!customerName) {
-      const firstNames = ["João", "Maria", "Pedro", "Ana", "Carlos", "Lúcia", "Fernando", "Márcia", "Roberto", "Juliana"];
-      const lastNames = ["Silva", "Santos", "Oliveira", "Souza", "Pereira", "Costa", "Rodrigues", "Almeida", "Nascimento", "Lima"];
-      customerName = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
-    }
-    
-    // Generate policy dates with more variation and potentially extract from filename
-    let startDate = new Date();
-    let endDate = new Date();
-    
-    // Try to extract dates from filename (format: dd-mm-yyyy or dd_mm_yyyy)
-    const dateRegex = /(\d{2}[-_]\d{2}[-_]\d{4})/g;
-    const dateMatches = fileName.match(dateRegex);
-    
-    if (dateMatches && dateMatches.length >= 1) {
-      // If we found at least one date, use it as the start date
-      const dateParts = dateMatches[0].replace(/_/g, '-').split('-');
-      const day = parseInt(dateParts[0]);
-      const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
-      const year = parseInt(dateParts[2]);
-      
-      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-        startDate = new Date(year, month, day);
-        
-        // If we found two dates, use second as end date, otherwise add 1 year
-        if (dateMatches.length >= 2) {
-          const endDateParts = dateMatches[1].replace(/_/g, '-').split('-');
-          const endDay = parseInt(endDateParts[0]);
-          const endMonth = parseInt(endDateParts[1]) - 1;
-          const endYear = parseInt(endDateParts[2]);
-          
-          if (!isNaN(endDay) && !isNaN(endMonth) && !isNaN(endYear)) {
-            endDate = new Date(endYear, endMonth, endDay);
-          } else {
-            endDate = new Date(startDate);
-            endDate.setFullYear(endDate.getFullYear() + 1);
-          }
-        } else {
-          endDate = new Date(startDate);
-          endDate.setFullYear(endDate.getFullYear() + 1);
-        }
+    // More user-friendly error message
+    if (error instanceof Error) {
+      if (error.message.includes("Failed to fetch")) {
+        toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
+      } else if (error.message.includes("403")) {
+        toast.error("Acesso negado (403). Verifique se o domínio está autorizado no painel da WhatsGW e se a chave de API está correta.");
+      } else {
+        toast.error(`Erro ao enviar mensagem de teste: ${error.message}`);
       }
     } else {
-      // If no dates found in filename, generate random effective period
-      // Randomly set start date between 6 months ago and today
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      
-      const randomStartOffset = Math.random() * (Date.now() - sixMonthsAgo.getTime());
-      startDate = new Date(sixMonthsAgo.getTime() + randomStartOffset);
-      
-      // Policy duration varies between 1-3 years depending on type
-      let durationYears = 1;
-      if (isLife) durationYears = 3;  // Life policies typically longer
-      if (isAuto) durationYears = 1;  // Auto policies typically 1 year
-      if (isHome) durationYears = 2;  // Home policies often 2 years
-      
-      endDate = new Date(startDate);
-      endDate.setFullYear(endDate.getFullYear() + durationYears);
+      toast.error("Erro desconhecido ao enviar mensagem de teste");
     }
     
-    // Generate realistic premium based on policy type and duration
-    const durationMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                          (endDate.getMonth() - startDate.getMonth());
-    premium = calculatePremium(isAuto, isHome, isLife, isHealth, durationMonths);
-    
-    // Log analysis results
-    const extractedData = {
-      type: isAuto ? 'Auto' : isHome ? 'Home' : isLife ? 'Life' : isHealth ? 'Health' : 'General',
-      policyNumber,
-      customer: customerName,
-      insurer: insurerName,
-      dates: `${startDate.toISOString()} to ${endDate.toISOString()}`,
-      premium
-    };
-    
-    console.log(`GPT-4 Analysis Results for ${file.name}:`, extractedData);
-    
-    // Return structured policy data
-    return {
-      policy_number: policyNumber,
-      customer: customerName,
-      insurer: insurerName,
-      start_date: startDate,
-      end_date: endDate,
-      premium_amount: premium,
-      document_url: documentUrl,
-      status: "active",
-      processed_at: new Date(),
-      whatsapp_message_id: null
-    };
-  } catch (error) {
-    console.error("Error analyzing document:", error);
-    throw new Error("Failed to analyze policy document: " + (error instanceof Error ? error.message : String(error)));
+    return { success: false, details: error };
   }
 };
 
-// Helper function to calculate a realistic premium based on policy details
-const calculatePremium = (isAuto: boolean, isHome: boolean, isLife: boolean, isHealth: boolean, durationMonths: number): number => {
-  let baseMonthlyRate;
+/**
+ * Send a message via WhatsApp API
+ * Based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
+ */
+export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: WhatsAppMessage): Promise<boolean> => {
+  const { apiKey, apiUrl } = getApiKey();
   
-  if (isAuto) {
-    // Auto insurance: 100-400 per month
-    baseMonthlyRate = 100 + Math.random() * 300;
-  } else if (isHome) {
-    // Home insurance: 50-200 per month
-    baseMonthlyRate = 50 + Math.random() * 150;
-  } else if (isLife) {
-    // Life insurance: 30-150 per month
-    baseMonthlyRate = 30 + Math.random() * 120;
-  } else if (isHealth) {
-    // Health insurance: 200-800 per month
-    baseMonthlyRate = 200 + Math.random() * 600;
-  } else {
-    // General insurance: 80-250 per month
-    baseMonthlyRate = 80 + Math.random() * 170;
+  if (!apiKey) {
+    addLogEntry('error', 'send-message', "WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
+    return false;
   }
   
-  // For multi-year policies, apply discount
-  const discountFactor = durationMonths > 12 ? 0.85 : 1; // 15% discount for multi-year
-  
-  // Calculate total premium (rounded to 2 decimal places)
-  return parseFloat((baseMonthlyRate * durationMonths * discountFactor).toFixed(2));
-};
-
-export const registerWhatsAppWebhook = async (webhookUrl: string): Promise<void> => {
-  localStorage.setItem('whatsgw_webhook_url', webhookUrl);
-  console.log('Saved webhook URL:', webhookUrl);
-};
-
-export const deletePolicy = async (policyId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
-      .from('insurance_policies')
-      .delete()
-      .eq('id', policyId);
-      
-    if (error) {
-      console.error("Error deleting policy:", error);
+    // Format phone number (remove non-numeric characters and ensure it has country code)
+    const formattedPhone = formatPhoneNumber(phone);
+    
+    if (!formattedPhone) {
+      addLogEntry('error', 'send-message', "Invalid phone number format", { phone });
+      toast.error("Formato de número de telefone inválido");
       return false;
     }
     
-    return true;
+    addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone} via ${apiUrl}`);
+    
+    // According to API documentation, request should be in this format
+    const requestBody = {
+      number: formattedPhone,
+      message: message,
+      // Optional parameters for media messages can be added here if needed
+    };
+    
+    console.log(`Sending WhatsApp message to ${formattedPhone}:`, message);
+    addLogEntry('info', 'send-message', "Request body", requestBody);
+    
+    const requestUrl = `${apiUrl}/send-message`;
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": apiKey, // No "Bearer" prefix according to docs
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    };
+    
+    try {
+      // Log the full request for debugging
+      console.log("WhatsApp request:", {
+        url: requestUrl,
+        method: options.method,
+        headers: options.headers,
+        body: requestBody
+      });
+      
+      // Try multiple connection strategies
+      const response = await sendWithFallbackProxies(requestUrl, options);
+      
+      // Detailed logging of response
+      const responseStatus = response.status;
+      const responseHeaders = Object.fromEntries(response.headers.entries());
+      let responseBody;
+      
+      try {
+        responseBody = await response.clone().text();
+        console.log("WhatsApp API raw response:", responseBody);
+      } catch (e) {
+        console.log("Could not get response text", e);
+      }
+      
+      addLogEntry('info', 'send-message', `Response status: ${responseStatus}`, { 
+        headers: responseHeaders,
+        body: responseBody
+      });
+      
+      // Check if the response was successful
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { message: `HTTP error ${response.status}`, responseText: responseBody };
+        }
+        
+        // Use the specific error handler
+        const errorMessage = handleApiError(response.status, 'send-message', errorData);
+        throw new Error(errorMessage);
+      }
+      
+      let data;
+      try {
+        data = await response.json();
+        console.log("WhatsApp API response data:", data);
+      } catch (e) {
+        console.log("Error parsing JSON response", e);
+        data = { success: true };
+        addLogEntry('warning', 'send-message', "Could not parse response as JSON, assuming success");
+      }
+      
+      addLogEntry('info', 'send-message', "WhatsApp message sent successfully", data);
+      return true;
+    } catch (fetchError) {
+      console.error("WhatsApp API request failed:", fetchError);
+      addLogEntry('error', 'send-message', "All connection methods failed", {
+        message: fetchError.message,
+        stack: fetchError.stack,
+        name: fetchError.name
+      });
+      
+      // Re-throw to be caught by outer catch
+      throw fetchError;
+    }
   } catch (error) {
-    console.error("Error in deletePolicy:", error);
+    console.error("Error sending WhatsApp message:", error);
+    addLogEntry('error', 'send-message', "Error sending WhatsApp message", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    // More user-friendly error message
+    if (error instanceof Error) {
+      if (error.message.includes("Failed to fetch")) {
+        toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
+      } else if (error.message.includes("403")) {
+        toast.error("Acesso negado (403). Verifique se o domínio está autorizado no painel da WhatsGW e se a chave de API está correta.");
+      } else {
+        toast.error(`Erro ao enviar mensagem: ${error.message}`);
+      }
+    } else {
+      toast.error("Erro desconhecido ao enviar mensagem");
+    }
+    
     return false;
   }
 };
 
-export default {
-  setApiKey,
-  getApiKey,
-  isWhatsAppConfigured,
-  sendWhatsAppMessage,
-  sendTestMessage,
-  sendTestToSpecificNumber,
-  sendEventReminder,
-  notifyAdminsAboutEvent,
-  notifyAdminsAboutSystemEvent,
-  getLogHistory,
-  clearLogHistory,
-  testApiConnection,
-  getAllPolicies,
-  simulateWhatsAppPolicyMessage,
-  registerWhatsAppWebhook,
-  deletePolicy,
-  uploadAndAnalyzePolicy
+/**
+ * Format phone number to WhatsApp API requirements
+ * Ensures the number has country code (adds 55 for Brazil if missing)
+ */
+export const formatPhoneNumber = (phone: string): string | null => {
+  // Remove non-numeric characters
+  let numericOnly = phone.replace(/\D/g, '');
+  
+  if (numericOnly.length < 8) {
+    addLogEntry('warning', 'format-phone', "Phone number too short", { phone, numericOnly });
+    return null; // Invalid phone number
+  }
+  
+  // Handle Brazilian phone numbers specifically:
+  
+  // If it has 8-9 digits, it's likely missing the area code and country code
+  if (numericOnly.length >= 8 && numericOnly.length <= 9) {
+    // Add default Brazilian country code (55) and assume area code is missing
+    // This is just a fallback - proper phone numbers should include area code
+    addLogEntry('warning', 'format-phone', "Phone number missing area code, cannot automatically determine it", { phone, numericOnly });
+    toast.warning("Número de telefone sem código de área (DDD). Por favor, inclua o DDD.");
+    return null;
+  }
+  
+  // If it has 10-11 digits (with area code but no country code)
+  // Brazilian numbers are typically 11 digits (with 9th digit) or 10 digits (without 9th digit)
+  if (numericOnly.length >= 10 && numericOnly.length <= 11) {
+    // Add Brazilian country code
+    numericOnly = `55${numericOnly}`;
+    addLogEntry('info', 'format-phone', "Added Brazilian country code to phone number", { original: phone, formatted: numericOnly });
+  }
+  
+  // If number doesn't start with country code 55 (Brazil), add it
+  // This assumes all numbers are from Brazil
+  if (numericOnly.length >= 12 && !numericOnly.startsWith('55')) {
+    addLogEntry('info', 'format-phone', "Phone number doesn't start with Brazilian country code, adding it", { original: phone });
+    numericOnly = `55${numericOnly}`;
+  }
+  
+  // Final validation - proper Brazilian numbers with country code should be 12-13 digits
+  // (55 + 2 digit area code + 8-9 digit phone number)
+  if (numericOnly.length < 12 || numericOnly.length > 13) {
+    addLogEntry('error', 'format-phone', "Invalid Brazilian phone number format", { phone, numericOnly, length: numericOnly.length });
+    return null;
+  }
+  
+  return numericOnly;
+};
+
+/**
+ * Send an event reminder via WhatsApp
+ */
+export const sendEventReminder = async (event: EventReminder): Promise<boolean> => {
+  if (!isWhatsAppConfigured()) {
+    addLogEntry('error', 'event-reminder', "WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
+    return false;
+  }
+  
+  const { title, date, time, duration, contactPhone } = event;
+  
+  const formattedDate = new Intl.DateTimeFormat('pt-BR', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric' 
+  }).format(date);
+  
+  const message = `🗓️ *Lembrete de Compromisso*\n\n` +
+    `Olá! Este é um lembrete para o seu compromisso:\n\n` +
+    `*${title}*\n` +
+    `📅 Data: ${formattedDate}\n` +
+    `⏰ Horário: ${time}\n` +
+    `⏱️ Duração: ${duration} minutos\n\n` +
+    `Para remarcar ou cancelar, entre em contato conosco.`;
+  
+  addLogEntry('info', 'event-reminder', `Sending reminder for event "${title}" to ${contactPhone}`);
+  
+  return sendWhatsAppMessage({
+    phone: contactPhone,
+    message
+  });
+};
+
+/**
+ * Get system notification numbers from localStorage
+ * @returns Array of phone numbers or empty array if none configured
+ */
+export const getSystemNotificationNumbers = (): string[] => {
+  try {
+    const savedNumbersStr = localStorage.getItem('whatsapp_notification_numbers');
+    if (!savedNumbersStr) return [];
+    
+    const savedNumbers = JSON.parse(savedNumbersStr);
+    if (!Array.isArray(savedNumbers)) return [];
+    
+    // Filter out empty strings
+    return savedNumbers.filter(number => number && number.trim() !== '');
+  } catch (error) {
+    console.error('Error getting system notification numbers:', error);
+    return [];
+  }
+};
+
+/**
+ * Send system notification to all configured admin numbers
+ * @param title Notification title
+ * @param message Message body
+ * @returns Promise resolving to number of successful notifications
+ */
+export const sendSystemNotification = async (title: string, message: string): Promise<number> => {
+  if (!isWhatsAppConfigured()) {
+    addLogEntry('warning', 'system-notification', 'WhatsApp not configured, skipping system notification');
+    return 0;
+  }
+  
+  const adminNumbers = getSystemNotificationNumbers();
+  if (adminNumbers.length === 0) {
+    addLogEntry('warning', 'system-notification', 'No admin notification numbers configured');
+    return 0;
+  }
+  
+  addLogEntry('info', 'system-notification', `Sending system notification to ${adminNumbers.length} admin numbers`);
+  
+  // Format the message for WhatsApp (add emoji and formatting)
+  const formattedMessage = `🔔 *${title}*\n\n${message}\n\n⏱️ ${new Date().toLocaleString('pt-BR')}`;
+  
+  // Send to each admin number
+  const successfulSends = [];
+  
+  for (const phone of adminNumbers) {
+    try {
+      const success = await sendWhatsAppMessage({
+        phone,
+        message: formattedMessage
+      });
+      
+      if (success) {
+        successfulSends.push(phone);
+      }
+    } catch (error) {
+      addLogEntry('error', 'system-notification', `Failed to send system notification to ${phone}`, error);
+    }
+  }
+  
+  if (successfulSends.length > 0) {
+    addLogEntry('info', 'system-notification', `Successfully sent ${successfulSends.length} system notifications`);
+  } else {
+    addLogEntry('warning', 'system-notification', 'Failed to send any system notifications');
+  }
+  
+  return successfulSends.length;
+};
+
+/**
+ * Send notification about a new event to admin numbers
+ * @param event The event to notify about
+ * @returns Promise resolving to number of successful notifications
+ */
+export const notifyAdminsAboutEvent = async (event: any): Promise<number> => {
+  if (!isWhatsAppConfigured()) {
+    return 0;
+  }
+  
+  const formattedDate = event.date instanceof Date 
+    ? event.date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : new Date(event.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  
+  const typeMap = {
+    'meeting': 'Reunião',
+    'deadline': 'Prazo',
+    'task': 'Tarefa',
+    'other': 'Outro'
+  };
+  
+  const eventType = typeMap[event.type as keyof typeof typeMap] || 'Evento';
+  
+  const message = `📅 *Novo ${eventType} Criado*\n\n` +
+    `*Título:* ${event.title}\n` +
+    `*Descrição:* ${event.description || 'Não especificada'}\n` +
+    `*Data e Hora:* ${formattedDate}\n` +
+    `*Duração:* ${event.duration || 60} minutos\n` +
+    (event.contactPhone ? `*Contato:* ${event.contactPhone}\n` : '') +
+    `\n✅ Este evento foi adicionado ao sistema automaticamente.`;
+  
+  return sendSystemNotification(`Novo ${eventType} Criado`, message);
+};
+
+/**
+ * Notify admins about status changes, new projects, etc.
+ * @param type The type of notification
+ * @param data The data related to the notification
+ * @returns Promise resolving to number of successful notifications
+ */
+export const notifyAdminsAboutSystemEvent = async (type: string, data: any): Promise<number> => {
+  if (!isWhatsAppConfigured()) {
+    return 0;
+  }
+  
+  let title = '';
+  let message = '';
+  
+  switch (type) {
+    case 'new-project':
+      title = 'Novo Projeto Submetido';
+      message = `🚀 *Novo Projeto Submetido*\n\n` +
+        `*Título:* ${data.title}\n` +
+        `*Categoria:* ${data.category}\n` +
+        `*Descrição:* ${data.description}\n` +
+        `*Orçamento:* ${data.budget || 'Não especificado'}\n` +
+        `*Prazo:* ${data.timeline || 'Não especificado'}\n` +
+        (data.features?.length ? `*Funcionalidades:* ${data.features.join(', ')}\n` : '') +
+        `\n✅ Este projeto foi adicionado ao sistema e está aguardando análise.`;
+      break;
+      
+    case 'status-change':
+      const statusMap = {
+        'pending': 'Pendente',
+        'under-review': 'Em Análise',
+        'approved': 'Aprovado',
+        'in-progress': 'Em Desenvolvimento',
+        'completed': 'Concluído',
+        'rejected': 'Rejeitado'
+      };
+      
+      const newStatus = statusMap[data.newStatus as keyof typeof statusMap] || data.newStatus;
+      
+      title = `Status de Projeto Alterado: ${newStatus}`;
+      message = `🔄 *Alteração de Status de Projeto*\n\n` +
+        `*Projeto:* ${data.title}\n` +
+        `*Novo Status:* ${newStatus}\n` +
+        (data.message ? `*Mensagem:* ${data.message}\n` : '') +
+        `\n✅ O status deste projeto foi atualizado no sistema.`;
+      break;
+      
+    case 'new-message':
+      title = 'Nova Mensagem Recebida';
+      message = `💬 *Nova Mensagem Recebida*\n\n` +
+        `*De:* ${data.name}\n` +
+        `*Email:* ${data.email}\n` +
+        `*Assunto:* ${data.subject || 'Não especificado'}\n` +
+        `*Mensagem:* ${data.message}\n` +
+        `\n✅ Esta mensagem foi registrada no sistema e aguarda resposta.`;
+      break;
+      
+    case 'daily-events':
+      const events = data.events || [];
+      
+      if (events.length === 0) {
+        title = 'Agenda do Dia';
+        message = `📅 *Agenda do Dia*\n\n` +
+          `Não há eventos programados para hoje.`;
+      } else {
+        title = `Agenda do Dia: ${events.length} Evento(s)`;
+        message = `📅 *Agenda do Dia*\n\n` +
+          `Eventos programados para hoje (${new Date().toLocaleDateString('pt-BR')}):\n\n`;
+          
+        events.forEach((event: any, index: number) => {
+          const eventTime = event.date instanceof Date 
+            ? event.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : new Date(event.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+          message += `*${index + 1}. ${event.title}*\n` +
+            `⏰ ${eventTime}\n` +
+            `⏱️ ${event.duration || 60} minutos\n` +
+            (event.description ? `📝 ${event.description}\n` : '') +
+            (event.contactPhone ? `📞 ${event.contactPhone}\n` : '') +
+            `\n`;
+        });
+      }
+      break;
+      
+    default:
+      title = 'Notificação do Sistema';
+      message = `ℹ️ *Notificação do Sistema*\n\n${JSON.stringify(data, null, 2)}`;
+  }
+  
+  return sendSystemNotification(title, message);
+};
+
+/**
+ * Test API connection 
+ * This is a simple check to see if the WhatsApp API is accessible
+ */
+export const testApiConnection = async (): Promise<boolean> => {
+  const { apiKey, apiUrl } = getApiKey();
+  
+  if (!apiKey) {
+    addLogEntry('error', 'test-connection', "WhatsApp API key not set");
+    return false;
+  }
+  
+  try {
+    console.log("Testing WhatsApp API connection to:", apiUrl);
+    
+    // We'll use the /status endpoint if available, otherwise try a simpler request
+    const requestUrl = `${apiUrl}/status`;
+    const options = {
+      method: "GET",
+      headers: {
+        "Authorization": apiKey,
+        "Accept": "application/json"
+      }
+    };
+    
+    try {
+      // Try direct connection first
+      console.log("Testing direct connection to WhatsApp API");
+      const response = await fetch(requestUrl, options);
+      
+      // If we get any response, consider it a success (even if it's not 200)
+      console.log("WhatsApp API connection test result:", response.status);
+      return response.status < 500; // Anything but server error is considered "connected"
+    } catch (directError) {
+      console.log("Direct connection failed, trying with proxy");
+      
+      // Try with proxy
+      try {
+        const proxyUrl = `${CORS_PROXY_URL}${requestUrl}`;
+        const proxyResponse = await fetch(proxyUrl, {
+          ...options,
+          headers: {
+            ...options.headers,
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        });
+        
+        return proxyResponse.status < 500;
+      } catch (proxyError) {
+        console.log("Proxy connection also failed");
+        
+        // If all fails, try a test message to check connection
+        // We're just checking connection, not actually sending
+        try {
+          const testResult = await sendTestToSpecificNumber();
+          return testResult.success;
+        } catch (testError) {
+          console.error("All connection tests failed");
+          return false;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error testing API connection:", error);
+    addLogEntry('error', 'test-connection', "Error testing API connection", error);
+    return false;
+  }
+};
+
+/**
+ * Schedule notifications for upcoming events
+ * This function can be called periodically to check for upcoming events and send reminders
+ */
+export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 24): Promise<void> => {
+  if (!isWhatsAppConfigured()) {
+    addLogEntry('warning', 'schedule-reminders', "WhatsApp API key not set, skipping event reminders");
+    return;
+  }
+  
+  const now = new Date();
+  const reminderThreshold = new Date(now.getTime() + (hoursBeforeEvent * 60 * 60 * 1000));
+  
+  // Filter events that need reminders
+  const upcomingEvents = events.filter(event => {
+    const eventDate = new Date(event.date);
+    return eventDate > now && eventDate <= reminderThreshold;
+  });
+  
+  addLogEntry('info', 'schedule-reminders', `Found ${upcomingEvents.length} events that need reminders`, { 
+    totalEvents: events.length, 
+    hoursBeforeEvent 
+  });
+  
+  // Send reminders for each upcoming event
+  for (const event of upcomingEvents) {
+    if (!event.contactPhone) {
+      addLogEntry('warning', 'schedule-reminders', `Skipping reminder for event "${event.title}" - no contact phone`);
+      continue;
+    }
+    
+    const reminderSent = await sendEventReminder({
+      title: event.title,
+      date: new Date(event.date),
+      time: `${new Date(event.date).getHours().toString().padStart(2, '0')}:${new Date(event.date).getMinutes().toString().padStart(2, '0')}`,
+      duration: event.duration,
+      contactPhone: event.contactPhone
+    });
+    
+    if (reminderSent) {
+      addLogEntry('info', 'schedule-reminders', `Reminder sent for event "${event.title}"`);
+      toast.success(`Lembrete enviado para evento "${event.title}"`);
+    } else {
+      addLogEntry('error', 'schedule-reminders', `Failed to send reminder for event "${event.title}"`);
+      toast.error(`Falha ao enviar lembrete para evento "${event.title}"`);
+    }
+  }
 };

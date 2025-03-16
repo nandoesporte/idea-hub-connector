@@ -113,32 +113,32 @@ const VoiceInputButton = () => {
     <div className="flex flex-col items-center space-y-4">
       {isListening ? (
         <>
-          <div className="animate-pulse bg-red-100 text-red-800 px-4 py-2 rounded-md mb-2 text-base font-medium">
+          <div className="animate-pulse bg-red-100 text-red-800 px-4 py-2 rounded-md mb-2 text-lg font-medium">
             Gravando comando de voz...
           </div>
           <Button 
             onClick={stopListening} 
             disabled={processingCommand}
-            className="bg-red-500 hover:bg-red-600 transition-colors flex items-center space-x-2 text-base py-6"
+            className="bg-red-500 hover:bg-red-600 transition-colors flex items-center space-x-2 text-lg py-6 px-5"
           >
-            <Square size={20} />
+            <Square size={24} />
             <span>Parar</span>
           </Button>
         </>
       ) : (
         <Button 
           onClick={startListening} 
-          className="bg-blue-500 hover:bg-blue-600 transition-colors flex items-center space-x-2 text-base py-6"
+          className="bg-blue-500 hover:bg-blue-600 transition-colors flex items-center space-x-2 text-lg py-6 px-5"
         >
-          <Mic size={20} />
+          <Mic size={24} />
           <span>Comando de Voz</span>
         </Button>
       )}
       
       {transcript && (
         <div className="mt-4 p-4 bg-gray-50 border rounded-md w-full max-w-md">
-          <p className="text-base font-medium text-gray-500 mb-1">Transcrição:</p>
-          <p className="text-base">{transcript}</p>
+          <p className="text-lg font-medium text-gray-500 mb-1">Transcrição:</p>
+          <p className="text-lg">{transcript}</p>
         </div>
       )}
     </div>
