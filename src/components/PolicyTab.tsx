@@ -12,7 +12,6 @@ import {
   Calendar, 
   Download, 
   AlertTriangle, 
-  CheckCircle2, 
   Clock, 
   Trash2,
   Search,
@@ -25,7 +24,6 @@ import { toast } from "sonner";
 import { PolicyData } from "@/types";
 import { 
   getAllPolicies, 
-  registerWhatsAppWebhook,
   deletePolicy,
   uploadAndAnalyzePolicy
 } from "@/lib/whatsgwService";
@@ -34,18 +32,12 @@ const PolicyTab = () => {
   const [policies, setPolicies] = useState<PolicyData[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [webhookUrl, setWebhookUrl] = useState("");
   const [databaseError, setDatabaseError] = useState<string | null>(null);
   const [uploadingPolicy, setUploadingPolicy] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadPolicies();
-    
-    const savedWebhookUrl = localStorage.getItem('whatsgw_webhook_url');
-    if (savedWebhookUrl) {
-      setWebhookUrl(savedWebhookUrl);
-    }
   }, []);
 
   const loadPolicies = async () => {
@@ -80,9 +72,6 @@ const PolicyTab = () => {
 
     setUploadingPolicy(true);
     try {
-      // Create the bucket if it doesn't exist before uploading
-      await ensureBucketExists();
-      
       const result = await uploadAndAnalyzePolicy(file);
       if (result) {
         await loadPolicies();
@@ -104,47 +93,6 @@ const PolicyTab = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-    }
-  };
-
-  // Helper function to ensure the 'documents' bucket exists
-  const ensureBucketExists = async () => {
-    try {
-      const { supabase } = await import('@/lib/supabase');
-      
-      // First check if the bucket exists
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === 'documents');
-      
-      if (!bucketExists) {
-        // Create the bucket if it doesn't exist
-        const { error } = await supabase.storage.createBucket('documents', {
-          public: true
-        });
-        
-        if (error) {
-          console.error("Error creating 'documents' bucket:", error);
-          throw error;
-        }
-      }
-    } catch (error) {
-      console.error("Error ensuring bucket exists:", error);
-      throw error;
-    }
-  };
-
-  const handleSaveWebhook = () => {
-    if (!webhookUrl.trim()) {
-      toast.error("Por favor, insira uma URL de webhook válida");
-      return;
-    }
-    
-    try {
-      registerWhatsAppWebhook(webhookUrl);
-      toast.success("URL de webhook salva com sucesso!");
-    } catch (error) {
-      console.error("Error saving webhook URL:", error);
-      toast.error("Erro ao salvar URL de webhook");
     }
   };
 
