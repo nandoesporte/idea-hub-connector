@@ -20,8 +20,10 @@ const PolicyTab = () => {
     queryFn: async () => fetchPolicies(user?.id || ''),
     enabled: !!user && bucketReady,
     retry: 2,
-    onError: (err) => {
-      console.error("Error fetching policies:", err);
+    meta: {
+      onError: (err: Error) => {
+        console.error("Error fetching policies:", err);
+      }
     }
   });
 
