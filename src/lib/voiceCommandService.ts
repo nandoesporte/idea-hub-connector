@@ -11,7 +11,7 @@ interface VoiceCommandResult {
   duration?: number;
   type: 'meeting' | 'deadline' | 'task' | 'other';
   contactPhone?: string;
-  reminderScheduledFor?: Date; // Now properly defined in the interface
+  reminderScheduledFor?: Date | null; // Updated to be optional and nullable
 }
 
 /**
@@ -81,6 +81,13 @@ export async function saveVoiceCommandEvent(event: VoiceCommandResult): Promise<
     
     console.log('Saving voice command event:', event);
     
+    // Ensure reminderScheduledFor is properly formatted or null
+    const reminderScheduledFor = event.reminderScheduledFor 
+      ? event.reminderScheduledFor.toISOString() 
+      : null;
+    
+    console.log('Reminder scheduled for:', reminderScheduledFor);
+    
     // Insert the event into the voice_command_events table
     const { data, error } = await supabase
       .from('voice_command_events')
@@ -92,7 +99,7 @@ export async function saveVoiceCommandEvent(event: VoiceCommandResult): Promise<
         duration: event.duration || 60,
         type: event.type,
         contact_phone: event.contactPhone || '',
-        reminder_scheduled_for: event.reminderScheduledFor?.toISOString() || null,
+        reminder_scheduled_for: reminderScheduledFor
       });
     
     if (error) {
