@@ -5,14 +5,17 @@ import VoiceInputButton from '@/components/VoiceInputButton';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import VoiceCommandHelp from '@/components/VoiceCommandHelp';
 import { Button } from '@/components/ui/button';
-import { Info } from 'lucide-react';
+import { Info, Mic } from 'lucide-react';
 
 const VoiceCommandsSection = () => {
   return (
     <Card className="w-full">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Comandos de Voz</CardTitle>
+          <div className="flex items-center gap-2">
+            <Mic className="h-5 w-5 text-primary" />
+            <CardTitle>Assistente de Voz "Vic"</CardTitle>
+          </div>
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -26,7 +29,8 @@ const VoiceCommandsSection = () => {
           </Dialog>
         </div>
         <CardDescription>
-          Crie eventos rapidamente usando comandos de voz
+          Crie eventos e execute comandos usando o assistente de voz. 
+          Diga "Vic" para ativar e siga com seu comando.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex justify-center pb-6">
