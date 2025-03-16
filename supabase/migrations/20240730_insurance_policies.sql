@@ -28,6 +28,39 @@ CREATE INDEX IF NOT EXISTS insurance_policies_expiry_date_idx ON public.insuranc
 -- Set up RLS policies
 ALTER TABLE public.insurance_policies ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'insurance_policies' AND policyname = 'Users can view their own policies'
+    ) THEN
+        DROP POLICY "Users can view their own policies" ON public.insurance_policies;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'insurance_policies' AND policyname = 'Users can insert their own policies'
+    ) THEN
+        DROP POLICY "Users can insert their own policies" ON public.insurance_policies;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'insurance_policies' AND policyname = 'Users can update their own policies'
+    ) THEN
+        DROP POLICY "Users can update their own policies" ON public.insurance_policies;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'insurance_policies' AND policyname = 'Users can delete their own policies'
+    ) THEN
+        DROP POLICY "Users can delete their own policies" ON public.insurance_policies;
+    END IF;
+END
+$$;
+
 -- Policy for users to see only their own policies
 CREATE POLICY "Users can view their own policies"
 ON public.insurance_policies
@@ -54,6 +87,15 @@ USING (auth.uid() = user_id);
 
 -- Grant access to authenticated users
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.insurance_policies TO authenticated;
+
+-- Check if function already exists and drop it if it does
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'check_policy_expirations') THEN
+        DROP FUNCTION public.check_policy_expirations();
+    END IF;
+END
+$$;
 
 -- Create a function to check for policies nearing expiration
 CREATE OR REPLACE FUNCTION public.check_policy_expirations()
@@ -107,6 +149,15 @@ BEGIN
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Drop the cron job if it exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'daily-policy-check') THEN
+        SELECT cron.unschedule('daily-policy-check');
+    END IF;
+END
+$$;
 
 -- Create a cron job to run the expiration check daily
 SELECT cron.schedule(
