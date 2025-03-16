@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Search, FileUp, Loader2 } from "lucide-react";
+import { Search, FileUp, Loader2, AlertTriangle } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { PolicyFile } from "@/types";
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
@@ -40,7 +41,7 @@ const PolicyTabContent = ({
   // Function to trigger file selection
   const triggerFileSelection = async () => {
     if (uploadingFile) {
-      toast.info("Please wait for the current upload to complete");
+      toast.info("Aguarde a conclusão do upload atual");
       return;
     }
     
@@ -50,7 +51,7 @@ const PolicyTabContent = ({
     setVerifyingStorage(false);
     
     if (!isBucketAccessible) {
-      toast.error("Storage system is not available");
+      toast.error("Sistema de armazenamento não está disponível");
       return;
     }
     
@@ -69,7 +70,7 @@ const PolicyTabContent = ({
       
       const file = target.files[0];
       if (file.type !== 'application/pdf') {
-        toast.error("Please select a PDF file");
+        toast.error("Por favor, selecione um arquivo PDF");
         return;
       }
       
@@ -107,6 +108,16 @@ const PolicyTabContent = ({
     <>
       <PolicySearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       
+      {!bucketReady && !configuringStorage && !isLoading && (
+        <Alert variant="destructive" className="my-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Sistema de armazenamento indisponível</AlertTitle>
+          <AlertDescription>
+            O sistema de armazenamento de documentos não está disponível. Entre em contato com o administrador do sistema.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {isLoading || configuringStorage || verifyingStorage ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -131,7 +142,7 @@ const PolicyTabContent = ({
               className="w-full sm:w-auto"
             >
               <FileUp className="h-4 w-4 mr-2" /> 
-              Upload Policy PDF
+              Enviar Apólice PDF
             </Button>
           </div>
         </>

@@ -54,7 +54,19 @@ export const deletePolicy = async (id: string) => {
 // Check if bucket exists and is accessible
 export const checkBucketExists = async (userId: string): Promise<boolean> => {
   try {
-    // First check if bucket exists
+    if (!userId) {
+      console.error("Cannot check bucket without a user ID");
+      return false;
+    }
+
+    // First verify authentication
+    const { data: authData, error: authError } = await supabase.auth.getSession();
+    if (authError || !authData.session) {
+      console.error("Authentication check failed:", authError);
+      return false;
+    }
+
+    // Check if bucket exists
     const { data: buckets, error } = await supabase.storage.listBuckets();
     
     if (error) {
@@ -65,19 +77,18 @@ export const checkBucketExists = async (userId: string): Promise<boolean> => {
     const bucketExists = buckets.some(bucket => bucket.name === STORAGE_BUCKET);
     
     if (!bucketExists) {
+      console.error("Bucket not found:", STORAGE_BUCKET);
       return false;
     }
     
     // Then check if we can access the bucket with the current user
-    if (userId) {
-      const { error: accessError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .list(userId);
-        
-      if (accessError) {
-        console.error("Error accessing bucket:", accessError);
-        return false;
-      }
+    const { error: accessError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .list(userId);
+      
+    if (accessError) {
+      console.error("Error accessing bucket:", accessError);
+      return false;
     }
     
     return true;
@@ -95,7 +106,7 @@ export const uploadAndProcessPolicy = async (
   onSuccess: () => void
 ) => {
   if (!userId) {
-    toast.error("User not authenticated");
+    toast.error("Usuário não autenticado");
     setUploadingFile(null);
     return;
   }
@@ -103,7 +114,7 @@ export const uploadAndProcessPolicy = async (
   // Verify bucket exists and is accessible before attempting upload
   const bucketAccessible = await checkBucketExists(userId);
   if (!bucketAccessible) {
-    toast.error("Storage system is not available");
+    toast.error("Sistema de armazenamento não está disponível");
     setUploadingFile(null);
     return;
   }

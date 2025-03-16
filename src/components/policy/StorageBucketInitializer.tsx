@@ -2,6 +2,8 @@
 import React, { useEffect } from 'react';
 import { supabase } from "@/lib/supabase";
 import { toast } from 'sonner';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 interface StorageBucketInitializerProps {
   userId?: string;
@@ -30,7 +32,7 @@ const StorageBucketInitializer = ({
           console.error("Authentication error:", authError);
           setBucketReady(false);
           setConfiguringStorage(false);
-          toast.error("Authentication error. Please log in again.");
+          toast.error("Erro de autenticação. Por favor, faça login novamente.");
           return;
         }
         
@@ -43,38 +45,48 @@ const StorageBucketInitializer = ({
           console.error("Error listing buckets:", bucketError);
           setBucketReady(false);
           setConfiguringStorage(false);
-          toast.error("Unable to access storage system");
+          toast.error("Não foi possível acessar o sistema de armazenamento");
           return;
         }
         
         // Check if 'policy_documents' bucket exists
         const policyBucket = buckets.find(bucket => bucket.name === 'policy_documents');
         
-        if (policyBucket) {
-          // Double check if we have access to this bucket by listing files
-          const { data: files, error: filesError } = await supabase.storage
+        if (!policyBucket) {
+          console.error("Bucket 'policy_documents' not found. This bucket must be created by an administrator.");
+          setBucketReady(false);
+          setConfiguringStorage(false);
+          toast.error("Sistema de armazenamento não está disponível. Contate o administrador.");
+          return;
+        }
+        
+        // Double check if we have access to this bucket by listing files
+        try {
+          const { error: filesError } = await supabase.storage
             .from('policy_documents')
             .list(userId);
             
           if (filesError) {
             console.error("Error accessing policy_documents bucket:", filesError);
             setBucketReady(false);
-            toast.error("Storage access error. Contact administrator.");
-          } else {
-            console.log("Bucket 'policy_documents' found and ready to use");
-            setBucketReady(true);
+            setConfiguringStorage(false);
+            toast.error("Erro de acesso ao armazenamento. Contate o administrador.");
+            return;
           }
-        } else {
-          console.log("Bucket 'policy_documents' not found. This bucket must be created by an administrator.");
-          toast.error("Storage system is not available. Contact administrator.");
+          
+          console.log("Bucket 'policy_documents' found and ready to use");
+          setBucketReady(true);
+          setConfiguringStorage(false);
+        } catch (listError) {
+          console.error("Error listing files in policy_documents bucket:", listError);
           setBucketReady(false);
+          setConfiguringStorage(false);
+          toast.error("Erro de acesso aos documentos. Contate o administrador.");
         }
-        
       } catch (err) {
         console.error("Unexpected error checking storage:", err);
-        toast.error("Error verifying storage system");
+        toast.error("Erro ao verificar sistema de armazenamento");
         setBucketReady(false);
-      } finally {
         setConfiguringStorage(false);
       }
     };
