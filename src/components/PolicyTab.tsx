@@ -133,39 +133,98 @@ const PolicyTab = () => {
       
       // Simulate GPT-4 analysis
       setTimeout(() => {
-        analyzePolicy(file);
+        extractPolicyDataFromPDF(file);
       }, 2000);
     }, 3000);
   };
 
-  const analyzePolicy = (file: File) => {
+  const extractPolicyDataFromPDF = (file: File) => {
     try {
-      // Here we would normally send the file to an API for GPT-4 analysis
-      // For now, we'll simulate a response with random data
+      // In a real implementation, we would send the file to a backend API that uses GPT-4 Vision
+      // to analyze the PDF and extract the relevant information
       
-      const randomInsurers = ["Seguros Brasil", "Proteção Total", "Seguradora Nacional", "Confiança Seguros", "Seguro Premium"];
-      const randomCustomers = ["Roberto Santos", "Ana Pereira", "Marcos Oliveira", "Carolina Lima", "Fernando Costa"];
+      console.log("Extracting data from PDF:", file.name);
       
+      // Extract policy number from filename (only for simulation)
+      // In a real scenario, GPT-4 would extract this from the PDF content
+      const fileNameWithoutExtension = file.name.replace('.pdf', '');
+      
+      // Parse realistic data based on the PDF filename patterns
+      const policyNumber = fileNameWithoutExtension.match(/AP[0-9-]+/i) 
+        ? fileNameWithoutExtension.match(/AP[0-9-]+/i)![0] 
+        : `AP-${new Date().getFullYear()}-${Math.floor(Math.random() * 900) + 100}`;
+      
+      // Try to extract customer name from filename (real implementation would use GPT-4)
+      let customerName = "Cliente";
+      if (fileNameWithoutExtension.includes('_')) {
+        const parts = fileNameWithoutExtension.split('_');
+        if (parts.length >= 2) {
+          // Convert snake_case to Title Case
+          customerName = parts.slice(1)
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+            .join(' ');
+        }
+      }
+      
+      // Create a more realistic date range (1 year policy is common)
+      const today = new Date();
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 30));
+      startDate.setMonth(today.getMonth() - Math.floor(Math.random() * 2)); // Start 0-2 months ago
       
       const endDate = new Date(startDate);
-      endDate.setFullYear(endDate.getFullYear() + 1);
+      endDate.setFullYear(endDate.getFullYear() + 1); // One year policy
       
-      const premiumValues = ["R$ 1.200,00", "R$ 1.750,00", "R$ 2.300,00", "R$ 3.450,00", "R$ 4.100,00"];
+      // Create policy status based on dates
+      let policyStatus: Policy['status'] = "active";
+      if (isAfter(today, endDate)) {
+        policyStatus = "expired";
+      } else if (isBefore(today, startDate)) {
+        policyStatus = "pending";
+      }
       
+      // Common Brazilian insurance companies
+      const insurers = [
+        "Porto Seguro", 
+        "Bradesco Seguros", 
+        "SulAmérica", 
+        "Allianz", 
+        "Liberty Seguros",
+        "Mapfre Seguros",
+        "HDI Seguros",
+        "Tokio Marine",
+        "Zurich Seguros",
+        "Sompo Seguros"
+      ];
+      
+      // Format currency values realistically
+      const formatCurrency = (value: number): string => {
+        return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      };
+      
+      // Generate a realistic premium value based on coverage
+      const coverageBase = Math.floor(Math.random() * 9) + 1; // 1-9
+      const coverageAmount = formatCurrency(coverageBase * 100000); // R$ 100.000,00 to R$ 900.000,00
+      
+      // Premium is typically 2-5% of coverage amount annually
+      const premiumRate = (Math.random() * 3 + 2) / 100; // 2-5%
+      const premiumBase = coverageBase * 100000 * premiumRate;
+      const premiumValue = formatCurrency(premiumBase);
+      
+      // Create the new policy with extracted data
       const newPolicy: Policy = {
         id: Date.now().toString(),
-        policyNumber: `AP-${new Date().getFullYear()}-${Math.floor(Math.random() * 900) + 100}`,
-        insurer: randomInsurers[Math.floor(Math.random() * randomInsurers.length)],
-        customer: randomCustomers[Math.floor(Math.random() * randomCustomers.length)],
+        policyNumber,
+        insurer: insurers[Math.floor(Math.random() * insurers.length)],
+        customer: customerName,
         startDate,
         endDate,
-        coverageAmount: `R$ ${(Math.floor(Math.random() * 900) + 100)}.000,00`,
-        premiumValue: premiumValues[Math.floor(Math.random() * premiumValues.length)],
-        status: "active",
+        coverageAmount,
+        premiumValue,
+        status: policyStatus,
         fileName: file.name
       };
+      
+      console.log("Extracted policy data:", newPolicy);
       
       setPolicies(prev => [newPolicy, ...prev]);
       setUploadingFile(prev => prev ? { ...prev, status: 'success' } : null);
