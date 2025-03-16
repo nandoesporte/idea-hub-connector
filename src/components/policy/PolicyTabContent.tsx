@@ -69,8 +69,15 @@ const PolicyTabContent = ({
     );
   };
 
+  // Esta função controla o clique no botão de upload
   const handleUploadButtonClick = () => {
-    fileInputRef.current?.click();
+    console.log("Botão de upload clicado"); // Debug para confirmar que o clique está acontecendo
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    } else {
+      console.error("Referência ao input de arquivo é nula");
+      toast.error("Erro ao abrir o seletor de arquivos");
+    }
   };
 
   return (
@@ -101,10 +108,11 @@ const PolicyTabContent = ({
               className="hidden"
               onChange={handleFileUpload}
               ref={fileInputRef}
+              id="policyFileInput"
             />
             <Button 
               onClick={handleUploadButtonClick}
-              disabled={uploadingFile !== null}
+              disabled={uploadingFile !== null || !bucketReady}
               className="w-full sm:w-auto"
             >
               <FileUp className="h-4 w-4 mr-2" /> 

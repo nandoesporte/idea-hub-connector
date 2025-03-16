@@ -18,8 +18,8 @@ const StorageBucketInitializer = ({
   useEffect(() => {
     if (!userId) return;
     
-    // Simplificado: apenas verificamos se o usuário está autenticado
-    // e assumimos que o upload funcionará
+    // Definimos inicialmente como true para sempre permitir upload
+    setBucketReady(true);
     setConfiguringStorage(true);
     
     const checkAuth = async () => {
@@ -29,8 +29,10 @@ const StorageBucketInitializer = ({
         
         // Se o usuário estiver autenticado, consideramos o sistema pronto
         if (authData.session) {
+          console.log("Usuário autenticado, bucket pronto para uso");
           setBucketReady(true);
         } else {
+          console.error("Usuário não autenticado");
           toast.error("Usuário não autenticado. Faça login novamente.");
           setBucketReady(false);
         }
