@@ -1,9 +1,88 @@
 
 import { supabase } from "@/lib/supabase";
 import { Policy, PolicyFile } from "@/types";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/use-toast";
 
 const STORAGE_BUCKET = 'policy_documents';
+
+// Create bucket if it doesn't exist
+export const createStorageBucket = async () => {
+  try {
+    // First check if the bucket already exists
+    const { data: buckets, error: checkError } = await supabase.storage.listBuckets();
+    
+    if (checkError) {
+      console.error("Error checking buckets:", checkError);
+      return false;
+    }
+    
+    // If bucket already exists, we're done
+    if (buckets?.some(bucket => bucket.name === STORAGE_BUCKET)) {
+      return true;
+    }
+    
+    // Create the bucket if it doesn't exist
+    const { data, error } = await supabase.storage.createBucket(STORAGE_BUCKET, {
+      public: false,
+      fileSizeLimit: 10485760, // 10MB
+      allowedMimeTypes: ['application/pdf']
+    });
+    
+    if (error) {
+      console.error("Error creating bucket:", error);
+      return false;
+    }
+    
+    // Now set up RLS policies for the bucket
+    try {
+      // First we need to enable RLS on the bucket 
+      const { error: rlsError } = await supabase.rpc('enable_storage_rls', { bucket_name: STORAGE_BUCKET });
+      if (rlsError) {
+        console.error("Error enabling RLS on bucket:", rlsError);
+        // We'll continue anyway as the bucket was created
+      }
+      
+      // Then let's make sure the policies are created
+      // These might fail if they already exist, which is fine
+      await supabase.rpc('create_storage_policy', { 
+        bucket: STORAGE_BUCKET,
+        policy_name: 'Users can read their own policy documents',
+        definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+        operation: 'SELECT'
+      }).catch(e => console.warn("Policy creation might have failed, but it's ok if it already exists:", e));
+      
+      await supabase.rpc('create_storage_policy', { 
+        bucket: STORAGE_BUCKET,
+        policy_name: 'Users can insert their own policy documents',
+        definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+        operation: 'INSERT'
+      }).catch(e => console.warn("Policy creation might have failed, but it's ok if it already exists:", e));
+      
+      await supabase.rpc('create_storage_policy', { 
+        bucket: STORAGE_BUCKET,
+        policy_name: 'Users can update their own policy documents',
+        definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+        operation: 'UPDATE'
+      }).catch(e => console.warn("Policy creation might have failed, but it's ok if it already exists:", e));
+      
+      await supabase.rpc('create_storage_policy', { 
+        bucket: STORAGE_BUCKET,
+        policy_name: 'Users can delete their own policy documents',
+        definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+        operation: 'DELETE'
+      }).catch(e => console.warn("Policy creation might have failed, but it's ok if it already exists:", e));
+      
+    } catch (policyError) {
+      console.error("Error setting up bucket policies:", policyError);
+      // Continue as the bucket was still created
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error creating storage bucket:", error);
+    return false;
+  }
+};
 
 // Check if bucket exists
 export const checkBucketExists = async () => {
