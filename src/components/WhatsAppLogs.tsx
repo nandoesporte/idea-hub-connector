@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -141,7 +142,7 @@ const WhatsAppLogs = () => {
     }
   };
   
-  const isCorsError = (log: LogEntry): boolean => {
+  const isCorsError = (log: WhatsAppLogEntry): boolean => {
     if (log.type !== 'error') return false;
     
     const message = log.message?.toLowerCase() || '';

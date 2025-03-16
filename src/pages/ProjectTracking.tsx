@@ -23,6 +23,8 @@ const mockProjects: ProjectIdea[] = [
     createdAt: new Date('2023-10-15'),
     updatedAt: new Date('2023-10-18'),
     urgency: 'normal',
+    contactName: 'João Silva',
+    contactEmail: 'joao.silva@example.com',
   },
   {
     id: '2',
@@ -36,6 +38,8 @@ const mockProjects: ProjectIdea[] = [
     createdAt: new Date('2023-11-05'),
     updatedAt: new Date('2023-11-10'),
     urgency: 'alta',
+    contactName: 'Maria Oliveira',
+    contactEmail: 'maria.oliveira@example.com',
   },
   {
     id: '3',
@@ -50,6 +54,8 @@ const mockProjects: ProjectIdea[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 dias atrás
     updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 dias atrás
     urgency: 'baixa',
+    contactName: 'Carlos Santos',
+    contactEmail: 'carlos.santos@example.com',
   }
 ];
 

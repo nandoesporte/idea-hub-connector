@@ -45,6 +45,8 @@ const recentProjects: ProjectIdea[] = [
     createdAt: new Date('2023-10-15'),
     updatedAt: new Date('2023-10-18'),
     urgency: 'normal',
+    contactName: 'João Silva',
+    contactEmail: 'joao.silva@example.com',
   },
   {
     id: '2',
@@ -59,6 +61,8 @@ const recentProjects: ProjectIdea[] = [
     createdAt: new Date('2023-11-05'),
     updatedAt: new Date('2023-11-10'),
     urgency: 'alta',
+    contactName: 'Maria Oliveira',
+    contactEmail: 'maria.oliveira@example.com',
   },
   {
     id: '3',
@@ -73,6 +77,8 @@ const recentProjects: ProjectIdea[] = [
     createdAt: new Date('2023-09-20'),
     updatedAt: new Date('2023-09-25'),
     urgency: 'baixa',
+    contactName: 'Carlos Santos',
+    contactEmail: 'carlos.santos@example.com',
   },
 ];
 
