@@ -21,14 +21,18 @@ const PolicyTab = () => {
     enabled: !!user && bucketReady
   });
 
-  // Verify storage access when component mounts
+  // Verify storage access when component mounts or when bucketReady changes
   useEffect(() => {
     if (user?.id && !bucketReady && !configuringStorage) {
       const verifyAccess = async () => {
-        const isAccessible = await checkStorageAccess(user.id);
-        if (isAccessible) {
-          setBucketReady(true);
-          refetch();
+        try {
+          const isAccessible = await checkStorageAccess(user.id);
+          if (isAccessible) {
+            setBucketReady(true);
+            refetch();
+          }
+        } catch (error) {
+          console.error("Error verifying storage access:", error);
         }
       };
       
@@ -53,6 +57,7 @@ const PolicyTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Storage initializer component - will attempt to set up the storage system */}
           <StorageBucketInitializer 
             userId={user?.id} 
             setBucketReady={setBucketReady}

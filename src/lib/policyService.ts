@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { Policy, PolicyFile } from "@/types";
 import { toast } from "sonner";
@@ -17,35 +16,15 @@ export const checkStorageAccess = async (userId: string): Promise<boolean> => {
       return false;
     }
     
-    // Check bucket existence
+    // Skip bucket checking/creation entirely and directly test file access
+    // Try to access user folder directly without attempting to create the bucket
     try {
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      if (bucketsError) {
-        console.error("Error listing buckets:", bucketsError);
-        return false;
-      }
-      
-      const bucketExists = buckets.some(bucket => bucket.name === STORAGE_BUCKET);
-      if (!bucketExists) {
-        // Try to create the bucket
-        const { error: createError } = await supabase.storage.createBucket(STORAGE_BUCKET, {
-          public: false,
-          fileSizeLimit: 10485760 // 10MB
-        });
-        
-        if (createError) {
-          console.error("Error creating bucket:", createError);
-          return false;
-        }
-      }
-      
-      // Try to access the bucket
       const { error: listError } = await supabase.storage
         .from(STORAGE_BUCKET)
         .list(userId);
       
       if (listError) {
-        // Try to create an empty placeholder file to establish the folder
+        // If we can't access the folder, try to create it with a placeholder file
         const emptyFile = new Blob([''], { type: 'text/plain' });
         const placeholderPath = `${userId}/.placeholder`;
         

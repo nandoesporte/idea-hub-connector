@@ -36,62 +36,11 @@ const StorageBucketInitializer = ({
           return;
         }
         
-        // First check if the bucket already exists
-        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-        
-        if (bucketsError) {
-          console.error("Error checking buckets:", bucketsError);
-          setBucketReady(false);
-          setConfiguringStorage(false);
-          toast.error("Erro ao verificar sistema de armazenamento");
-          return;
-        }
-        
-        const bucketExists = buckets.some(bucket => bucket.name === 'policy_documents');
-        
-        if (!bucketExists) {
-          // Try to list files from the bucket first to check permissions
-          const { error: accessError } = await supabase.storage
-            .from('policy_documents')
-            .list();
-          
-          if (!accessError) {
-            // We can access the bucket even though it didn't show up in listBuckets
-            console.log("Bucket exists but wasn't listed - we have access");
-            
-            // Verify we can access the user's folder
-            verifyUserFolder();
-            return;
-          }
-          
-          // Try to create the bucket
-          console.log("Bucket doesn't exist, attempting to create it");
-          const { error: createError } = await supabase.storage.createBucket('policy_documents', {
-            public: false, 
-            fileSizeLimit: 10485760 // 10MB
-          });
-          
-          if (createError) {
-            console.error("Error creating bucket:", createError);
-            setBucketReady(false);
-            setConfiguringStorage(false);
-            
-            // Special handling for RLS policy errors
-            if (createError.message.includes('violates row-level security policy')) {
-              toast.error("Erro de permissão. Você não tem permissão para criar o bucket.");
-            } else {
-              toast.error("Erro ao criar sistema de armazenamento");
-            }
-            return;
-          }
-          
-          console.log("Bucket created successfully");
-        } else {
-          console.log("Bucket already exists");
-        }
-        
-        // Bucket exists or was created, now verify user folder access
-        verifyUserFolder();
+        // Skip bucket creation and directly try to access the user's folder
+        // This is the critical change - we don't try to create the bucket at all,
+        // since we know it exists at the database level
+        console.log("Directly checking user folder access");
+        await verifyUserFolder();
       } catch (err) {
         console.error("Unexpected error initializing storage:", err);
         toast.error("Erro ao configurar sistema de armazenamento");
@@ -122,7 +71,7 @@ const StorageBucketInitializer = ({
             console.error("Error creating user folder:", uploadError);
             setBucketReady(false);
             setConfiguringStorage(false);
-            toast.error("Erro ao criar pasta do usuário");
+            toast.error("Erro ao criar pasta do usuário. Permissão negada.");
             return;
           }
           
