@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Search, FileUp, Loader2 } from "lucide-react";
 import { PolicyFile } from "@/types";
@@ -34,43 +34,48 @@ const PolicyTabContent = ({
   userId
 }: PolicyTabContentProps) => {
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
+  const [verifyingStorage, setVerifyingStorage] = useState(false);
   const queryClient = useQueryClient();
 
-  // Função que cria um input de arquivo temporário, 
-  // registra os manipuladores de eventos e simula um clique
-  const triggerFileSelection = () => {
+  // Function to trigger file selection
+  const triggerFileSelection = async () => {
     if (uploadingFile) {
-      toast.info("Aguarde o término do upload atual");
+      toast.info("Please wait for the current upload to complete");
       return;
     }
     
-    if (!bucketReady) {
-      toast.error("Sistema de armazenamento não está disponível");
+    // Double-check bucket access before upload
+    setVerifyingStorage(true);
+    const isBucketAccessible = await checkBucketExists(userId);
+    setVerifyingStorage(false);
+    
+    if (!isBucketAccessible) {
+      toast.error("Storage system is not available");
       return;
     }
     
-    console.log("Criando input temporário para seleção de arquivo");
+    console.log("Creating temporary input for file selection");
     
-    // Criar elemento temporário de input
+    // Create temporary input element
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.pdf';
     fileInput.style.display = 'none';
     
-    // Adicionar manipulador de eventos
-    fileInput.addEventListener('change', (e) => {
+    // Add event handler with proper typing
+    fileInput.addEventListener('change', (e: Event) => {
       const target = e.target as HTMLInputElement;
       if (!target.files || target.files.length === 0) return;
       
       const file = target.files[0];
       if (file.type !== 'application/pdf') {
-        toast.error("Por favor, selecione um arquivo PDF");
+        toast.error("Please select a PDF file");
         return;
       }
       
-      console.log("Arquivo selecionado:", file.name);
+      console.log("File selected:", file.name);
       
-      // Iniciar processo de upload
+      // Start upload process
       setUploadingFile({
         file,
         progress: 0,
@@ -82,17 +87,17 @@ const PolicyTabContent = ({
         userId, 
         setUploadingFile, 
         () => {
-          // Atualizar a lista de políticas após o upload bem-sucedido
+          // Update policy list after successful upload
           queryClient.invalidateQueries({ queryKey: ['policies'] });
         }
       );
     });
     
-    // Adicionar ao DOM, acionar clique e depois remover
+    // Add to DOM, trigger click, then remove
     document.body.appendChild(fileInput);
     fileInput.click();
     
-    // Remover após o clique
+    // Remove after click
     setTimeout(() => {
       document.body.removeChild(fileInput);
     }, 1000);
@@ -102,7 +107,7 @@ const PolicyTabContent = ({
     <>
       <PolicySearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       
-      {isLoading || configuringStorage ? (
+      {isLoading || configuringStorage || verifyingStorage ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -122,11 +127,11 @@ const PolicyTabContent = ({
           <div className="flex justify-center mt-4">
             <Button 
               onClick={triggerFileSelection}
-              disabled={uploadingFile !== null || !bucketReady}
+              disabled={uploadingFile !== null || !bucketReady || verifyingStorage}
               className="w-full sm:w-auto"
             >
               <FileUp className="h-4 w-4 mr-2" /> 
-              Fazer upload de apólice em PDF
+              Upload Policy PDF
             </Button>
           </div>
         </>

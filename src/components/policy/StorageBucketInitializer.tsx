@@ -18,49 +18,61 @@ const StorageBucketInitializer = ({
   useEffect(() => {
     if (!userId) return;
     
-    // Iniciar com configuração em progresso
+    // Start with configuration in progress
     setConfiguringStorage(true);
     
     const checkBucket = async () => {
       try {
-        // Verificar autenticação
+        // Verify authentication
         const { data: authData, error: authError } = await supabase.auth.getSession();
         
         if (authError || !authData.session) {
-          console.error("Erro de autenticação:", authError);
+          console.error("Authentication error:", authError);
           setBucketReady(false);
           setConfiguringStorage(false);
-          toast.error("Erro de autenticação. Faça login novamente.");
+          toast.error("Authentication error. Please log in again.");
           return;
         }
         
-        console.log("Usuário autenticado, verificando bucket de armazenamento");
+        console.log("User authenticated, checking storage bucket");
         
-        // Verificar se o bucket existe
+        // Check if bucket exists
         const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
         
         if (bucketError) {
-          console.error("Erro ao listar buckets:", bucketError);
+          console.error("Error listing buckets:", bucketError);
           setBucketReady(false);
           setConfiguringStorage(false);
+          toast.error("Unable to access storage system");
           return;
         }
         
-        // Verificar se o bucket 'policy_documents' existe
+        // Check if 'policy_documents' bucket exists
         const policyBucket = buckets.find(bucket => bucket.name === 'policy_documents');
         
         if (policyBucket) {
-          console.log("Bucket 'policy_documents' encontrado e pronto para uso");
-          setBucketReady(true);
+          // Double check if we have access to this bucket by listing files
+          const { data: files, error: filesError } = await supabase.storage
+            .from('policy_documents')
+            .list(userId);
+            
+          if (filesError) {
+            console.error("Error accessing policy_documents bucket:", filesError);
+            setBucketReady(false);
+            toast.error("Storage access error. Contact administrator.");
+          } else {
+            console.log("Bucket 'policy_documents' found and ready to use");
+            setBucketReady(true);
+          }
         } else {
-          console.log("Bucket 'policy_documents' não encontrado. Este bucket deve ser criado por um administrador.");
-          toast.error("Bucket de armazenamento não está disponível. Entre em contato com o administrador.");
+          console.log("Bucket 'policy_documents' not found. This bucket must be created by an administrator.");
+          toast.error("Storage system is not available. Contact administrator.");
           setBucketReady(false);
         }
         
       } catch (err) {
-        console.error("Erro inesperado ao verificar armazenamento:", err);
-        toast.error("Erro ao verificar sistema de armazenamento");
+        console.error("Unexpected error checking storage:", err);
+        toast.error("Error verifying storage system");
         setBucketReady(false);
       } finally {
         setConfiguringStorage(false);
@@ -70,7 +82,7 @@ const StorageBucketInitializer = ({
     checkBucket();
   }, [userId, setBucketReady, setConfiguringStorage]);
 
-  return null; // Este é um componente utilitário sem UI
+  return null; // This is a utility component with no UI
 };
 
 export default StorageBucketInitializer;

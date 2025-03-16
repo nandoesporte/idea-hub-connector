@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { Policy, PolicyFile } from "@/types";
 import { toast } from "sonner";
@@ -52,9 +51,10 @@ export const deletePolicy = async (id: string) => {
   return id;
 };
 
-// Check if bucket exists
-export const checkBucketExists = async (): Promise<boolean> => {
+// Check if bucket exists and is accessible
+export const checkBucketExists = async (userId: string): Promise<boolean> => {
   try {
+    // First check if bucket exists
     const { data: buckets, error } = await supabase.storage.listBuckets();
     
     if (error) {
@@ -62,7 +62,25 @@ export const checkBucketExists = async (): Promise<boolean> => {
       return false;
     }
     
-    return buckets.some(bucket => bucket.name === STORAGE_BUCKET);
+    const bucketExists = buckets.some(bucket => bucket.name === STORAGE_BUCKET);
+    
+    if (!bucketExists) {
+      return false;
+    }
+    
+    // Then check if we can access the bucket with the current user
+    if (userId) {
+      const { error: accessError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .list(userId);
+        
+      if (accessError) {
+        console.error("Error accessing bucket:", accessError);
+        return false;
+      }
+    }
+    
+    return true;
   } catch (error) {
     console.error("Error checking if bucket exists:", error);
     return false;
@@ -77,15 +95,15 @@ export const uploadAndProcessPolicy = async (
   onSuccess: () => void
 ) => {
   if (!userId) {
-    toast.error("Usuário não autenticado");
+    toast.error("User not authenticated");
     setUploadingFile(null);
     return;
   }
 
-  // Verificar se o bucket existe antes de tentar fazer upload
-  const bucketExists = await checkBucketExists();
-  if (!bucketExists) {
-    toast.error("Sistema de armazenamento não está disponível");
+  // Verify bucket exists and is accessible before attempting upload
+  const bucketAccessible = await checkBucketExists(userId);
+  if (!bucketAccessible) {
+    toast.error("Storage system is not available");
     setUploadingFile(null);
     return;
   }
@@ -240,8 +258,8 @@ export const uploadAndProcessPolicy = async (
     }
   } catch (error) {
     console.error("Error processing policy:", error);
-    setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao processar o arquivo' } : null);
-    toast.error("Erro ao processar a apólice");
+    setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Error processing file' } : null);
+    toast.error("Error processing the policy");
     
     setTimeout(() => {
       setUploadingFile(null);
