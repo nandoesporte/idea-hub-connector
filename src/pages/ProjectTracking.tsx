@@ -1,3 +1,4 @@
+
 import React from 'react';
 import MainLayout from '@/layouts/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { ProjectIdea } from '@/types';
 
 const statusColors = {
   'open': 'bg-green-500/10 text-green-500',
-  'in progress': 'bg-blue-500/10 text-blue-500',
+  'in_progress': 'bg-blue-500/10 text-blue-500',
   'completed': 'bg-green-600/10 text-green-600',
   'on hold': 'bg-yellow-500/10 text-yellow-500',
   'pending': 'bg-gray-500/10 text-gray-500',
@@ -27,6 +28,7 @@ const projects: ProjectIdea[] = [
     priority: 'high',
     user_id: 'user123',
     created_at: new Date('2023-05-15'),
+    updated_at: new Date('2023-05-15'),
     budget: 'R$ 8.000 - R$ 12.000',
     timeline: '30 dias',
     urgency: 'média'
@@ -36,10 +38,11 @@ const projects: ProjectIdea[] = [
     title: 'E-commerce de Moda',
     description: 'Loja virtual completa para venda de roupas e acessórios.',
     category: 'e-commerce',
-    status: 'in progress',
+    status: 'in_progress',
     priority: 'medium',
     user_id: 'user456',
     created_at: new Date('2023-06-01'),
+    updated_at: new Date('2023-06-01'),
     budget: 'R$ 15.000 - R$ 20.000',
     timeline: '45 dias',
     urgency: 'alta'
@@ -53,6 +56,7 @@ const projects: ProjectIdea[] = [
     priority: 'high',
     user_id: 'user789',
     created_at: new Date('2023-04-22'),
+    updated_at: new Date('2023-04-22'),
     budget: 'R$ 25.000 - R$ 30.000',
     timeline: '60 dias',
     urgency: 'média'

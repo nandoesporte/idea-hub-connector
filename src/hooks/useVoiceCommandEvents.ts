@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -6,7 +7,7 @@ import {
   fetchVoiceCommandEvents,
   deleteVoiceCommandEvent
 } from '@/lib/voiceCommandService';
-import { VoiceCommandEvent } from '@/types';
+import { VoiceCommandEvent, VoiceCommandResult } from '@/types';
 import { 
   sendEventReminder, 
   isWhatsAppConfigured, 
@@ -438,7 +439,7 @@ export function useVoiceCommandEvents() {
       const saveResult = await saveVoiceCommandEvent({
         ...result,
         type: eventType,
-        contact_phone: result.contactPhone,
+        contactPhone: result.contactPhone,
         reminderScheduledFor: reminderTime
       });
       

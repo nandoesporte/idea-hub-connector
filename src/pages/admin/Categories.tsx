@@ -165,6 +165,7 @@ const AdminCategories = () => {
         link: newCategory.link || "",
         type: "tech",
         iconColor: newCategory.iconColor || "#000000",
+        enabled: true,
         order: Array.isArray(categories) ? categories.length + 1 : 1
       });
 
@@ -208,6 +209,7 @@ const AdminCategories = () => {
       description: categoryState.description,
       iconColor: categoryState.iconColor,
       type: categoryState.type,
+      enabled: categoryState.enabled !== false,
       order: categoryState.order
     });
   };

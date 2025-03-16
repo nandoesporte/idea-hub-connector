@@ -104,6 +104,7 @@ const AdminPortfolio = () => {
     console.log('Opening create modal');
     const newItem: PortfolioItem = {
       id: `temp-${Date.now()}`,
+      user_id: 'current-user',  // Add this field
       title: '',
       description: '',
       category: 'website',
@@ -111,7 +112,9 @@ const AdminPortfolio = () => {
       completed: new Date(),
       technologies: [],
       featured: false,
-      images: []
+      images: [],
+      created_at: new Date(),  // Add this field
+      updated_at: new Date()   // Add this field
     };
     setCurrentItem(newItem);
     setShowProjectModal(true);
