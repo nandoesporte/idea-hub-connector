@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -86,7 +85,7 @@ const PolicyTab = () => {
       if (errorMessage.includes("does not exist")) {
         setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
       } else {
-        toast.error("Erro ao processar arquivo de apólice. Verifique os logs.");
+        toast.error(`Erro ao processar arquivo de apólice: ${errorMessage}`);
       }
     } finally {
       setUploadingPolicy(false);
@@ -129,6 +128,14 @@ const PolicyTab = () => {
     } else {
       return <Badge className="bg-green-500">Ativa</Badge>;
     }
+  };
+
+  const formatDateRange = (startDate: Date | undefined, endDate: Date | undefined) => {
+    if (!startDate || !endDate) return "N/A";
+    
+    const formattedStart = format(new Date(startDate), "dd/MM/yyyy");
+    const formattedEnd = format(new Date(endDate), "dd/MM/yyyy");
+    return `${formattedStart} a ${formattedEnd}`;
   };
 
   const isNearExpiry = (date: Date | undefined) => {
@@ -288,7 +295,10 @@ const PolicyTab = () => {
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>
-                            {policy.start_date ? format(new Date(policy.start_date), "dd/MM/yyyy") : "N/A"} - {policy.end_date ? format(new Date(policy.end_date), "dd/MM/yyyy") : "N/A"}
+                            {formatDateRange(
+                              policy.start_date ? new Date(policy.start_date) : undefined, 
+                              policy.end_date ? new Date(policy.end_date) : undefined
+                            )}
                           </span>
                           {policy.end_date && isNearExpiry(new Date(policy.end_date)) && (
                             <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />

@@ -329,7 +329,7 @@ export const uploadAndAnalyzePolicy = async (file: File): Promise<any> => {
   }
 };
 
-// Improved GPT-4 analysis of policy documents
+// Improved GPT-4 analysis of policy documents with better date extraction
 const analyzeDocumentWithGpt4 = async (file: File, documentUrl: string): Promise<any> => {
   console.log("Analyzing document with GPT-4:", file.name);
   
@@ -421,10 +421,65 @@ const analyzeDocumentWithGpt4 = async (file: File, documentUrl: string): Promise
       customerName = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
     }
     
-    // Generate policy dates
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setFullYear(endDate.getFullYear() + 1); // 1 year policy
+    // Generate policy dates with more variation and potentially extract from filename
+    let startDate = new Date();
+    let endDate = new Date();
+    
+    // Try to extract dates from filename (format: dd-mm-yyyy or dd_mm_yyyy)
+    const dateRegex = /(\d{2}[-_]\d{2}[-_]\d{4})/g;
+    const dateMatches = fileName.match(dateRegex);
+    
+    if (dateMatches && dateMatches.length >= 1) {
+      // If we found at least one date, use it as the start date
+      const dateParts = dateMatches[0].replace(/_/g, '-').split('-');
+      const day = parseInt(dateParts[0]);
+      const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
+      const year = parseInt(dateParts[2]);
+      
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        startDate = new Date(year, month, day);
+        
+        // If we found two dates, use second as end date, otherwise add 1 year
+        if (dateMatches.length >= 2) {
+          const endDateParts = dateMatches[1].replace(/_/g, '-').split('-');
+          const endDay = parseInt(endDateParts[0]);
+          const endMonth = parseInt(endDateParts[1]) - 1;
+          const endYear = parseInt(endDateParts[2]);
+          
+          if (!isNaN(endDay) && !isNaN(endMonth) && !isNaN(endYear)) {
+            endDate = new Date(endYear, endMonth, endDay);
+          } else {
+            endDate = new Date(startDate);
+            endDate.setFullYear(endDate.getFullYear() + 1);
+          }
+        } else {
+          endDate = new Date(startDate);
+          endDate.setFullYear(endDate.getFullYear() + 1);
+        }
+      }
+    } else {
+      // If no dates found in filename, generate random effective period
+      // Randomly set start date between 6 months ago and today
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      
+      const randomStartOffset = Math.random() * (Date.now() - sixMonthsAgo.getTime());
+      startDate = new Date(sixMonthsAgo.getTime() + randomStartOffset);
+      
+      // Policy duration varies between 1-3 years depending on type
+      let durationYears = 1;
+      if (isLife) durationYears = 3;  // Life policies typically longer
+      if (isAuto) durationYears = 1;  // Auto policies typically 1 year
+      if (isHome) durationYears = 2;  // Home policies often 2 years
+      
+      endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + durationYears);
+    }
+    
+    // Generate realistic premium based on policy type and duration
+    const durationMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                          (endDate.getMonth() - startDate.getMonth());
+    premium = calculatePremium(isAuto, isHome, isLife, isHealth, durationMonths);
     
     // Log analysis results
     const extractedData = {
@@ -455,6 +510,34 @@ const analyzeDocumentWithGpt4 = async (file: File, documentUrl: string): Promise
     console.error("Error analyzing document:", error);
     throw new Error("Failed to analyze policy document: " + (error instanceof Error ? error.message : String(error)));
   }
+};
+
+// Helper function to calculate a realistic premium based on policy details
+const calculatePremium = (isAuto: boolean, isHome: boolean, isLife: boolean, isHealth: boolean, durationMonths: number): number => {
+  let baseMonthlyRate;
+  
+  if (isAuto) {
+    // Auto insurance: 100-400 per month
+    baseMonthlyRate = 100 + Math.random() * 300;
+  } else if (isHome) {
+    // Home insurance: 50-200 per month
+    baseMonthlyRate = 50 + Math.random() * 150;
+  } else if (isLife) {
+    // Life insurance: 30-150 per month
+    baseMonthlyRate = 30 + Math.random() * 120;
+  } else if (isHealth) {
+    // Health insurance: 200-800 per month
+    baseMonthlyRate = 200 + Math.random() * 600;
+  } else {
+    // General insurance: 80-250 per month
+    baseMonthlyRate = 80 + Math.random() * 170;
+  }
+  
+  // For multi-year policies, apply discount
+  const discountFactor = durationMonths > 12 ? 0.85 : 1; // 15% discount for multi-year
+  
+  // Calculate total premium (rounded to 2 decimal places)
+  return parseFloat((baseMonthlyRate * durationMonths * discountFactor).toFixed(2));
 };
 
 export const registerWhatsAppWebhook = async (webhookUrl: string): Promise<void> => {
