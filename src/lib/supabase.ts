@@ -52,9 +52,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
           throw error;
         });
     }
-  },
-  db: {
-    schema: 'public'
   }
 });
 
