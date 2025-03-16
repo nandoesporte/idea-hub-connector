@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,6 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Clock, 
-  Upload,
   Trash2,
   Search,
   RefreshCw,
@@ -80,6 +80,9 @@ const PolicyTab = () => {
 
     setUploadingPolicy(true);
     try {
+      // Create the bucket if it doesn't exist before uploading
+      await ensureBucketExists();
+      
       const result = await uploadAndAnalyzePolicy(file);
       if (result) {
         await loadPolicies();
@@ -101,6 +104,32 @@ const PolicyTab = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  // Helper function to ensure the 'documents' bucket exists
+  const ensureBucketExists = async () => {
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      
+      // First check if the bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === 'documents');
+      
+      if (!bucketExists) {
+        // Create the bucket if it doesn't exist
+        const { error } = await supabase.storage.createBucket('documents', {
+          public: true
+        });
+        
+        if (error) {
+          console.error("Error creating 'documents' bucket:", error);
+          throw error;
+        }
+      }
+    } catch (error) {
+      console.error("Error ensuring bucket exists:", error);
+      throw error;
     }
   };
 
@@ -256,8 +285,17 @@ const PolicyTab = () => {
                   className="bg-blue-600 hover:bg-blue-700 text-white ml-2"
                   disabled={uploadingPolicy}
                 >
-                  <Upload className="h-4 w-4 mr-2" /> 
-                  Enviar apólice para análise
+                  {uploadingPolicy ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <FileUp className="h-4 w-4 mr-2" /> 
+                      Enviar apólice para análise
+                    </>
+                  )}
                 </Button>
               )}
             </div>
@@ -325,78 +363,28 @@ const PolicyTab = () => {
             </div>
           )}
           
-          <div className="flex justify-center mt-6">
-            <Button 
-              onClick={handleUploadPolicy}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={uploadingPolicy}
-            >
-              {uploadingPolicy ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <FileUp className="h-4 w-4 mr-2" /> 
-                  Enviar apólice para análise
-                </>
-              )}
-            </Button>
-          </div>
-          
-          <div className="bg-muted/30 rounded-lg p-4 mt-6">
-            <h3 className="text-sm font-medium flex items-center gap-2 mb-2">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-              Recebimento Automático via WhatsApp
-            </h3>
-            
-            <div className="mt-4 border-t pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="webhook-url" className="text-xs">URL do Webhook para WhatsApp</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="webhook-url" 
-                    value={webhookUrl}
-                    onChange={(e) => setWebhookUrl(e.target.value)}
-                    placeholder="https://seu-webhook.com/whatsgw-events" 
-                    className="text-xs flex-1"
-                  />
-                  <Button 
-                    size="sm" 
-                    variant="secondary"
-                    onClick={handleSaveWebhook}
-                    disabled={!webhookUrl.trim()}
-                  >
-                    Salvar
-                  </Button>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+            <div>
+              <Label htmlFor="days-before" className="text-xs flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Dias para lembrete antes do vencimento
+              </Label>
+              <Input 
+                id="days-before" 
+                type="number" 
+                defaultValue={30} 
+                min={1} 
+                max={90}
+                className="h-8 mt-1"
+              />
             </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <div>
-                <Label htmlFor="days-before" className="text-xs flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> Dias para lembrete antes do vencimento
-                </Label>
-                <Input 
-                  id="days-before" 
-                  type="number" 
-                  defaultValue={30} 
-                  min={1} 
-                  max={90}
-                  className="h-8 mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="default-phone" className="text-xs">Número padrão para lembretes</Label>
-                <Input 
-                  id="default-phone" 
-                  type="tel" 
-                  placeholder="Ex: 11987654321" 
-                  className="h-8 mt-1"
-                />
-              </div>
+            <div>
+              <Label htmlFor="default-phone" className="text-xs">Número padrão para lembretes</Label>
+              <Input 
+                id="default-phone" 
+                type="tel" 
+                placeholder="Ex: 11987654321" 
+                className="h-8 mt-1"
+              />
             </div>
           </div>
         </CardContent>

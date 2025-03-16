@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 
 // API Key Management
@@ -248,6 +247,9 @@ export const uploadAndAnalyzePolicy = async (file: File): Promise<any> => {
   try {
     console.log("Uploading and analyzing policy document:", file.name);
     
+    // Ensure the 'documents' bucket exists before uploading
+    await ensureBucketExists();
+    
     // Step 1: Upload the file to Supabase Storage
     const fileName = `${Date.now()}_${file.name}`;
     const filePath = `policy_documents/${fileName}`;
@@ -288,6 +290,38 @@ export const uploadAndAnalyzePolicy = async (file: File): Promise<any> => {
     return insertData?.[0] || null;
   } catch (error) {
     console.error("Error in uploadAndAnalyzePolicy:", error);
+    throw error;
+  }
+};
+
+// Helper function to ensure the 'documents' bucket exists
+const ensureBucketExists = async () => {
+  try {
+    // First check if the bucket exists
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    
+    if (listError) {
+      console.error("Error listing buckets:", listError);
+      throw listError;
+    }
+    
+    const bucketExists = buckets?.some(bucket => bucket.name === 'documents');
+    
+    if (!bucketExists) {
+      // Create the bucket if it doesn't exist
+      const { error: createError } = await supabase.storage.createBucket('documents', {
+        public: true
+      });
+      
+      if (createError) {
+        console.error("Error creating 'documents' bucket:", createError);
+        throw createError;
+      }
+      
+      console.log("Created 'documents' bucket successfully");
+    }
+  } catch (error) {
+    console.error("Error ensuring bucket exists:", error);
     throw error;
   }
 };
@@ -395,5 +429,6 @@ export default {
   simulateWhatsAppPolicyMessage,
   registerWhatsAppWebhook,
   deletePolicy,
-  uploadAndAnalyzePolicy
+  uploadAndAnalyzePolicy,
+  ensureBucketExists
 };
