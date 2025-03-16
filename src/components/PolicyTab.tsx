@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,43 +12,53 @@ import {
   Calendar, 
   Download, 
   AlertTriangle, 
+  CheckCircle2, 
   Clock, 
+  Upload,
   Trash2,
   Search,
   RefreshCw,
-  Database,
-  FileUp
+  Database
 } from "lucide-react";
 import { format, addDays, isBefore, isAfter } from "date-fns";
 import { toast } from "sonner";
 import { PolicyData } from "@/types";
 import { 
   getAllPolicies, 
-  deletePolicy,
-  uploadAndAnalyzePolicy
+  simulateWhatsAppPolicyMessage, 
+  registerWhatsAppWebhook,
+  deletePolicy
 } from "@/lib/whatsgwService";
 
 const PolicyTab = () => {
   const [policies, setPolicies] = useState<PolicyData[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
   const [databaseError, setDatabaseError] = useState<string | null>(null);
-  const [uploadingPolicy, setUploadingPolicy] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Load policies when component mounts
     loadPolicies();
+    
+    // Load saved webhook URL if any
+    const savedWebhookUrl = localStorage.getItem('whatsgw_webhook_url');
+    if (savedWebhookUrl) {
+      setWebhookUrl(savedWebhookUrl);
+    }
   }, []);
 
   const loadPolicies = async () => {
     setLoading(true);
     setDatabaseError(null);
     try {
+      // Get policies from our service
       const loadedPolicies = await getAllPolicies();
       setPolicies(loadedPolicies);
     } catch (error) {
       console.error("Error loading policies:", error);
       
+      // Check if this is the "table doesn't exist" error
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("does not exist") || errorMessage.includes("Failed to get policies")) {
         setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
@@ -59,39 +70,49 @@ const PolicyTab = () => {
     }
   };
 
-  const handleUploadPolicy = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploadingPolicy(true);
+  const handleProcessWhatsAppMessage = async () => {
+    setLoading(true);
+    setDatabaseError(null);
+    
     try {
-      const result = await uploadAndAnalyzePolicy(file);
-      if (result) {
+      const newPolicy = await simulateWhatsAppPolicyMessage();
+      
+      if (newPolicy) {
+        // Reload policies to include the new one
         await loadPolicies();
-        toast.success("Apólice analisada e processada com sucesso!");
+        toast.success("Nova apólice recebida e processada com sucesso!");
       } else {
-        toast.error("Não foi possível processar a apólice.");
+        // Check the console logs to see if it's a database error
+        setDatabaseError("Não foi possível processar a apólice. A tabela 'insurance_policies' pode não existir no banco de dados.");
+        toast.error("Erro ao processar a apólice. Verifique os logs para mais detalhes.");
       }
     } catch (error) {
-      console.error("Error processing policy file:", error);
+      console.error("Error processing WhatsApp message:", error);
       
+      // Check if this is the "table doesn't exist" error
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("does not exist")) {
         setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
-      } else {
-        toast.error(`Erro ao processar arquivo de apólice: ${errorMessage}`);
       }
+      
+      toast.error("Erro ao processar mensagem do WhatsApp");
     } finally {
-      setUploadingPolicy(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setLoading(false);
+    }
+  };
+
+  const handleSaveWebhook = () => {
+    if (!webhookUrl.trim()) {
+      toast.error("Por favor, insira uma URL de webhook válida");
+      return;
+    }
+    
+    try {
+      registerWhatsAppWebhook(webhookUrl);
+      toast.success("URL de webhook salva com sucesso!");
+    } catch (error) {
+      console.error("Error saving webhook URL:", error);
+      toast.error("Erro ao salvar URL de webhook");
     }
   };
 
@@ -130,14 +151,6 @@ const PolicyTab = () => {
     }
   };
 
-  const formatDateRange = (startDate: Date | undefined, endDate: Date | undefined) => {
-    if (!startDate || !endDate) return "N/A";
-    
-    const formattedStart = format(new Date(startDate), "dd/MM/yyyy");
-    const formattedEnd = format(new Date(endDate), "dd/MM/yyyy");
-    return `${formattedStart} a ${formattedEnd}`;
-  };
-
   const isNearExpiry = (date: Date | undefined) => {
     if (!date) return false;
     
@@ -167,6 +180,23 @@ const PolicyTab = () => {
               <FileText className="h-5 w-5 text-primary" />
               <CardTitle>Apólices de Seguro</CardTitle>
             </div>
+            <Button 
+              onClick={handleProcessWhatsAppMessage} 
+              disabled={loading}
+              size="sm"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" /> 
+                  Simular Recebimento
+                </>
+              )}
+            </Button>
           </div>
           <CardDescription>
             Gerencie apólices de seguro recebidas via WhatsApp
@@ -194,40 +224,14 @@ const PolicyTab = () => {
             </Alert>
           )}
           
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center flex-1 space-x-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por cliente, seguradora ou número de apólice..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1"
-              />
-            </div>
-            <input 
-              ref={fileInputRef}
-              type="file" 
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" 
-              className="hidden"
-              onChange={handleFileChange}
+          <div className="flex items-center space-x-2 mb-4">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por cliente, seguradora ou número de apólice..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1"
             />
-            <Button 
-              onClick={handleUploadPolicy} 
-              className="bg-blue-600 hover:bg-blue-700 text-white ml-2"
-              disabled={uploadingPolicy}
-            >
-              {uploadingPolicy ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <FileUp className="h-4 w-4 mr-2" /> 
-                  Enviar apólice para análise
-                </>
-              )}
-            </Button>
           </div>
           
           {loading ? (
@@ -253,21 +257,13 @@ const PolicyTab = () => {
               )}
               {!databaseError && (
                 <Button 
-                  onClick={handleUploadPolicy} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white ml-2"
-                  disabled={uploadingPolicy}
+                  variant="outline" 
+                  onClick={handleProcessWhatsAppMessage} 
+                  className="ml-2"
+                  disabled={loading}
                 >
-                  {uploadingPolicy ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <FileUp className="h-4 w-4 mr-2" /> 
-                      Enviar apólice para análise
-                    </>
-                  )}
+                  <Upload className="h-4 w-4 mr-2" /> 
+                  Simular recebimento de apólice
                 </Button>
               )}
             </div>
@@ -295,10 +291,7 @@ const PolicyTab = () => {
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>
-                            {formatDateRange(
-                              policy.start_date ? new Date(policy.start_date) : undefined, 
-                              policy.end_date ? new Date(policy.end_date) : undefined
-                            )}
+                            {policy.start_date ? format(new Date(policy.start_date), "dd/MM/yyyy") : "N/A"} - {policy.end_date ? format(new Date(policy.end_date), "dd/MM/yyyy") : "N/A"}
                           </span>
                           {policy.end_date && isNearExpiry(new Date(policy.end_date)) && (
                             <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
@@ -338,28 +331,64 @@ const PolicyTab = () => {
             </div>
           )}
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-            <div>
-              <Label htmlFor="days-before" className="text-xs flex items-center gap-1">
-                <Clock className="h-3 w-3" /> Dias para lembrete antes do vencimento
-              </Label>
-              <Input 
-                id="days-before" 
-                type="number" 
-                defaultValue={30} 
-                min={1} 
-                max={90}
-                className="h-8 mt-1"
-              />
+          <div className="bg-muted/30 rounded-lg p-4 mt-6">
+            <h3 className="text-sm font-medium flex items-center gap-2 mb-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Recebimento Automático via WhatsApp
+            </h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              Documentos de apólice recebidos via WhatsApp com a palavra "apolice" serão automaticamente processados e adicionados ao sistema.
+            </p>
+            
+            <div className="mt-4 border-t pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="webhook-url" className="text-xs">URL do Webhook para WhatsApp</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="webhook-url" 
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    placeholder="https://seu-webhook.com/whatsgw-events" 
+                    className="text-xs flex-1"
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={handleSaveWebhook}
+                    disabled={!webhookUrl.trim()}
+                  >
+                    Salvar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Configure esta URL no painel de controle do WhatsGW para receber automaticamente mensagens de documentos de apólice.
+                </p>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="default-phone" className="text-xs">Número padrão para lembretes</Label>
-              <Input 
-                id="default-phone" 
-                type="tel" 
-                placeholder="Ex: 11987654321" 
-                className="h-8 mt-1"
-              />
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <div>
+                <Label htmlFor="days-before" className="text-xs flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> Dias para lembrete antes do vencimento
+                </Label>
+                <Input 
+                  id="days-before" 
+                  type="number" 
+                  defaultValue={30} 
+                  min={1} 
+                  max={90}
+                  className="h-8 mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="default-phone" className="text-xs">Número padrão para lembretes</Label>
+                <Input 
+                  id="default-phone" 
+                  type="tel" 
+                  placeholder="Ex: 11987654321" 
+                  className="h-8 mt-1"
+                />
+              </div>
             </div>
           </div>
         </CardContent>
