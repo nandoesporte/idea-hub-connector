@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -389,6 +388,26 @@ export function useVoiceCommandEvents() {
     }
   };
 
+  const sendWhatsAppReminder = async (event: VoiceCommandEvent) => {
+    try {
+      const phoneNumber = event.contactPhone;
+      if (!phoneNumber) {
+        console.log('No phone number to send reminder to');
+        return;
+      }
+
+      await sendEventReminder({
+        title: event.title,
+        description: event.description || '',
+        date: new Date(event.date),
+        duration: event.duration || 60,
+        contactPhone: phoneNumber
+      });
+    } catch (error) {
+      console.error('Error sending WhatsApp reminder:', error);
+    }
+  };
+
   const getAdminNumbers = (): string[] => {
     try {
       const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');
@@ -424,7 +443,6 @@ export function useVoiceCommandEvents() {
       
       console.log('Voice command processed:', result);
       
-      // Use default phone number from settings if contact phone is not provided
       if (!result.contactPhone) {
         const defaultPhone = reminderSettings.defaultPhone || localStorage.getItem('default_whatsapp_number');
         if (defaultPhone) {
@@ -433,7 +451,6 @@ export function useVoiceCommandEvents() {
         }
       }
       
-      // Calculate reminder time based on admin settings
       const reminderTime = calculateReminderTime(result.date);
       
       const saveResult = await saveVoiceCommandEvent({
@@ -449,16 +466,12 @@ export function useVoiceCommandEvents() {
       console.log('Voice command event saved successfully');
       toast.success('Evento criado com sucesso!');
 
-      const eventForNotification: VoiceCommandEvent = {
-        id: '', 
-        userId: '', 
+      const eventForNotification = {
         title: result.title,
         description: result.description || '',
         date: result.date,
         duration: result.duration || 60,
-        type: result.type,
-        contactPhone: result.contactPhone,
-        createdAt: new Date()
+        contactPhone: result.contactPhone || ''
       };
 
       if (isWhatsAppConfigured()) {
@@ -471,7 +484,6 @@ export function useVoiceCommandEvents() {
         }
       }
 
-      // Notify admins about the new event, but don't send a reminder yet
       if (isWhatsAppConfigured() && apiConnected !== false) {
         try {
           const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);

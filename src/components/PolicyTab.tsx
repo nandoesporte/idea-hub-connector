@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { 
   FileText, 
   Calendar, 
@@ -15,136 +16,160 @@ import {
   Clock, 
   Upload,
   Trash2,
-  Search
+  Search,
+  RefreshCw,
+  Database
 } from "lucide-react";
 import { format, addDays, isBefore, isAfter } from "date-fns";
 import { toast } from "sonner";
-
-interface Policy {
-  id: string;
-  policyNumber: string;
-  insurer: string;
-  customer: string;
-  startDate: Date;
-  endDate: Date;
-  coverageAmount: string;
-  premiumValue: string;
-  status: "active" | "expired" | "pending" | "cancelled";
-  documentUrl?: string;
-  fileName?: string;
-}
+import { PolicyData } from "@/types";
+import { 
+  getAllPolicies, 
+  simulateWhatsAppPolicyMessage, 
+  registerWhatsAppWebhook,
+  deletePolicy
+} from "@/lib/whatsgwService";
 
 const PolicyTab = () => {
-  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [policies, setPolicies] = useState<PolicyData[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [databaseError, setDatabaseError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Mock data - in a real app, this would be fetched from an API
-    const mockPolicies: Policy[] = [
-      {
-        id: "1",
-        policyNumber: "AP-2024-001",
-        insurer: "Seguros XYZ",
-        customer: "João Silva",
-        startDate: new Date(2024, 0, 1),
-        endDate: new Date(2024, 11, 31),
-        coverageAmount: "R$ 100.000,00",
-        premiumValue: "R$ 2.500,00",
-        status: "active",
-        fileName: "apolice_joao_silva.pdf"
-      },
-      {
-        id: "2",
-        policyNumber: "AP-2023-045",
-        insurer: "Seguradora ABC",
-        customer: "Maria Oliveira",
-        startDate: new Date(2023, 5, 15),
-        endDate: new Date(2024, 5, 14),
-        coverageAmount: "R$ 250.000,00",
-        premiumValue: "R$ 3.600,00",
-        status: "active",
-        fileName: "apolice_maria_oliveira.pdf"
-      },
-      {
-        id: "3",
-        policyNumber: "AP-2023-098",
-        insurer: "Proteção Total",
-        customer: "Carlos Mendes",
-        startDate: new Date(2023, 3, 10),
-        endDate: new Date(2024, 3, 9),
-        coverageAmount: "R$ 75.000,00",
-        premiumValue: "R$ 1.800,00",
-        status: "expired",
-        fileName: "apolice_carlos_mendes.pdf"
-      }
-    ];
+    // Load policies when component mounts
+    loadPolicies();
     
-    setPolicies(mockPolicies);
+    // Load saved webhook URL if any
+    const savedWebhookUrl = localStorage.getItem('whatsgw_webhook_url');
+    if (savedWebhookUrl) {
+      setWebhookUrl(savedWebhookUrl);
+    }
   }, []);
+
+  const loadPolicies = async () => {
+    setLoading(true);
+    setDatabaseError(null);
+    try {
+      // Get policies from our service
+      const loadedPolicies = await getAllPolicies();
+      setPolicies(loadedPolicies);
+    } catch (error) {
+      console.error("Error loading policies:", error);
+      
+      // Check if this is the "table doesn't exist" error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("does not exist") || errorMessage.includes("Failed to get policies")) {
+        setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
+      } else {
+        toast.error("Erro ao carregar apólices");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleProcessWhatsAppMessage = async () => {
     setLoading(true);
+    setDatabaseError(null);
     
     try {
-      // Simulate API processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const newPolicy = await simulateWhatsAppPolicyMessage();
       
-      // Add a new policy
-      const newPolicy: Policy = {
-        id: Date.now().toString(),
-        policyNumber: `AP-2024-${Math.floor(Math.random() * 900) + 100}`,
-        insurer: "Nova Seguradora",
-        customer: "Roberto Campos",
-        startDate: new Date(),
-        endDate: addDays(new Date(), 365),
-        coverageAmount: "R$ 150.000,00",
-        premiumValue: "R$ 2.800,00",
-        status: "active",
-        fileName: "apolice_roberto_campos.pdf"
-      };
-      
-      setPolicies(prev => [newPolicy, ...prev]);
-      toast.success("Nova apólice recebida e processada com sucesso!");
+      if (newPolicy) {
+        // Reload policies to include the new one
+        await loadPolicies();
+        toast.success("Nova apólice recebida e processada com sucesso!");
+      } else {
+        // Check the console logs to see if it's a database error
+        setDatabaseError("Não foi possível processar a apólice. A tabela 'insurance_policies' pode não existir no banco de dados.");
+        toast.error("Erro ao processar a apólice. Verifique os logs para mais detalhes.");
+      }
     } catch (error) {
       console.error("Error processing WhatsApp message:", error);
+      
+      // Check if this is the "table doesn't exist" error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("does not exist")) {
+        setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
+      }
+      
       toast.error("Erro ao processar mensagem do WhatsApp");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeletePolicy = (id: string) => {
-    setPolicies(prev => prev.filter(policy => policy.id !== id));
-    toast.success("Apólice removida com sucesso");
-  };
-
-  const getStatusBadge = (status: Policy['status']) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-500">Ativa</Badge>;
-      case 'expired':
-        return <Badge variant="destructive">Vencida</Badge>;
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Pendente</Badge>;
-      case 'cancelled':
-        return <Badge variant="secondary">Cancelada</Badge>;
-      default:
-        return <Badge variant="outline">Desconhecida</Badge>;
+  const handleSaveWebhook = () => {
+    if (!webhookUrl.trim()) {
+      toast.error("Por favor, insira uma URL de webhook válida");
+      return;
+    }
+    
+    try {
+      registerWhatsAppWebhook(webhookUrl);
+      toast.success("URL de webhook salva com sucesso!");
+    } catch (error) {
+      console.error("Error saving webhook URL:", error);
+      toast.error("Erro ao salvar URL de webhook");
     }
   };
 
-  const isNearExpiry = (date: Date) => {
+  const handleDeletePolicy = async (policyId: string) => {
+    if (!policyId) {
+      toast.error("ID da apólice inválido");
+      return;
+    }
+
+    try {
+      const result = await deletePolicy(policyId);
+      
+      if (result) {
+        setPolicies(prev => prev.filter(policy => policy.id !== policyId));
+        toast.success("Apólice removida com sucesso");
+      } else {
+        toast.error("Erro ao remover apólice");
+      }
+    } catch (error) {
+      console.error("Error deleting policy:", error);
+      toast.error("Erro ao remover apólice");
+    }
+  };
+
+  const getStatusBadge = (startDate: Date | undefined, endDate: Date | undefined) => {
+    if (!startDate || !endDate) return <Badge variant="outline">Desconhecido</Badge>;
+    
+    const today = new Date();
+    
+    if (isAfter(today, endDate)) {
+      return <Badge variant="destructive">Vencida</Badge>;
+    } else if (isBefore(today, startDate)) {
+      return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Pendente</Badge>;
+    } else {
+      return <Badge className="bg-green-500">Ativa</Badge>;
+    }
+  };
+
+  const isNearExpiry = (date: Date | undefined) => {
+    if (!date) return false;
+    
     const today = new Date();
     const thirtyDaysFromNow = addDays(today, 30);
     return isAfter(date, today) && isBefore(date, thirtyDaysFromNow);
   };
 
-  const filteredPolicies = policies.filter(policy => 
-    policy.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    policy.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    policy.insurer.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPolicies = policies.filter(policy => {
+    const policyNumber = policy.policy_number || '';
+    const customer = policy.customer || '';
+    const insurer = policy.insurer || '';
+    
+    return (
+      policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insurer.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -161,7 +186,10 @@ const PolicyTab = () => {
               size="sm"
             >
               {loading ? (
-                <>Processando...</>
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                  Processando...
+                </>
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" /> 
@@ -175,6 +203,27 @@ const PolicyTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {databaseError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Erro de banco de dados</AlertTitle>
+              <AlertDescription className="flex flex-col gap-2">
+                <p>{databaseError}</p>
+                <div className="mt-2 text-sm border-l-4 border-destructive/30 pl-4 py-2 bg-destructive/5 rounded">
+                  <p className="font-medium flex items-center gap-2">
+                    <Database className="h-4 w-4" /> Solução:
+                  </p>
+                  <ol className="list-decimal list-inside mt-1 ml-2 space-y-1">
+                    <li>Acesse o painel do Supabase</li>
+                    <li>Vá para a seção SQL ou Migrations</li>
+                    <li>Execute a migração <code className="bg-black/10 px-1 rounded">20240726_insurance_policies.sql</code></li>
+                    <li>Volte e tente novamente</li>
+                  </ol>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <div className="flex items-center space-x-2 mb-4">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
@@ -185,18 +234,36 @@ const PolicyTab = () => {
             />
           </div>
           
-          {filteredPolicies.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-10">
+              <RefreshCw className="h-16 w-16 mx-auto text-primary opacity-20 mb-4 animate-spin" />
+              <h3 className="text-lg font-medium">Carregando apólices...</h3>
+            </div>
+          ) : filteredPolicies.length === 0 ? (
             <div className="text-center py-10">
               <FileText className="h-16 w-16 mx-auto text-muted-foreground opacity-20 mb-4" />
               <h3 className="text-lg font-medium">Nenhuma apólice encontrada</h3>
               <p className="text-sm text-muted-foreground mt-1 mb-4">
                 {searchTerm 
                   ? "Nenhum resultado encontrado para sua busca" 
-                  : "Suas apólices de seguro aparecerão aqui"}
+                  : databaseError 
+                    ? "Corrija o erro de banco de dados para visualizar apólices" 
+                    : "Suas apólices de seguro aparecerão aqui"}
               </p>
               {searchTerm && (
                 <Button variant="outline" onClick={() => setSearchTerm("")}>
                   Limpar busca
+                </Button>
+              )}
+              {!databaseError && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleProcessWhatsAppMessage} 
+                  className="ml-2"
+                  disabled={loading}
+                >
+                  <Upload className="h-4 w-4 mr-2" /> 
+                  Simular recebimento de apólice
                 </Button>
               )}
             </div>
@@ -216,39 +283,42 @@ const PolicyTab = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredPolicies.map((policy) => (
-                    <TableRow key={policy.id}>
-                      <TableCell className="font-medium">{policy.policyNumber}</TableCell>
-                      <TableCell>{policy.customer}</TableCell>
-                      <TableCell>{policy.insurer}</TableCell>
+                    <TableRow key={policy.id || policy.policy_number}>
+                      <TableCell className="font-medium">{policy.policy_number}</TableCell>
+                      <TableCell>{policy.customer || "N/A"}</TableCell>
+                      <TableCell>{policy.insurer || "N/A"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>
-                            {format(policy.startDate, "dd/MM/yyyy")} - {format(policy.endDate, "dd/MM/yyyy")}
+                            {policy.start_date ? format(new Date(policy.start_date), "dd/MM/yyyy") : "N/A"} - {policy.end_date ? format(new Date(policy.end_date), "dd/MM/yyyy") : "N/A"}
                           </span>
-                          {isNearExpiry(policy.endDate) && (
+                          {policy.end_date && isNearExpiry(new Date(policy.end_date)) && (
                             <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{policy.premiumValue}</TableCell>
-                      <TableCell>{getStatusBadge(policy.status)}</TableCell>
+                      <TableCell>{`R$ ${policy.premium_amount?.toFixed(2)}` || "N/A"}</TableCell>
+                      <TableCell>{getStatusBadge(policy.start_date ? new Date(policy.start_date) : undefined, policy.end_date ? new Date(policy.end_date) : undefined)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-7 w-7"
-                            aria-label="Baixar documento"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
+                          {policy.document_url && (
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-7 w-7"
+                              aria-label="Baixar documento"
+                              onClick={() => window.open(policy.document_url, '_blank')}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <Button 
                             variant="outline" 
                             size="icon" 
                             className="h-7 w-7 text-destructive hover:text-destructive"
                             aria-label="Remover"
-                            onClick={() => handleDeletePolicy(policy.id)}
+                            onClick={() => policy.id && handleDeletePolicy(policy.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -269,7 +339,34 @@ const PolicyTab = () => {
             <p className="text-sm text-muted-foreground mb-3">
               Documentos de apólice recebidos via WhatsApp com a palavra "apolice" serão automaticamente processados e adicionados ao sistema.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <div className="mt-4 border-t pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="webhook-url" className="text-xs">URL do Webhook para WhatsApp</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="webhook-url" 
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    placeholder="https://seu-webhook.com/whatsgw-events" 
+                    className="text-xs flex-1"
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={handleSaveWebhook}
+                    disabled={!webhookUrl.trim()}
+                  >
+                    Salvar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Configure esta URL no painel de controle do WhatsGW para receber automaticamente mensagens de documentos de apólice.
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <div>
                 <Label htmlFor="days-before" className="text-xs flex items-center gap-1">
                   <Clock className="h-3 w-3" /> Dias para lembrete antes do vencimento
