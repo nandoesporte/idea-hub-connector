@@ -97,7 +97,24 @@ const PolicyTabContent = ({
       tempInput.type = 'file';
       tempInput.accept = '.pdf';
       tempInput.style.display = 'none';
-      tempInput.onchange = (e) => handleFileUpload(e as React.ChangeEvent<HTMLInputElement>);
+      
+      // Corrigindo o problema de tipo aqui
+      tempInput.onchange = (e) => {
+        // Convertendo para o formato esperado pelo handler
+        const files = (e.target as HTMLInputElement).files;
+        if (files && files.length > 0) {
+          const file = files[0];
+          // Criar um evento sintético simplificado que é compatível com nossa função handler
+          const syntheticEvent = {
+            target: {
+              files: files
+            }
+          } as React.ChangeEvent<HTMLInputElement>;
+          
+          handleFileUpload(syntheticEvent);
+        }
+      };
+      
       document.body.appendChild(tempInput);
       tempInput.click();
       // Remover após uso
