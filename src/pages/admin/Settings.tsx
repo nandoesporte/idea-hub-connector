@@ -48,7 +48,6 @@ const getInitialSettings = (): SiteSettings => {
       enableContactForm: true,
       enableNewsletter: false,
       enableUserRegistration: true,
-      enableInsurancePolicies: true,
     },
     seo: {
       metaTitle: 'IdeaHub Connector | Transformando ideias em realidade',
@@ -77,7 +76,6 @@ const getInitialNotificationSettings = (): NotificationSettingsType => {
       newProjects: true,
       newUsers: true,
       dailyReport: false,
-      policyRenewals: true,
     },
     channels: {
       email: true,
@@ -96,12 +94,6 @@ const getInitialNotificationSettings = (): NotificationSettingsType => {
       },
       sendOnDay: true,
       reminderTime: "09:00"
-    },
-    policies: {
-      receiveViaWhatsApp: true,
-      processWithAI: true,
-      autoScheduleReminders: true,
-      reminderDaysBefore: 30,
     }
   };
 };

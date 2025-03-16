@@ -6,7 +6,7 @@ export interface CategoryItem {
   icon: string;
   iconColor?: string;
   link: string;
-  type?: 'tech' | 'insurance';
+  type?: 'tech';
 }
 
 export type ProjectCategory = 
