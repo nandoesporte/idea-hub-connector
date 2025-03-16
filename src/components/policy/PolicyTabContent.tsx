@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Search, FileUp, Loader2 } from "lucide-react";
 import { PolicyFile } from "@/types";
@@ -9,7 +9,7 @@ import PolicyList from './PolicyList';
 import EmptyPolicyState from './EmptyPolicyState';
 import FileUploadProgress from './FileUploadProgress';
 import PolicySettings from './PolicySettings';
-import { uploadAndProcessPolicy } from '@/lib/policyService';
+import { uploadAndProcessPolicy, checkBucketExists } from '@/lib/policyService';
 import PolicySearchBar from './PolicySearchBar';
 
 interface PolicyTabContentProps {
@@ -36,33 +36,33 @@ const PolicyTabContent = ({
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
   const queryClient = useQueryClient();
 
-  // Função simples que cria um input de arquivo temporário, 
+  // Função que cria um input de arquivo temporário, 
   // registra os manipuladores de eventos e simula um clique
   const triggerFileSelection = () => {
-    // Não permitir múltiplos uploads simultâneos
     if (uploadingFile) {
       toast.info("Aguarde o término do upload atual");
       return;
     }
     
     if (!bucketReady) {
-      toast.error("Sistema de armazenamento não está pronto");
+      toast.error("Sistema de armazenamento não está disponível");
       return;
     }
     
     console.log("Criando input temporário para seleção de arquivo");
     
-    // Criamos um input temporário para cada uso, evitando problemas de referência
+    // Criar elemento temporário de input
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.pdf';
     fileInput.style.display = 'none';
     
+    // Adicionar manipulador de eventos
     fileInput.addEventListener('change', (e) => {
-      const input = e.target as HTMLInputElement;
-      if (!input.files || input.files.length === 0) return;
+      const target = e.target as HTMLInputElement;
+      if (!target.files || target.files.length === 0) return;
       
-      const file = input.files[0];
+      const file = target.files[0];
       if (file.type !== 'application/pdf') {
         toast.error("Por favor, selecione um arquivo PDF");
         return;
@@ -70,19 +70,19 @@ const PolicyTabContent = ({
       
       console.log("Arquivo selecionado:", file.name);
       
+      // Iniciar processo de upload
       setUploadingFile({
         file,
         progress: 0,
         status: 'pending'
       });
       
-      // Start the upload process
       uploadAndProcessPolicy(
         file, 
         userId, 
         setUploadingFile, 
         () => {
-          // Success callback
+          // Atualizar a lista de políticas após o upload bem-sucedido
           queryClient.invalidateQueries({ queryKey: ['policies'] });
         }
       );

@@ -52,6 +52,23 @@ export const deletePolicy = async (id: string) => {
   return id;
 };
 
+// Check if bucket exists
+export const checkBucketExists = async (): Promise<boolean> => {
+  try {
+    const { data: buckets, error } = await supabase.storage.listBuckets();
+    
+    if (error) {
+      console.error("Error checking buckets:", error);
+      return false;
+    }
+    
+    return buckets.some(bucket => bucket.name === STORAGE_BUCKET);
+  } catch (error) {
+    console.error("Error checking if bucket exists:", error);
+    return false;
+  }
+};
+
 // Upload and process policy
 export const uploadAndProcessPolicy = async (
   file: File, 
@@ -61,6 +78,14 @@ export const uploadAndProcessPolicy = async (
 ) => {
   if (!userId) {
     toast.error("Usuário não autenticado");
+    setUploadingFile(null);
+    return;
+  }
+
+  // Verificar se o bucket existe antes de tentar fazer upload
+  const bucketExists = await checkBucketExists();
+  if (!bucketExists) {
+    toast.error("Sistema de armazenamento não está disponível");
     setUploadingFile(null);
     return;
   }

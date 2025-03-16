@@ -21,7 +21,7 @@ const StorageBucketInitializer = ({
     // Iniciar com configuração em progresso
     setConfiguringStorage(true);
     
-    const checkAndCreateBucket = async () => {
+    const checkBucket = async () => {
       try {
         // Verificar autenticação
         const { data: authData, error: authError } = await supabase.auth.getSession();
@@ -46,45 +46,28 @@ const StorageBucketInitializer = ({
           return;
         }
         
-        // Se o bucket 'policy_documents' não existir, vamos criá-lo
-        const bucketExists = buckets.some(bucket => bucket.name === 'policy_documents');
+        // Verificar se o bucket 'policy_documents' existe
+        const policyBucket = buckets.find(bucket => bucket.name === 'policy_documents');
         
-        if (!bucketExists) {
-          console.log("Bucket 'policy_documents' não encontrado, tentando criar");
-          
-          // Tentar criar o bucket
-          const { error: createError } = await supabase.storage.createBucket('policy_documents', {
-            public: false,
-            fileSizeLimit: 10485760, // 10MB
-          });
-          
-          if (createError) {
-            console.error("Erro ao criar bucket:", createError);
-            toast.error("Erro ao configurar armazenamento de documentos");
-            setBucketReady(false);
-            setConfiguringStorage(false);
-            return;
-          }
-          
-          console.log("Bucket 'policy_documents' criado com sucesso");
+        if (policyBucket) {
+          console.log("Bucket 'policy_documents' encontrado e pronto para uso");
+          setBucketReady(true);
         } else {
-          console.log("Bucket 'policy_documents' já existe");
+          console.log("Bucket 'policy_documents' não encontrado. Este bucket deve ser criado por um administrador.");
+          toast.error("Bucket de armazenamento não está disponível. Entre em contato com o administrador.");
+          setBucketReady(false);
         }
         
-        // Bucket está pronto para uso
-        setBucketReady(true);
-        console.log("Sistema de armazenamento pronto para uso");
-        
       } catch (err) {
-        console.error("Erro inesperado ao configurar armazenamento:", err);
-        toast.error("Erro ao configurar sistema de armazenamento");
+        console.error("Erro inesperado ao verificar armazenamento:", err);
+        toast.error("Erro ao verificar sistema de armazenamento");
         setBucketReady(false);
       } finally {
         setConfiguringStorage(false);
       }
     };
     
-    checkAndCreateBucket();
+    checkBucket();
   }, [userId, setBucketReady, setConfiguringStorage]);
 
   return null; // Este é um componente utilitário sem UI
