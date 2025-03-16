@@ -75,26 +75,59 @@ CREATE INDEX IF NOT EXISTS insurance_policies_expiry_date_idx ON public.insuranc
 -- Set up RLS policies
 ALTER TABLE public.insurance_policies ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist to avoid errors
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'insurance_policies' AND policyname = 'Users can view their own policies'
+    ) THEN
+        DROP POLICY "Users can view their own policies" ON public.insurance_policies;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'insurance_policies' AND policyname = 'Users can insert their own policies'
+    ) THEN
+        DROP POLICY "Users can insert their own policies" ON public.insurance_policies;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'insurance_policies' AND policyname = 'Users can update their own policies'
+    ) THEN
+        DROP POLICY "Users can update their own policies" ON public.insurance_policies;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'insurance_policies' AND policyname = 'Users can delete their own policies'
+    ) THEN
+        DROP POLICY "Users can delete their own policies" ON public.insurance_policies;
+    END IF;
+END
+$$;
+
 -- Policy for users to see only their own policies
-CREATE POLICY IF NOT EXISTS "Users can view their own policies"
+CREATE POLICY "Users can view their own policies"
 ON public.insurance_policies
 FOR SELECT
 USING (auth.uid() = user_id);
 
 -- Policy for users to insert their own policies
-CREATE POLICY IF NOT EXISTS "Users can insert their own policies"
+CREATE POLICY "Users can insert their own policies"
 ON public.insurance_policies
 FOR INSERT
 WITH CHECK (auth.uid() = user_id);
 
 -- Policy for users to update their own policies
-CREATE POLICY IF NOT EXISTS "Users can update their own policies"
+CREATE POLICY "Users can update their own policies"
 ON public.insurance_policies
 FOR UPDATE
 USING (auth.uid() = user_id);
 
 -- Policy for users to delete their own policies
-CREATE POLICY IF NOT EXISTS "Users can delete their own policies"
+CREATE POLICY "Users can delete their own policies"
 ON public.insurance_policies
 FOR DELETE
 USING (auth.uid() = user_id);
@@ -110,8 +143,27 @@ ON CONFLICT (id) DO NOTHING;
 -- Set up RLS for storage
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
+-- Clear existing storage policies to avoid errors
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents User Access'
+    ) THEN
+        DROP POLICY "Documents User Access" ON storage.objects;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents Public Access'
+    ) THEN
+        DROP POLICY "Documents Public Access" ON storage.objects;
+    END IF;
+END
+$$;
+
 -- Policy for authenticated users to manage their own files
-CREATE POLICY IF NOT EXISTS "Documents User Access"
+CREATE POLICY "Documents User Access"
 ON storage.objects
 FOR ALL
 TO authenticated
@@ -125,7 +177,7 @@ WITH CHECK (
 );
 
 -- Policy for public access to read files
-CREATE POLICY IF NOT EXISTS "Documents Public Access"
+CREATE POLICY "Documents Public Access"
 ON storage.objects
 FOR SELECT
 TO public
