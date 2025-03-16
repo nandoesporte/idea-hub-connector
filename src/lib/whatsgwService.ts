@@ -37,6 +37,18 @@ export interface EventReminder {
   contactPhone: string;
 }
 
+export interface PolicyData {
+  id?: string;
+  policy_number?: string;
+  customer?: string;
+  insurer?: string;
+  start_date?: Date;
+  end_date?: Date;
+  premium_amount?: number;
+  document_url?: string;
+  created_at?: Date;
+}
+
 /**
  * Add an entry to the log history
  */
@@ -338,6 +350,47 @@ export const sendTestToSpecificNumber = async (): Promise<{ success: boolean, de
 };
 
 /**
+ * Send a test message to a provided phone number
+ */
+export const sendTestMessage = async (phoneNumber: string): Promise<{ success: boolean, details?: any }> => {
+  const { apiKey, apiUrl } = getApiKey();
+  
+  if (!apiKey) {
+    addLogEntry('error', 'test-message', "WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
+    return { success: false };
+  }
+  
+  try {
+    const formattedPhone = formatPhoneNumber(phoneNumber);
+    
+    if (!formattedPhone) {
+      addLogEntry('error', 'test-message', "Invalid phone number format", { phone: phoneNumber });
+      toast.error("Formato de número de telefone inválido");
+      return { success: false };
+    }
+    
+    addLogEntry('info', 'test-message', `Sending test WhatsApp message to ${formattedPhone}`);
+    
+    const success = await sendWhatsAppMessage({
+      phone: formattedPhone,
+      message: "🔍 *Teste do Sistema*\n\nOlá! Esta é uma mensagem de teste. Se você recebeu esta mensagem, a integração está funcionando corretamente."
+    });
+    
+    if (success) {
+      addLogEntry('info', 'test-message', "WhatsApp test message sent successfully");
+      return { success: true };
+    } else {
+      addLogEntry('error', 'test-message', "Failed to send WhatsApp test message");
+      return { success: false };
+    }
+  } catch (error) {
+    addLogEntry('error', 'test-message', "Error sending WhatsApp test message", error);
+    return { success: false, details: error };
+  }
+};
+
+/**
  * Send a message via WhatsApp API
  * Based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
  */
@@ -526,14 +579,17 @@ export const formatPhoneNumber = (phone: string): string | null => {
 /**
  * Send an event reminder via WhatsApp
  */
-export const sendEventReminder = async (event: EventReminder): Promise<boolean> => {
+export const sendEventReminder = async (event: EventReminder, skipTimeCheck?: boolean): Promise<boolean> => {
   if (!isWhatsAppConfigured()) {
     addLogEntry('error', 'event-reminder', "WhatsApp API key not set");
     toast.error("Chave de API do WhatsApp não configurada");
     return false;
   }
   
-  const { title, date, time, duration, contactPhone } = event;
+  const { title, date, duration, contactPhone } = event;
+  
+  // Use the time property if provided, otherwise format from date
+  const time = event.time || `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   
   const formattedDate = new Intl.DateTimeFormat('pt-BR', { 
     day: '2-digit', 
@@ -663,94 +719,47 @@ export const notifyAdminsAboutEvent = async (event: any): Promise<number> => {
 
 /**
  * Notify admins about status changes, new projects, etc.
- * @param type The type of notification
- * @param data The data related to the notification
+ * @param message The message to send to admins
  * @returns Promise resolving to number of successful notifications
  */
-export const notifyAdminsAboutSystemEvent = async (type: string, data: any): Promise<number> => {
+export const notifyAdminsAboutSystemEvent = async (message: string): Promise<number> => {
   if (!isWhatsAppConfigured()) {
     return 0;
   }
   
-  let title = '';
-  let message = '';
-  
-  switch (type) {
-    case 'new-project':
-      title = 'Novo Projeto Submetido';
-      message = `🚀 *Novo Projeto Submetido*\n\n` +
-        `*Título:* ${data.title}\n` +
-        `*Categoria:* ${data.category}\n` +
-        `*Descrição:* ${data.description}\n` +
-        `*Orçamento:* ${data.budget || 'Não especificado'}\n` +
-        `*Prazo:* ${data.timeline || 'Não especificado'}\n` +
-        (data.features?.length ? `*Funcionalidades:* ${data.features.join(', ')}\n` : '') +
-        `\n✅ Este projeto foi adicionado ao sistema e está aguardando análise.`;
-      break;
-      
-    case 'status-change':
-      const statusMap = {
-        'pending': 'Pendente',
-        'under-review': 'Em Análise',
-        'approved': 'Aprovado',
-        'in-progress': 'Em Desenvolvimento',
-        'completed': 'Concluído',
-        'rejected': 'Rejeitado'
-      };
-      
-      const newStatus = statusMap[data.newStatus as keyof typeof statusMap] || data.newStatus;
-      
-      title = `Status de Projeto Alterado: ${newStatus}`;
-      message = `🔄 *Alteração de Status de Projeto*\n\n` +
-        `*Projeto:* ${data.title}\n` +
-        `*Novo Status:* ${newStatus}\n` +
-        (data.message ? `*Mensagem:* ${data.message}\n` : '') +
-        `\n✅ O status deste projeto foi atualizado no sistema.`;
-      break;
-      
-    case 'new-message':
-      title = 'Nova Mensagem Recebida';
-      message = `💬 *Nova Mensagem Recebida*\n\n` +
-        `*De:* ${data.name}\n` +
-        `*Email:* ${data.email}\n` +
-        `*Assunto:* ${data.subject || 'Não especificado'}\n` +
-        `*Mensagem:* ${data.message}\n` +
-        `\n✅ Esta mensagem foi registrada no sistema e aguarda resposta.`;
-      break;
-      
-    case 'daily-events':
-      const events = data.events || [];
-      
-      if (events.length === 0) {
-        title = 'Agenda do Dia';
-        message = `📅 *Agenda do Dia*\n\n` +
-          `Não há eventos programados para hoje.`;
-      } else {
-        title = `Agenda do Dia: ${events.length} Evento(s)`;
-        message = `📅 *Agenda do Dia*\n\n` +
-          `Eventos programados para hoje (${new Date().toLocaleDateString('pt-BR')}):\n\n`;
-          
-        events.forEach((event: any, index: number) => {
-          const eventTime = event.date instanceof Date 
-            ? event.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-            : new Date(event.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            
-          message += `*${index + 1}. ${event.title}*\n` +
-            `⏰ ${eventTime}\n` +
-            `⏱️ ${event.duration || 60} minutos\n` +
-            (event.description ? `📝 ${event.description}\n` : '') +
-            (event.contactPhone ? `📞 ${event.contactPhone}\n` : '') +
-            `\n`;
-        });
-      }
-      break;
-      
-    default:
-      title = 'Notificação do Sistema';
-      message = `ℹ️ *Notificação do Sistema*\n\n${JSON.stringify(data, null, 2)}`;
+  const adminNumbers = getSystemNotificationNumbers();
+  if (adminNumbers.length === 0) {
+    addLogEntry('warning', 'system-notification', 'No admin notification numbers configured');
+    return 0;
   }
   
-  return sendSystemNotification(title, message);
+  addLogEntry('info', 'system-notification', `Sending system notification to ${adminNumbers.length} admin numbers`);
+  
+  // Send to each admin number
+  const successfulSends = [];
+  
+  for (const phone of adminNumbers) {
+    try {
+      const success = await sendWhatsAppMessage({
+        phone,
+        message
+      });
+      
+      if (success) {
+        successfulSends.push(phone);
+      }
+    } catch (error) {
+      addLogEntry('error', 'system-notification', `Failed to send system notification to ${phone}`, error);
+    }
+  }
+  
+  if (successfulSends.length > 0) {
+    addLogEntry('info', 'system-notification', `Successfully sent ${successfulSends.length} system notifications`);
+  } else {
+    addLogEntry('warning', 'system-notification', 'Failed to send any system notifications');
+  }
+  
+  return successfulSends.length;
 };
 
 /**
@@ -868,5 +877,64 @@ export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 2
       addLogEntry('error', 'schedule-reminders', `Failed to send reminder for event "${event.title}"`);
       toast.error(`Falha ao enviar lembrete para evento "${event.title}"`);
     }
+  }
+};
+
+/**
+ * Get all insurance policies for the current user
+ */
+export const getAllPolicies = async (): Promise<PolicyData[]> => {
+  try {
+    addLogEntry('info', 'policies', "Fetching all insurance policies");
+    
+    // Mock implementation - we would implement the actual API call here
+    // In a real implementation, this would fetch from your database
+    return [
+      {
+        id: "1",
+        policy_number: "POL-123456",
+        customer: "João Silva",
+        insurer: "Seguradora Exemplo",
+        start_date: new Date("2023-01-01"),
+        end_date: new Date("2023-12-31"),
+        premium_amount: 1200.00,
+        document_url: "https://example.com/docs/policy-123456.pdf"
+      }
+    ];
+  } catch (error) {
+    addLogEntry('error', 'policies', "Error fetching insurance policies", error);
+    throw new Error("Failed to get policies: " + (error instanceof Error ? error.message : String(error)));
+  }
+};
+
+/**
+ * Delete an insurance policy by ID
+ */
+export const deletePolicy = async (policyId: string): Promise<boolean> => {
+  try {
+    addLogEntry('info', 'policies', `Deleting insurance policy with ID: ${policyId}`);
+    
+    // Mock implementation - we would implement the actual API call here
+    // In a real implementation, this would delete from your database
+    return true;
+  } catch (error) {
+    addLogEntry('error', 'policies', `Error deleting insurance policy with ID: ${policyId}`, error);
+    return false;
+  }
+};
+
+/**
+ * Upload and analyze an insurance policy document
+ */
+export const uploadAndAnalyzePolicy = async (file: File): Promise<boolean> => {
+  try {
+    addLogEntry('info', 'policies', `Uploading and analyzing policy document: ${file.name}`);
+    
+    // Mock implementation - we would implement the actual API call here
+    // In a real implementation, this would upload to storage and process with AI
+    return true;
+  } catch (error) {
+    addLogEntry('error', 'policies', "Error uploading and analyzing policy document", error);
+    return false;
   }
 };
