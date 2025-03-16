@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.insurance_policies (
   insurer TEXT NOT NULL,
   start_date TIMESTAMP WITH TIME ZONE NOT NULL,
   end_date TIMESTAMP WITH TIME ZONE NOT NULL,
-  premium_amount DECIMAL(10, 2) NOT NULL,
+  premium_value TEXT NOT NULL,
   document_url TEXT,
   processed_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'pending', 'expired')),

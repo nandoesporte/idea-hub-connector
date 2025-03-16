@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { 
   FileText, 
   Calendar, 
@@ -17,15 +16,14 @@ import {
   Upload,
   Trash2,
   Search,
-  RefreshCw,
-  Database
+  RefreshCw
 } from "lucide-react";
 import { format, addDays, isBefore, isAfter } from "date-fns";
 import { toast } from "sonner";
-import { PolicyData } from "@/types";
 import { 
   getAllPolicies, 
   simulateWhatsAppPolicyMessage, 
+  PolicyData,
   registerWhatsAppWebhook,
   deletePolicy
 } from "@/lib/whatsgwService";
@@ -35,7 +33,6 @@ const PolicyTab = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
-  const [databaseError, setDatabaseError] = useState<string | null>(null);
 
   useEffect(() => {
     // Load policies when component mounts
@@ -50,21 +47,13 @@ const PolicyTab = () => {
 
   const loadPolicies = async () => {
     setLoading(true);
-    setDatabaseError(null);
     try {
       // Get policies from our service
       const loadedPolicies = await getAllPolicies();
       setPolicies(loadedPolicies);
     } catch (error) {
       console.error("Error loading policies:", error);
-      
-      // Check if this is the "table doesn't exist" error
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("does not exist") || errorMessage.includes("Failed to get policies")) {
-        setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
-      } else {
-        toast.error("Erro ao carregar apólices");
-      }
+      toast.error("Erro ao carregar apólices");
     } finally {
       setLoading(false);
     }
@@ -72,7 +61,6 @@ const PolicyTab = () => {
 
   const handleProcessWhatsAppMessage = async () => {
     setLoading(true);
-    setDatabaseError(null);
     
     try {
       const newPolicy = await simulateWhatsAppPolicyMessage();
@@ -82,19 +70,10 @@ const PolicyTab = () => {
         await loadPolicies();
         toast.success("Nova apólice recebida e processada com sucesso!");
       } else {
-        // Check the console logs to see if it's a database error
-        setDatabaseError("Não foi possível processar a apólice. A tabela 'insurance_policies' pode não existir no banco de dados.");
         toast.error("Erro ao processar a apólice. Verifique os logs para mais detalhes.");
       }
     } catch (error) {
       console.error("Error processing WhatsApp message:", error);
-      
-      // Check if this is the "table doesn't exist" error
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("does not exist")) {
-        setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
-      }
-      
       toast.error("Erro ao processar mensagem do WhatsApp");
     } finally {
       setLoading(false);
@@ -137,9 +116,7 @@ const PolicyTab = () => {
     }
   };
 
-  const getStatusBadge = (startDate: Date | undefined, endDate: Date | undefined) => {
-    if (!startDate || !endDate) return <Badge variant="outline">Desconhecido</Badge>;
-    
+  const getStatusBadge = (startDate: Date, endDate: Date) => {
     const today = new Date();
     
     if (isAfter(today, endDate)) {
@@ -151,25 +128,17 @@ const PolicyTab = () => {
     }
   };
 
-  const isNearExpiry = (date: Date | undefined) => {
-    if (!date) return false;
-    
+  const isNearExpiry = (date: Date) => {
     const today = new Date();
     const thirtyDaysFromNow = addDays(today, 30);
     return isAfter(date, today) && isBefore(date, thirtyDaysFromNow);
   };
 
-  const filteredPolicies = policies.filter(policy => {
-    const policyNumber = policy.policy_number || '';
-    const customer = policy.customer || '';
-    const insurer = policy.insurer || '';
-    
-    return (
-      policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insurer.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
+  const filteredPolicies = policies.filter(policy => 
+    policy.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    policy.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    policy.insurer.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -203,27 +172,6 @@ const PolicyTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {databaseError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Erro de banco de dados</AlertTitle>
-              <AlertDescription className="flex flex-col gap-2">
-                <p>{databaseError}</p>
-                <div className="mt-2 text-sm border-l-4 border-destructive/30 pl-4 py-2 bg-destructive/5 rounded">
-                  <p className="font-medium flex items-center gap-2">
-                    <Database className="h-4 w-4" /> Solução:
-                  </p>
-                  <ol className="list-decimal list-inside mt-1 ml-2 space-y-1">
-                    <li>Acesse o painel do Supabase</li>
-                    <li>Vá para a seção SQL ou Migrations</li>
-                    <li>Execute a migração <code className="bg-black/10 px-1 rounded">20240726_insurance_policies.sql</code></li>
-                    <li>Volte e tente novamente</li>
-                  </ol>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-          
           <div className="flex items-center space-x-2 mb-4">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
@@ -246,24 +194,11 @@ const PolicyTab = () => {
               <p className="text-sm text-muted-foreground mt-1 mb-4">
                 {searchTerm 
                   ? "Nenhum resultado encontrado para sua busca" 
-                  : databaseError 
-                    ? "Corrija o erro de banco de dados para visualizar apólices" 
-                    : "Suas apólices de seguro aparecerão aqui"}
+                  : "Suas apólices de seguro aparecerão aqui"}
               </p>
               {searchTerm && (
                 <Button variant="outline" onClick={() => setSearchTerm("")}>
                   Limpar busca
-                </Button>
-              )}
-              {!databaseError && (
-                <Button 
-                  variant="outline" 
-                  onClick={handleProcessWhatsAppMessage} 
-                  className="ml-2"
-                  disabled={loading}
-                >
-                  <Upload className="h-4 w-4 mr-2" /> 
-                  Simular recebimento de apólice
                 </Button>
               )}
             </div>
@@ -283,32 +218,32 @@ const PolicyTab = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredPolicies.map((policy) => (
-                    <TableRow key={policy.id || policy.policy_number}>
-                      <TableCell className="font-medium">{policy.policy_number}</TableCell>
-                      <TableCell>{policy.customer || "N/A"}</TableCell>
-                      <TableCell>{policy.insurer || "N/A"}</TableCell>
+                    <TableRow key={policy.id || policy.policyNumber}>
+                      <TableCell className="font-medium">{policy.policyNumber}</TableCell>
+                      <TableCell>{policy.customer}</TableCell>
+                      <TableCell>{policy.insurer}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>
-                            {policy.start_date ? format(new Date(policy.start_date), "dd/MM/yyyy") : "N/A"} - {policy.end_date ? format(new Date(policy.end_date), "dd/MM/yyyy") : "N/A"}
+                            {format(policy.startDate, "dd/MM/yyyy")} - {format(policy.endDate, "dd/MM/yyyy")}
                           </span>
-                          {policy.end_date && isNearExpiry(new Date(policy.end_date)) && (
+                          {isNearExpiry(policy.endDate) && (
                             <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{`R$ ${policy.premium_amount?.toFixed(2)}` || "N/A"}</TableCell>
-                      <TableCell>{getStatusBadge(policy.start_date ? new Date(policy.start_date) : undefined, policy.end_date ? new Date(policy.end_date) : undefined)}</TableCell>
+                      <TableCell>{policy.premiumValue}</TableCell>
+                      <TableCell>{getStatusBadge(policy.startDate, policy.endDate)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {policy.document_url && (
+                          {policy.documentUrl && (
                             <Button 
                               variant="outline" 
                               size="icon" 
                               className="h-7 w-7"
                               aria-label="Baixar documento"
-                              onClick={() => window.open(policy.document_url, '_blank')}
+                              onClick={() => window.open(policy.documentUrl, '_blank')}
                             >
                               <Download className="h-3.5 w-3.5" />
                             </Button>
