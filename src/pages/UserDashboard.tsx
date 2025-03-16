@@ -1,9 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   CheckCircle, Clock, FileText, Heart, Home, Shield, Briefcase, Hospital, 
   ArrowRight, Phone, Mail, Cpu, Code, Database, ServerCog, BrainCircuit, 
@@ -13,12 +13,14 @@ import { useUser } from '@/contexts/UserContext';
 import { toast } from 'sonner';
 import { getDashboardConfig } from '@/lib/dashboardService';
 import { DashboardComponent, DashboardItem } from '@/types/dashboard';
+import PolicyTab from '@/components/PolicyTab';
 
 const UserDashboard = () => {
   const { user } = useUser();
   const [recentQuotes, setRecentQuotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dashboardConfig, setDashboardConfig] = useState<DashboardComponent[]>([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
   
   useEffect(() => {
     const fetchData = async () => {
@@ -349,33 +351,46 @@ const UserDashboard = () => {
         </p>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="h-6 bg-primary/10 rounded w-3/4 animate-pulse"></div>
-                <div className="h-4 bg-primary/5 rounded w-1/2 mt-2 animate-pulse"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map((j) => (
-                    <div key={j} className="h-24 bg-primary/5 rounded animate-pulse"></div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {dashboardConfig.map((component) => (
-            <React.Fragment key={component.id}>
-              {renderComponent(component)}
-            </React.Fragment>
-          ))}
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="policies">Apólices</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="dashboard">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <div className="h-6 bg-primary/10 rounded w-3/4 animate-pulse"></div>
+                    <div className="h-4 bg-primary/5 rounded w-1/2 mt-2 animate-pulse"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      {[1, 2, 3, 4].map((j) => (
+                        <div key={j} className="h-24 bg-primary/5 rounded animate-pulse"></div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {dashboardConfig.map((component) => (
+                <React.Fragment key={component.id}>
+                  {renderComponent(component)}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="policies">
+          <PolicyTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

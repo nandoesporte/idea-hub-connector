@@ -1,212 +1,150 @@
 
-import { supabase } from './supabase';
 import { Policy } from '@/types';
+import { supabase } from './supabase';
 import { toast } from 'sonner';
 
-export const fetchPolicies = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('insurance_policies')
-    .select('*')
-    .eq('user_id', userId)
-    .order('expiry_date', { ascending: true });
+export const fetchPolicies = async (userId: string): Promise<Policy[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('insurance_policies')
+      .select('*')
+      .eq('user_id', userId)
+      .order('expiry_date', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching policies:', error);
+    if (error) {
+      console.error('Error fetching policies:', error);
+      throw new Error(error.message);
+    }
+
+    // Convertendo as datas de string para Date
+    return data.map(policy => ({
+      ...policy,
+      issue_date: new Date(policy.issue_date),
+      expiry_date: new Date(policy.expiry_date),
+      reminder_date: policy.reminder_date ? new Date(policy.reminder_date) : undefined,
+      created_at: new Date(policy.created_at),
+      updated_at: new Date(policy.updated_at),
+    }));
+  } catch (error) {
+    console.error('Error in fetchPolicies:', error);
     throw error;
   }
-
-  return data.map(policy => ({
-    ...policy,
-    issueDate: new Date(policy.issue_date),
-    expiryDate: new Date(policy.expiry_date),
-    coverageAmount: Number(policy.coverage_amount),
-    premium: Number(policy.premium),
-    attachmentUrl: policy.attachment_url,
-    reminderSent: policy.reminder_sent,
-    reminderDate: policy.reminder_date ? new Date(policy.reminder_date) : null,
-    createdAt: new Date(policy.created_at),
-    updatedAt: new Date(policy.updated_at)
-  })) as Policy[];
 };
 
-export const fetchPolicy = async (policyId: string) => {
-  const { data, error } = await supabase
-    .from('insurance_policies')
-    .select('*')
-    .eq('id', policyId)
-    .single();
+export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'updated_at' | 'reminder_sent'>) => {
+  try {
+    const { data, error } = await supabase
+      .from('insurance_policies')
+      .insert([
+        {
+          ...policy,
+          reminder_sent: false
+        }
+      ])
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Error fetching policy:', error);
+    if (error) {
+      console.error('Error creating policy:', error);
+      throw new Error(error.message);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in createPolicy:', error);
     throw error;
   }
-
-  return {
-    ...data,
-    issueDate: new Date(data.issue_date),
-    expiryDate: new Date(data.expiry_date),
-    coverageAmount: Number(data.coverage_amount),
-    premium: Number(data.premium),
-    attachmentUrl: data.attachment_url,
-    reminderSent: data.reminder_sent,
-    reminderDate: data.reminder_date ? new Date(data.reminder_date) : null,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at)
-  } as Policy;
 };
 
-export const createPolicy = async (policy: Omit<Policy, 'id' | 'createdAt' | 'updatedAt' | 'reminderSent' | 'reminderDate'>) => {
-  const { data, error } = await supabase
-    .from('insurance_policies')
-    .insert({
-      user_id: policy.userId,
-      policy_number: policy.policyNumber,
-      customer_name: policy.customerName,
-      customer_phone: policy.customerPhone,
-      issue_date: policy.issueDate.toISOString(),
-      expiry_date: policy.expiryDate.toISOString(),
-      insurer: policy.insurer,
-      coverage_amount: policy.coverageAmount,
-      premium: policy.premium,
-      status: policy.status,
-      type: policy.type,
-      attachment_url: policy.attachmentUrl,
-      notes: policy.notes
-    })
-    .select()
-    .single();
+export const updatePolicy = async (id: string, policy: Partial<Policy>) => {
+  try {
+    const { data, error } = await supabase
+      .from('insurance_policies')
+      .update({
+        ...policy,
+        updated_at: new Date()
+      })
+      .eq('id', id)
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Error creating policy:', error);
+    if (error) {
+      console.error('Error updating policy:', error);
+      throw new Error(error.message);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in updatePolicy:', error);
     throw error;
   }
-
-  return {
-    ...data,
-    issueDate: new Date(data.issue_date),
-    expiryDate: new Date(data.expiry_date),
-    coverageAmount: Number(data.coverage_amount),
-    premium: Number(data.premium),
-    attachmentUrl: data.attachment_url,
-    reminderSent: data.reminder_sent,
-    reminderDate: data.reminder_date ? new Date(data.reminder_date) : null,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at)
-  } as Policy;
-};
-
-export const updatePolicy = async (id: string, policy: Partial<Omit<Policy, 'id' | 'createdAt' | 'updatedAt'>>) => {
-  const updates: Record<string, any> = {};
-  
-  if (policy.userId) updates.user_id = policy.userId;
-  if (policy.policyNumber) updates.policy_number = policy.policyNumber;
-  if (policy.customerName) updates.customer_name = policy.customerName;
-  if (policy.customerPhone) updates.customer_phone = policy.customerPhone;
-  if (policy.issueDate) updates.issue_date = policy.issueDate.toISOString();
-  if (policy.expiryDate) updates.expiry_date = policy.expiryDate.toISOString();
-  if (policy.insurer) updates.insurer = policy.insurer;
-  if (policy.coverageAmount) updates.coverage_amount = policy.coverageAmount;
-  if (policy.premium) updates.premium = policy.premium;
-  if (policy.status) updates.status = policy.status;
-  if (policy.type) updates.type = policy.type;
-  if (policy.attachmentUrl !== undefined) updates.attachment_url = policy.attachmentUrl;
-  if (policy.notes !== undefined) updates.notes = policy.notes;
-  if (policy.reminderSent !== undefined) updates.reminder_sent = policy.reminderSent;
-  if (policy.reminderDate) updates.reminder_date = policy.reminderDate.toISOString();
-
-  const { data, error } = await supabase
-    .from('insurance_policies')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error updating policy:', error);
-    throw error;
-  }
-
-  return {
-    ...data,
-    issueDate: new Date(data.issue_date),
-    expiryDate: new Date(data.expiry_date),
-    coverageAmount: Number(data.coverage_amount),
-    premium: Number(data.premium),
-    attachmentUrl: data.attachment_url,
-    reminderSent: data.reminder_sent,
-    reminderDate: data.reminder_date ? new Date(data.reminder_date) : null,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at)
-  } as Policy;
 };
 
 export const deletePolicy = async (id: string) => {
-  const { error } = await supabase
-    .from('insurance_policies')
-    .delete()
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('insurance_policies')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
-    console.error('Error deleting policy:', error);
+    if (error) {
+      console.error('Error deleting policy:', error);
+      throw new Error(error.message);
+    }
+  } catch (error) {
+    console.error('Error in deletePolicy:', error);
     throw error;
   }
-
-  return true;
 };
 
-export const uploadPolicyAttachment = async (file: File, userId: string): Promise<string> => {
+export const uploadPolicyAttachment = async (file: File, userId: string, policyId: string) => {
   try {
-    // Create a unique file path
     const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const fileName = `${userId}/${policyId}_${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `policies/${fileName}`;
 
-    // Upload file to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filePath, file);
 
-    if (error) {
-      throw error;
+    if (uploadError) {
+      console.error('Error uploading file:', uploadError);
+      throw new Error(uploadError.message);
     }
 
-    // Get public URL for the file
-    const { data: { publicUrl } } = supabase.storage
-      .from('documents')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
+    const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
+    
+    return data.publicUrl;
   } catch (error) {
-    console.error('Error uploading file:', error);
-    toast.error('Erro ao fazer upload do arquivo');
+    console.error('Error in uploadPolicyAttachment:', error);
     throw error;
   }
 };
 
-export const analyzePolicyDocument = async (fileUrl: string, userId: string) => {
+export const analyzePolicyDocument = async (file: File) => {
   try {
-    // Call OpenAI function to analyze the policy document
-    const response = await fetch('/api/analyze-policy', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fileUrl,
-        userId
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Erro ao analisar documento');
-    }
-
-    const data = await response.json();
-    return data;
+    // Esta função seria implementada para integrar com alguma API de análise de documentos
+    // Por enquanto, retornamos um mock
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulando processamento
+    
+    return {
+      success: true,
+      data: {
+        policy_number: `POL-${Math.floor(Math.random() * 10000)}`,
+        issue_date: new Date(),
+        expiry_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), // 1 ano após
+        insurer: "Seguradora Exemplo",
+        customer_name: "Cliente Exemplo",
+        coverage_amount: 150000,
+        premium: 1200,
+        type: "auto"
+      }
+    };
   } catch (error) {
-    console.error('Error analyzing policy document:', error);
-    toast.error('Erro ao analisar o documento');
-    throw error;
+    console.error('Error in analyzePolicyDocument:', error);
+    return {
+      success: false,
+      error: 'Falha ao analisar o documento'
+    };
   }
 };
