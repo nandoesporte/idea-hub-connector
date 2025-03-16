@@ -1,12 +1,4 @@
 
-
-export interface PolicyFile {
-  file: File;
-  progress: number;
-  status: 'pending' | 'processing' | 'success' | 'error';
-  error?: string;
-}
-
 export interface CategoryItem {
   id: string;
   title: string;
@@ -103,22 +95,3 @@ export interface Notification {
   relatedEntityType?: string;
   relatedEntityId?: string;
 }
-
-export interface Policy {
-  id: string;
-  userId: string;
-  policyNumber: string;
-  customerName: string;
-  issueDate: Date;
-  expiryDate: Date;
-  insurer: string;
-  coverageAmount: number;
-  premium: number;
-  status: 'active' | 'expired' | 'cancelled' | 'pending';
-  type: string;
-  createdAt: Date;
-  updatedAt: Date;
-  reminderSent?: boolean;
-  attachmentUrl?: string;
-}
-
