@@ -1,121 +1,30 @@
+
 import { supabase } from "@/lib/supabase";
 import { Policy, PolicyFile } from "@/types";
 import { toast } from "sonner";
 
 const STORAGE_BUCKET = 'policy_documents';
 
-// Create bucket if it doesn't exist
-export const createStorageBucket = async () => {
+// Função simplificada que assume que o bucket já existe
+export const initializeStorage = async () => {
   try {
-    // First check if the bucket already exists
-    const { data: buckets, error: checkError } = await supabase.storage.listBuckets();
+    // Simplesmente verificamos se podemos listar objetos no bucket
+    // Se funcionar, assumimos que o bucket está pronto para uso
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list();
     
-    if (checkError) {
-      console.error("Error checking buckets:", checkError);
+    if (error && error.message !== "The resource was not found") {
+      console.error("Erro ao acessar o bucket:", error);
       return false;
     }
     
-    // If bucket already exists, we're done
-    if (buckets?.some(bucket => bucket.name === STORAGE_BUCKET)) {
-      return true;
-    }
-    
-    // Attempt to create the bucket if it doesn't exist
-    try {
-      const { data, error } = await supabase.storage.createBucket(STORAGE_BUCKET, {
-        public: false,
-        fileSizeLimit: 10485760, // 10MB
-        allowedMimeTypes: ['application/pdf']
-      });
-      
-      if (error) {
-        // If we can't create it (usually due to permissions), log the error
-        console.error("Error creating bucket:", error);
-        return false;
-      }
-      
-      // If bucket was created successfully, try to set up policies
-      // But continue even if policies fail - admin might set them up later
-      try {
-        // Enable RLS on the bucket
-        await supabase.rpc('enable_storage_rls', { bucket_name: STORAGE_BUCKET });
-        
-        // Create policies (these might fail if user doesn't have permission)
-        try {
-          await supabase.rpc('create_storage_policy', { 
-            bucket: STORAGE_BUCKET,
-            policy_name: 'Users can read their own policy documents',
-            definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-            operation: 'SELECT'
-          });
-        } catch (e) {
-          console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
-        }
-        
-        try {
-          await supabase.rpc('create_storage_policy', { 
-            bucket: STORAGE_BUCKET,
-            policy_name: 'Users can insert their own policy documents',
-            definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-            operation: 'INSERT'
-          });
-        } catch (e) {
-          console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
-        }
-        
-        try {
-          await supabase.rpc('create_storage_policy', { 
-            bucket: STORAGE_BUCKET,
-            policy_name: 'Users can update their own policy documents',
-            definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-            operation: 'UPDATE'
-          });
-        } catch (e) {
-          console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
-        }
-        
-        try {
-          await supabase.rpc('create_storage_policy', { 
-            bucket: STORAGE_BUCKET,
-            policy_name: 'Users can delete their own policy documents',
-            definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-            operation: 'DELETE'
-          });
-        } catch (e) {
-          console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
-        }
-      } catch (policyError) {
-        console.error("Error setting up bucket policies:", policyError);
-        // Continue as the bucket might still be usable
-      }
-      
-      return true;
-    } catch (createError) {
-      console.error("Error creating bucket:", createError);
-      return false;
-    }
+    return true;
   } catch (error) {
-    console.error("Error creating storage bucket:", error);
+    console.error("Erro ao inicializar armazenamento:", error);
     return false;
   }
 };
 
-// Check if bucket exists
-export const checkBucketExists = async () => {
-  try {
-    const { data: buckets, error } = await supabase.storage.listBuckets();
-    
-    if (error) {
-      console.error("Error checking buckets:", error);
-      return false;
-    }
-    
-    return buckets?.some(bucket => bucket.name === STORAGE_BUCKET) || false;
-  } catch (error) {
-    console.error("Error checking bucket:", error);
-    return false;
-  }
-};
+// Funções que utilizam o bucket, atualizadas para simplificar o fluxo
 
 // Fetch policies
 export const fetchPolicies = async (userId: string) => {
@@ -164,7 +73,7 @@ export const deletePolicy = async (id: string) => {
   return id;
 };
 
-// Upload and process policy
+// Upload and process policy - simplificada para assumir que o bucket existe
 export const uploadAndProcessPolicy = async (
   file: File, 
   userId: string, 
@@ -178,14 +87,6 @@ export const uploadAndProcessPolicy = async (
   }
 
   try {
-    // Check if bucket exists before attempting to upload
-    const bucketExists = await checkBucketExists();
-    if (!bucketExists) {
-      toast.error("Sistema de armazenamento não está disponível. Por favor, contate o administrador.");
-      setUploadingFile(null);
-      return;
-    }
-
     // Simulate upload progress
     const progressInterval = setInterval(() => {
       setUploadingFile(prev => {
@@ -206,19 +107,6 @@ export const uploadAndProcessPolicy = async (
       // Upload the file to Supabase Storage
       const fileName = `${Date.now()}_${file.name}`;
       const filePath = `${userFolderPath}/${fileName}`;
-      
-      // Check if the user folder exists
-      try {
-        const { error: folderCheckError } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .list(userFolderPath);
-          
-        if (folderCheckError && folderCheckError.message !== "The resource was not found") {
-          console.error("Error checking folder:", folderCheckError);
-        }
-      } catch (folderError) {
-        console.log("Folder doesn't exist yet, will be created with upload");
-      }
       
       // Upload the file
       const { error: uploadError } = await supabase.storage
