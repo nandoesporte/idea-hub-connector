@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,10 @@ import {
   isWhatsAppConfigured,
   sendTestMessage,
   sendTestToSpecificNumber 
-} from "@/lib/whatsgwService";
+} from "@/lib/whatsappService";
 import { Loader2, MessageSquare, AlertCircle, Clock, CheckCircle, Key, Info, ExternalLink, Phone, Zap, ShieldAlert } from "lucide-react";
 import WhatsAppLogs from './WhatsAppLogs';
+import CorsWarningAlert from './CorsWarningAlert';
 
 const AdminWhatsAppSettings = () => {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -25,6 +27,7 @@ const AdminWhatsAppSettings = () => {
   const [apiUrl, setApiUrlState] = useState('');
   const [isApiKeySet, setIsApiKeySet] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
+  const [showCorsWarning, setShowCorsWarning] = useState(false);
   
   useEffect(() => {
     const { apiKey, apiUrl } = getApiKey();
@@ -42,6 +45,12 @@ const AdminWhatsAppSettings = () => {
     const savedRemindBefore = localStorage.getItem('whatsapp_remind_before');
     if (savedRemindBefore) {
       setRemindBefore(Number(savedRemindBefore));
+    }
+    
+    // Check if we've had CORS errors in previous sessions
+    const hasCorsErrors = localStorage.getItem('whatsapp_cors_errors');
+    if (hasCorsErrors === 'true') {
+      setShowCorsWarning(true);
     }
   }, []);
   
@@ -98,10 +107,21 @@ const AdminWhatsAppSettings = () => {
       if (result.success) {
         toast.success("Mensagem de teste enviada com sucesso!");
       } else {
-        toast.error("Falha ao enviar mensagem de teste. Verifique o número e tente novamente.");
+        if (result.error?.includes('403')) {
+          // If we get a 403 error, it's likely a CORS issue
+          localStorage.setItem('whatsapp_cors_errors', 'true');
+          setShowCorsWarning(true);
+          toast.error("Falha ao enviar mensagem de teste. Erro de CORS (403) detectado.");
+        } else {
+          toast.error("Falha ao enviar mensagem de teste. Verifique o número e tente novamente.");
+        }
       }
     } catch (error) {
       console.error("Error sending test message:", error);
+      if (error instanceof Error && error.message.includes('403')) {
+        localStorage.setItem('whatsapp_cors_errors', 'true');
+        setShowCorsWarning(true);
+      }
       toast.error("Erro ao enviar mensagem de teste");
     } finally {
       setIsSending(false);
@@ -122,10 +142,21 @@ const AdminWhatsAppSettings = () => {
       if (result.success) {
         toast.success("Mensagem de teste enviada com sucesso para 44988057213!");
       } else {
-        toast.error("Falha ao enviar mensagem de teste direta. Verifique a conexão e tente novamente.");
+        if (result.error?.includes('403')) {
+          // If we get a 403 error, it's likely a CORS issue
+          localStorage.setItem('whatsapp_cors_errors', 'true');
+          setShowCorsWarning(true);
+          toast.error("Falha ao enviar mensagem de teste. Erro de CORS (403) detectado.");
+        } else {
+          toast.error("Falha ao enviar mensagem de teste direta. Verifique a conexão e tente novamente.");
+        }
       }
     } catch (error) {
       console.error("Error sending direct test message:", error);
+      if (error instanceof Error && error.message.includes('403')) {
+        localStorage.setItem('whatsapp_cors_errors', 'true');
+        setShowCorsWarning(true);
+      }
       toast.error("Erro ao enviar mensagem de teste direta");
     } finally {
       setIsSending(false);
@@ -145,6 +176,8 @@ const AdminWhatsAppSettings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {showCorsWarning && <CorsWarningAlert />}
+
           <div className="space-y-2 pb-4 border-b">
             <Label htmlFor="api-key" className="flex items-center gap-2">
               <Key className="h-4 w-4" />
