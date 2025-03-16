@@ -57,59 +57,52 @@ WHERE NOT EXISTS (
   SELECT 1 FROM storage.buckets WHERE name = 'policy_documents'
 );
 
--- Create storage policies for policy documents
-BEGIN;
-  -- Policy: Allow authenticated users to read their own files
-  DELETE FROM storage.policies WHERE name = 'policy_documents_read';
-  INSERT INTO storage.policies (name, definition)
-  VALUES (
-    'policy_documents_read',
-    jsonb_build_object(
-      'version', '1.0',
-      'statements', jsonb_build_array(
-        jsonb_build_object(
-          'effect', 'allow',
-          'principal', jsonb_build_object('id', 'authenticated'),
-          'action', 'object:read',
-          'resource', 'policy_documents/policies/${auth.uid}/*'
-        )
-      )
-    )
-  );
+-- Create bucket policies for accessing policies
+-- Note: We use a different approach that doesn't rely on the storage.policies table
+DO $$
+BEGIN
+  -- Allow users to read their own policy documents
+  EXECUTE format('
+    CREATE POLICY "Users can read their own policy documents" ON storage.objects
+    FOR SELECT
+    USING (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = ''policies'' AND (storage.foldername(name))[2] = auth.uid()::text);
+  ');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-  -- Policy: Allow authenticated users to upload their own files
-  DELETE FROM storage.policies WHERE name = 'policy_documents_create';
-  INSERT INTO storage.policies (name, definition)
-  VALUES (
-    'policy_documents_create',
-    jsonb_build_object(
-      'version', '1.0',
-      'statements', jsonb_build_array(
-        jsonb_build_object(
-          'effect', 'allow',
-          'principal', jsonb_build_object('id', 'authenticated'),
-          'action', 'object:create',
-          'resource', 'policy_documents/policies/${auth.uid}/*'
-        )
-      )
-    )
-  );
+DO $$
+BEGIN
+  -- Allow users to insert their own policy documents
+  EXECUTE format('
+    CREATE POLICY "Users can insert their own policy documents" ON storage.objects
+    FOR INSERT
+    WITH CHECK (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = ''policies'' AND (storage.foldername(name))[2] = auth.uid()::text);
+  ');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-  -- Policy: Allow authenticated users to delete their own files
-  DELETE FROM storage.policies WHERE name = 'policy_documents_delete';
-  INSERT INTO storage.policies (name, definition)
-  VALUES (
-    'policy_documents_delete',
-    jsonb_build_object(
-      'version', '1.0',
-      'statements', jsonb_build_array(
-        jsonb_build_object(
-          'effect', 'allow',
-          'principal', jsonb_build_object('id', 'authenticated'),
-          'action', 'object:delete',
-          'resource', 'policy_documents/policies/${auth.uid}/*'
-        )
-      )
-    )
-  );
-COMMIT;
+DO $$
+BEGIN
+  -- Allow users to update their own policy documents
+  EXECUTE format('
+    CREATE POLICY "Users can update their own policy documents" ON storage.objects
+    FOR UPDATE
+    USING (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = ''policies'' AND (storage.foldername(name))[2] = auth.uid()::text);
+  ');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  -- Allow users to delete their own policy documents
+  EXECUTE format('
+    CREATE POLICY "Users can delete their own policy documents" ON storage.objects
+    FOR DELETE
+    USING (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = ''policies'' AND (storage.foldername(name))[2] = auth.uid()::text);
+  ');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
