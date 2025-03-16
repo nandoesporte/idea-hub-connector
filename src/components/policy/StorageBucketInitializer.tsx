@@ -22,18 +22,28 @@ const StorageBucketInitializer = ({
     // e assumimos que o upload funcionará
     setConfiguringStorage(true);
     
-    // Verificamos apenas se o usuário está autenticado
-    const { data: authData } = supabase.auth.getSession();
+    const checkAuth = async () => {
+      try {
+        // Properly await the Promise returned by getSession
+        const { data: authData, error } = await supabase.auth.getSession();
+        
+        // Se o usuário estiver autenticado, consideramos o sistema pronto
+        if (authData.session) {
+          setBucketReady(true);
+        } else {
+          toast.error("Usuário não autenticado. Faça login novamente.");
+          setBucketReady(false);
+        }
+      } catch (err) {
+        console.error("Erro ao verificar autenticação:", err);
+        toast.error("Erro ao verificar autenticação");
+        setBucketReady(false);
+      } finally {
+        setConfiguringStorage(false);
+      }
+    };
     
-    // Se o usuário estiver autenticado, consideramos o sistema pronto
-    if (authData) {
-      setBucketReady(true);
-    } else {
-      toast.error("Usuário não autenticado. Faça login novamente.");
-      setBucketReady(false);
-    }
-    
-    setConfiguringStorage(false);
+    checkAuth();
   }, [userId, setBucketReady, setConfiguringStorage]);
 
   return null; // Este é um componente utilitário sem UI
