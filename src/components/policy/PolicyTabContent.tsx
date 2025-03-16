@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, FileUp, Loader2 } from "lucide-react";
@@ -37,6 +37,12 @@ const PolicyTabContent = ({
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const [inputReady, setInputReady] = useState(false);
+
+  // Garantir que a referência esteja pronta após montagem do componente
+  useEffect(() => {
+    setInputReady(true);
+  }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
@@ -109,6 +115,7 @@ const PolicyTabContent = ({
               onChange={handleFileUpload}
               ref={fileInputRef}
               id="policyFileInput"
+              key={inputReady ? "input-ready" : "input-not-ready"}
             />
             <Button 
               onClick={handleUploadButtonClick}
