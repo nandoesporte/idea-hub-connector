@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CategoryItem } from '@/types';
 import { fetchCategories } from '@/lib/categoryService';
-import { Loader2, Cpu, Code, Database, BrainCircuit, Heart, Home, Briefcase, Hospital, Shield, Server, FileText, Zap } from 'lucide-react';
+import { Loader2, Cpu, Code, Database, BrainCircuit, Server, FileText, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CategoryGridProps {
-  type: 'tech' | 'insurance';
+  type: 'tech';
   title: string;
   className?: string;
 }
@@ -18,11 +18,6 @@ const iconMap: Record<string, React.ElementType> = {
   Code,
   Database,
   BrainCircuit,
-  Heart,
-  Home,
-  Briefcase,
-  Hospital,
-  Shield,
   Server,
   FileText,
   Zap

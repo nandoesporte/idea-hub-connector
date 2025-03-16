@@ -2,7 +2,7 @@
 import { supabase } from './supabase';
 import { CategoryItem } from '@/types';
 
-export const fetchCategories = async (type?: 'tech' | 'insurance') => {
+export const fetchCategories = async (type?: 'tech') => {
   let query = supabase.from('categories').select('*');
   
   if (type) {

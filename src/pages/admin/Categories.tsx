@@ -1,12 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from '@/components/ui/card';
 import { 
-  Tabs, TabsContent, TabsList, TabsTrigger 
-} from '@/components/ui/tabs';
-import {
   Table,
   TableBody,
   TableCell,
@@ -17,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { 
   Dialog, DialogContent, DialogDescription, DialogFooter, 
-  DialogHeader, DialogTitle, DialogTrigger
+  DialogHeader, DialogTitle
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -53,7 +51,7 @@ const categoryFormSchema = z.object({
   description: z.string().min(10, { message: 'Descrição deve ter pelo menos 10 caracteres' }),
   icon: z.string().min(1, { message: 'Selecione um ícone' }),
   link: z.string().url({ message: 'Insira uma URL válida (inclua http:// ou https://)' }),
-  type: z.enum(['tech', 'insurance']),
+  type: z.literal('tech'),
   iconColor: z.string().min(1, { message: 'Selecione uma cor' })
 });
 
@@ -65,11 +63,6 @@ const availableIcons = [
   { value: 'Code', label: 'Código (Apps Móveis)' },
   { value: 'Database', label: 'Banco de Dados (Sistemas de Gestão)' },
   { value: 'BrainCircuit', label: 'IA (Soluções com IA)' },
-  { value: 'Heart', label: 'Coração (Seguro de Vida)' },
-  { value: 'Home', label: 'Casa (Seguro Residencial)' },
-  { value: 'Briefcase', label: 'Maleta (Seguro Empresarial)' },
-  { value: 'Hospital', label: 'Hospital (Seguro Saúde)' },
-  { value: 'Shield', label: 'Escudo (Seguro Geral)' },
   { value: 'Server', label: 'Servidor (Cloud)' },
   { value: 'FileText', label: 'Documento (Documentação)' },
   { value: 'Zap', label: 'Raio (Rápido)' }
@@ -88,11 +81,9 @@ const availableColors = [
 ];
 
 const Categories = () => {
-  const [techCategories, setTechCategories] = useState<CategoryItem[]>([]);
-  const [insuranceCategories, setInsuranceCategories] = useState<CategoryItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
-  const [activeTab, setActiveTab] = useState<'tech' | 'insurance'>('tech');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -118,11 +109,8 @@ const Categories = () => {
         setIsLoading(true);
         setError(null);
         
-        const techData = await fetchCategories('tech');
-        const insuranceData = await fetchCategories('insurance');
-        
-        setTechCategories(techData);
-        setInsuranceCategories(insuranceData);
+        const data = await fetchCategories('tech');
+        setCategories(data);
       } catch (err) {
         console.error('Failed to load categories:', err);
         setError('Falha ao carregar categorias. Por favor, tente novamente.');
@@ -150,15 +138,9 @@ const Categories = () => {
           iconColor: values.iconColor
         });
         
-        if (values.type === 'tech') {
-          setTechCategories(techCategories.map(cat => 
-            cat.id === values.id ? updatedCategory : cat
-          ));
-        } else {
-          setInsuranceCategories(insuranceCategories.map(cat => 
-            cat.id === values.id ? updatedCategory : cat
-          ));
-        }
+        setCategories(categories.map(cat => 
+          cat.id === values.id ? updatedCategory : cat
+        ));
         
         toast.success('Categoria atualizada com sucesso!');
       } else {
@@ -172,12 +154,7 @@ const Categories = () => {
           iconColor: values.iconColor
         });
         
-        if (values.type === 'tech') {
-          setTechCategories([...techCategories, newCategory]);
-        } else {
-          setInsuranceCategories([...insuranceCategories, newCategory]);
-        }
-        
+        setCategories([...categories, newCategory]);
         toast.success('Nova categoria adicionada!');
       }
       
@@ -192,17 +169,12 @@ const Categories = () => {
   };
 
   // Function to delete a category
-  const handleDeleteCategory = async (id: string, type: 'tech' | 'insurance') => {
+  const handleDeleteCategory = async (id: string) => {
     try {
       setIsDeleting(id);
       
       await deleteCategory(id);
-      
-      if (type === 'tech') {
-        setTechCategories(techCategories.filter(cat => cat.id !== id));
-      } else {
-        setInsuranceCategories(insuranceCategories.filter(cat => cat.id !== id));
-      }
+      setCategories(categories.filter(cat => cat.id !== id));
       
       toast.success('Categoria removida com sucesso!');
     } catch (err) {
@@ -221,14 +193,14 @@ const Categories = () => {
   };
 
   // Set up new category
-  const handleNewCategory = (type: 'tech' | 'insurance') => {
+  const handleNewCategory = () => {
     setEditingCategory(null);
     form.reset({
       title: '',
       description: '',
       icon: '',
       link: '',
-      type,
+      type: 'tech',
       iconColor: ''
     });
     setIsDialogOpen(true);
@@ -237,9 +209,9 @@ const Categories = () => {
   return (
     <AdminLayout
       title="Gerenciar Categorias"
-      description="Edite, adicione ou remova categorias de tecnologia e seguros."
+      description="Edite, adicione ou remova categorias de soluções tecnológicas."
       actionLabel="Nova Categoria"
-      onAction={() => handleNewCategory(activeTab)}
+      onAction={handleNewCategory}
     >
       {error && (
         <Alert className="mb-4">
@@ -247,156 +219,75 @@ const Categories = () => {
         </Alert>
       )}
       
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'tech' | 'insurance')} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="tech">Soluções Tecnológicas</TabsTrigger>
-          <TabsTrigger value="insurance">Seguros Disponíveis</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="tech" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Soluções Tecnológicas</CardTitle>
-                  <CardDescription>Categorias exibidas na seção de tecnologia do painel do usuário</CardDescription>
-                </div>
-                <Button onClick={() => handleNewCategory('tech')} size="sm">
-                  <Plus className="h-4 w-4 mr-2" /> Nova Categoria
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : techCategories.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhuma categoria encontrada. Clique em "Nova Categoria" para adicionar.
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Ícone</TableHead>
-                      <TableHead>Link</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {techCategories.map((category) => (
-                      <TableRow key={category.id}>
-                        <TableCell className="font-medium">{category.title}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{category.description}</TableCell>
-                        <TableCell>{category.icon}</TableCell>
-                        <TableCell className="max-w-[150px] truncate">{category.link}</TableCell>
-                        <TableCell className="text-right flex justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 w-8 p-0" 
-                            onClick={() => handleEditCategory(category)}
-                          >
-                            <PencilIcon className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700" 
-                            onClick={() => handleDeleteCategory(category.id, 'tech')}
-                            disabled={isDeleting === category.id}
-                          >
-                            {isDeleting === category.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="insurance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Seguros Disponíveis</CardTitle>
-                  <CardDescription>Categorias exibidas na seção de seguros do painel do usuário</CardDescription>
-                </div>
-                <Button onClick={() => handleNewCategory('insurance')} size="sm">
-                  <Plus className="h-4 w-4 mr-2" /> Nova Categoria
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : insuranceCategories.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhuma categoria encontrada. Clique em "Nova Categoria" para adicionar.
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Ícone</TableHead>
-                      <TableHead>Link</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {insuranceCategories.map((category) => (
-                      <TableRow key={category.id}>
-                        <TableCell className="font-medium">{category.title}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{category.description}</TableCell>
-                        <TableCell>{category.icon}</TableCell>
-                        <TableCell className="max-w-[150px] truncate">{category.link}</TableCell>
-                        <TableCell className="text-right flex justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 w-8 p-0" 
-                            onClick={() => handleEditCategory(category)}
-                          >
-                            <PencilIcon className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700" 
-                            onClick={() => handleDeleteCategory(category.id, 'insurance')}
-                            disabled={isDeleting === category.id}
-                          >
-                            {isDeleting === category.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Soluções Tecnológicas</CardTitle>
+              <CardDescription>Categorias exibidas na seção de tecnologia do painel do usuário</CardDescription>
+            </div>
+            <Button onClick={handleNewCategory} size="sm">
+              <Plus className="h-4 w-4 mr-2" /> Nova Categoria
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhuma categoria encontrada. Clique em "Nova Categoria" para adicionar.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Título</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Ícone</TableHead>
+                  <TableHead>Link</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {categories.map((category) => (
+                  <TableRow key={category.id}>
+                    <TableCell className="font-medium">{category.title}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{category.description}</TableCell>
+                    <TableCell>{category.icon}</TableCell>
+                    <TableCell className="max-w-[150px] truncate">{category.link}</TableCell>
+                    <TableCell className="text-right flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 w-8 p-0" 
+                        onClick={() => handleEditCategory(category)}
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700" 
+                        onClick={() => handleDeleteCategory(category.id)}
+                        disabled={isDeleting === category.id}
+                      >
+                        {isDeleting === category.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
       
       {/* Form Dialog for adding/editing categories */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -413,31 +304,6 @@ const Categories = () => {
             <form onSubmit={form.handleSubmit(handleAddCategory)} className="space-y-4">
               {/* Hidden ID field for edits */}
               <input type="hidden" {...form.register('id')} />
-              
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Categoria</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="tech">Solução Tecnológica</SelectItem>
-                        <SelectItem value="insurance">Seguro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               
               <FormField
                 control={form.control}
