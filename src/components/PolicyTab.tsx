@@ -72,7 +72,6 @@ const PolicyTab = () => {
 
     setUploadingPolicy(true);
     try {
-      console.log(`Uploading and analyzing policy document: ${file.name}`);
       const result = await uploadAndAnalyzePolicy(file);
       if (result) {
         await loadPolicies();
@@ -87,7 +86,7 @@ const PolicyTab = () => {
       if (errorMessage.includes("does not exist")) {
         setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
       } else {
-        toast.error(`Erro ao processar arquivo de apólice: ${errorMessage}`);
+        toast.error("Erro ao processar arquivo de apólice. Verifique os logs.");
       }
     } finally {
       setUploadingPolicy(false);
@@ -130,14 +129,6 @@ const PolicyTab = () => {
     } else {
       return <Badge className="bg-green-500">Ativa</Badge>;
     }
-  };
-
-  const formatDateRange = (startDate: Date | undefined, endDate: Date | undefined) => {
-    if (!startDate || !endDate) return "N/A";
-    
-    const formattedStart = format(new Date(startDate), "dd/MM/yyyy");
-    const formattedEnd = format(new Date(endDate), "dd/MM/yyyy");
-    return `${formattedStart} a ${formattedEnd}`;
   };
 
   const isNearExpiry = (date: Date | undefined) => {
@@ -253,6 +244,25 @@ const PolicyTab = () => {
                   Limpar busca
                 </Button>
               )}
+              {!databaseError && (
+                <Button 
+                  onClick={handleUploadPolicy} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white ml-2"
+                  disabled={uploadingPolicy}
+                >
+                  {uploadingPolicy ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <FileUp className="h-4 w-4 mr-2" /> 
+                      Enviar apólice para análise
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           ) : (
             <div className="border rounded-md">
@@ -278,10 +288,7 @@ const PolicyTab = () => {
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>
-                            {formatDateRange(
-                              policy.start_date ? new Date(policy.start_date) : undefined, 
-                              policy.end_date ? new Date(policy.end_date) : undefined
-                            )}
+                            {policy.start_date ? format(new Date(policy.start_date), "dd/MM/yyyy") : "N/A"} - {policy.end_date ? format(new Date(policy.end_date), "dd/MM/yyyy") : "N/A"}
                           </span>
                           {policy.end_date && isNearExpiry(new Date(policy.end_date)) && (
                             <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
