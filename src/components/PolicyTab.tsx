@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -51,7 +50,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Card, CardContent } from '@/components/ui/card';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   Eye, 
   FileText, 
@@ -74,7 +73,7 @@ const PolicyTab = () => {
   const [expiryDateOpen, setExpiryDateOpen] = useState(false);
   const [fileName, setFileName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
 
   const { data: policies = [], isLoading } = useQuery({
     queryKey: ['policies', user?.id],
@@ -93,13 +92,10 @@ const PolicyTab = () => {
       
       setIsAnalyzing(true);
       try {
-        // Upload the document
         const fileUrl = await uploadPolicyDocument(selectedFile, user.id);
         
-        // Analyze the uploaded document
         const analysisResult = await analyzePolicyDocument(fileUrl);
         
-        // Prepare policy preview with analysis results
         setPolicyPreview({
           userId: user.id,
           policyNumber: analysisResult.policyNumber,
@@ -237,7 +233,6 @@ const PolicyTab = () => {
                 <div className="flex flex-col space-y-2">
                   <Label htmlFor="policyFile">Arquivo da Apólice (PDF)</Label>
                   
-                  {/* Mobile-optimized file upload UI */}
                   <div className="flex flex-col gap-2">
                     <div className={`border-2 border-dashed rounded-lg p-4 ${selectedFile ? 'border-green-500 bg-green-50' : 'border-gray-300'} transition-all flex flex-col items-center justify-center gap-2`}>
                       <input
