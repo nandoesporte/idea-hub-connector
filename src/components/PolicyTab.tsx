@@ -227,7 +227,7 @@ const PolicyTab = () => {
                             {format(policy.startDate, "dd/MM/yyyy")} - {format(policy.endDate, "dd/MM/yyyy")}
                           </span>
                           {isNearExpiry(policy.endDate) && (
-                            <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" title="Próximo ao vencimento" />
+                            <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
                           )}
                         </div>
                       </TableCell>
@@ -239,7 +239,7 @@ const PolicyTab = () => {
                             variant="outline" 
                             size="icon" 
                             className="h-7 w-7"
-                            title="Baixar documento"
+                            aria-label="Baixar documento"
                           >
                             <Download className="h-3.5 w-3.5" />
                           </Button>
@@ -247,7 +247,7 @@ const PolicyTab = () => {
                             variant="outline" 
                             size="icon" 
                             className="h-7 w-7 text-destructive hover:text-destructive"
-                            title="Remover"
+                            aria-label="Remover"
                             onClick={() => handleDeletePolicy(policy.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
