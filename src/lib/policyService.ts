@@ -8,36 +8,64 @@ export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy
   try {
     console.log('Fetching policies for user:', userId);
     
-    const { data, error } = await supabase
+    // Check if table exists before querying
+    const { data: tableExists, error: tableCheckError } = await supabase
       .from('insurance_policies')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .select('count', { count: 'exact', head: true });
 
-    if (error) {
-      console.error('Error fetching policies:', error);
+    if (tableCheckError) {
+      console.error('Error checking if table exists:', tableCheckError);
+      // Create table if it doesn't exist
+      if (tableCheckError.message.includes('does not exist')) {
+        toast.error('Tabela de apólices não configurada. Contate o administrador.');
+        return [];
+      }
+      throw tableCheckError;
+    }
+    
+    // Check if user_id column exists
+    try {
+      const { data, error } = await supabase
+        .from('insurance_policies')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching policies:', error);
+        
+        // Handle the specific case of user_id column not existing
+        if (error.message.includes('user_id does not exist')) {
+          toast.error('Sistema de apólices não está configurado corretamente. Contate o administrador.');
+          return [];
+        }
+        
+        throw error;
+      }
+
+      if (!data) return [];
+
+      return data.map(policy => ({
+        ...policy,
+        id: policy.id,
+        userId: policy.user_id,
+        policyNumber: policy.policy_number,
+        customerName: policy.customer_name,
+        customerPhone: policy.customer_phone,
+        issueDate: new Date(policy.issue_date),
+        expiryDate: new Date(policy.expiry_date),
+        createdAt: new Date(policy.created_at),
+        updatedAt: new Date(policy.updated_at),
+        attachmentUrl: policy.attachment_url,
+        coverageAmount: policy.coverage_amount,
+        premium: policy.premium,
+        reminderSent: policy.reminder_sent,
+        reminderDate: policy.reminder_date ? new Date(policy.reminder_date) : undefined
+      })) as InsurancePolicy[];
+    } catch (error) {
+      console.error('Error in policy query:', error);
       throw error;
     }
-
-    if (!data) return [];
-
-    return data.map(policy => ({
-      ...policy,
-      id: policy.id,
-      userId: policy.user_id,
-      policyNumber: policy.policy_number,
-      customerName: policy.customer_name,
-      customerPhone: policy.customer_phone,
-      issueDate: new Date(policy.issue_date),
-      expiryDate: new Date(policy.expiry_date),
-      createdAt: new Date(policy.created_at),
-      updatedAt: new Date(policy.updated_at),
-      attachmentUrl: policy.attachment_url,
-      coverageAmount: policy.coverage_amount,
-      premium: policy.premium,
-      reminderSent: policy.reminder_sent,
-      reminderDate: policy.reminder_date ? new Date(policy.reminder_date) : undefined
-    })) as InsurancePolicy[];
   } catch (error) {
     console.error('Error in fetchUserPolicies:', error);
     throw error;
@@ -47,6 +75,25 @@ export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy
 export const uploadPolicyDocument = async (file: File, userId: string): Promise<string> => {
   try {
     console.log('Uploading policy document for user:', userId);
+    
+    // Check if documents bucket exists, try to create it if not
+    const { data: buckets, error: bucketsError } = await supabase
+      .storage
+      .listBuckets();
+      
+    if (bucketsError) {
+      console.error('Error listing buckets:', bucketsError);
+      toast.error('Erro no sistema de armazenamento. Contate o administrador.');
+      throw bucketsError;
+    }
+    
+    const documentsBucketExists = buckets.some(bucket => bucket.name === 'documents');
+    
+    if (!documentsBucketExists) {
+      console.log('Documents bucket does not exist, attempting to create it');
+      toast.error('O bucket de documentos não existe. Contate o administrador para configurar o armazenamento.');
+      throw new Error('Storage bucket "documents" does not exist');
+    }
     
     // Generate a unique file name to avoid collisions
     const fileExt = file.name.split('.').pop();
@@ -122,9 +169,22 @@ export const analyzePolicyDocument = async (url: string): Promise<AnalyzeResult>
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Error response from analyze-policy:', errorText);
-      throw new Error(`Error analyzing policy: ${response.statusText}. Details: ${errorText}`);
+      let errorDetails;
+      try {
+        errorDetails = await response.json();
+      } catch (e) {
+        errorDetails = await response.text();
+      }
+      
+      console.error('Error response from analyze-policy:', errorDetails);
+      
+      let errorMessage = 'Não foi possível analisar o documento.';
+      if (typeof errorDetails === 'object' && errorDetails.error) {
+        errorMessage = errorDetails.error;
+      }
+      
+      toast.error(errorMessage);
+      throw new Error(`Error analyzing policy: ${response.statusText}. Details: ${JSON.stringify(errorDetails)}`);
     }
 
     const result = await response.json();

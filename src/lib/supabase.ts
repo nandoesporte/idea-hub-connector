@@ -8,49 +8,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // For debugging purposes - log connection info but not keys
 console.log('Initializing Supabase client with URL:', supabaseUrl);
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    storageKey: 'supabase-auth-token',
-    storage: {
-      getItem: (key) => {
-        try {
-          return JSON.parse(localStorage.getItem(key) || '');
-        } catch (error) {
-          console.error('Error getting item from localStorage:', error);
-          return null;
-        }
-      },
-      setItem: (key, value) => {
-        try {
-          localStorage.setItem(key, JSON.stringify(value));
-        } catch (error) {
-          console.error('Error setting item in localStorage:', error);
-          toast.error('Erro ao salvar dados da sessão. Verifique o armazenamento do navegador.');
-        }
-      },
-      removeItem: (key) => {
-        try {
-          localStorage.removeItem(key);
-        } catch (error) {
-          console.error('Error removing item from localStorage:', error);
-        }
-      },
-    },
-  },
-  global: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-  realtime: {
-    timeout: 30000,
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-});
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Test connection
 supabase.auth.getSession().then(({ data, error }) => {
