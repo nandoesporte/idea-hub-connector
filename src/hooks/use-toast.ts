@@ -7,6 +7,8 @@ export { toast };
 // Custom hook for toast functionality
 export const useToast = () => {
   return {
-    toast
+    toast,
+    // Adding empty toasts array for compatibility with older shadcn/ui versions
+    toasts: []
   };
 };

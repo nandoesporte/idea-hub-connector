@@ -5,11 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   FileText, 
-  AlertTriangle, 
   Search,
   FileUp,
-  Loader2,
-  ServerCog
+  Loader2
 } from "lucide-react";
 import { PolicyFile } from "@/types";
 import { useUser } from "@/contexts/UserContext";
@@ -21,8 +19,6 @@ import FileUploadProgress from './policy/FileUploadProgress';
 import PolicySettings from './policy/PolicySettings';
 import { createStorageBucket, checkBucketExists, fetchPolicies, uploadAndProcessPolicy } from '@/lib/policyService';
 
-const STORAGE_BUCKET = 'policy_documents';
-
 const PolicyTab = () => {
   const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
@@ -30,21 +26,37 @@ const PolicyTab = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const [bucketReady, setBucketReady] = useState(false);
-  const [creatingBucket, setCreatingBucket] = useState(false);
+  const [configuringStorage, setConfiguringStorage] = useState(false);
 
-  // Check if bucket exists
+  // Check if bucket exists and create it if not
   useEffect(() => {
-    const checkBucket = async () => {
-      const exists = await checkBucketExists();
-      setBucketReady(exists);
-      
-      if (!exists) {
-        console.log("Policy documents bucket does not exist. Please contact administrator.");
+    const initializeStorage = async () => {
+      setConfiguringStorage(true);
+      try {
+        // Check if bucket exists
+        const exists = await checkBucketExists();
+        
+        if (!exists) {
+          // Create bucket if it doesn't exist
+          const success = await createStorageBucket();
+          setBucketReady(success);
+          if (!success) {
+            console.error("Failed to automatically create storage bucket");
+          }
+        } else {
+          setBucketReady(true);
+        }
+      } catch (error) {
+        console.error("Error checking/creating storage bucket:", error);
+      } finally {
+        setConfiguringStorage(false);
       }
     };
     
-    checkBucket();
-  }, []);
+    if (user?.id) {
+      initializeStorage();
+    }
+  }, [user?.id]);
 
   // Use React Query to fetch policies
   const { data: policies = [], isLoading } = useQuery({
@@ -52,29 +64,6 @@ const PolicyTab = () => {
     queryFn: async () => fetchPolicies(user?.id || ''),
     enabled: !!user
   });
-
-  const handleCreateBucket = async () => {
-    if (!user?.id) {
-      toast.error("Você precisa estar autenticado para esta ação");
-      return;
-    }
-
-    setCreatingBucket(true);
-    try {
-      const success = await createStorageBucket();
-      if (success) {
-        setBucketReady(true);
-        toast.success("Sistema de armazenamento configurado com sucesso!");
-      } else {
-        toast.error("Não foi possível configurar o sistema de armazenamento");
-      }
-    } catch (error) {
-      console.error("Error creating bucket:", error);
-      toast.error("Erro ao criar o bucket de armazenamento");
-    } finally {
-      setCreatingBucket(false);
-    }
-  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
@@ -86,7 +75,7 @@ const PolicyTab = () => {
     }
 
     if (!bucketReady) {
-      toast.error("Sistema de armazenamento não está disponível. Configure o sistema primeiro.");
+      toast.error("Sistema de armazenamento não está disponível. Tente novamente em alguns instantes.");
       return;
     }
 
@@ -130,36 +119,6 @@ const PolicyTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!bucketReady && (
-            <div className="bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-3 rounded mb-4 flex items-start">
-              <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-medium">Sistema de armazenamento não configurado</p>
-                <p className="text-sm">O bucket de armazenamento não está disponível. Clique no botão abaixo para configurar o sistema de armazenamento.</p>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2 bg-white hover:bg-white/90" 
-                  onClick={handleCreateBucket}
-                  disabled={creatingBucket}
-                >
-                  {creatingBucket ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> 
-                      Configurando...
-                    </>
-                  ) : (
-                    <>
-                      <ServerCog className="h-4 w-4 mr-2" /> 
-                      Configurar Sistema de Armazenamento
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-          
           <div className="flex items-center space-x-2 mb-4">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
@@ -170,7 +129,7 @@ const PolicyTab = () => {
             />
           </div>
           
-          {isLoading ? (
+          {isLoading || configuringStorage ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
@@ -197,11 +156,20 @@ const PolicyTab = () => {
                 />
                 <Button 
                   onClick={handleUploadButtonClick}
-                  disabled={uploadingFile !== null || !bucketReady}
+                  disabled={uploadingFile !== null || !bucketReady || configuringStorage}
                   className="w-full sm:w-auto"
                 >
-                  <FileUp className="h-4 w-4 mr-2" /> 
-                  Fazer upload de apólice em PDF
+                  {configuringStorage ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Configurando sistema...
+                    </>
+                  ) : (
+                    <>
+                      <FileUp className="h-4 w-4 mr-2" /> 
+                      Fazer upload de apólice em PDF
+                    </>
+                  )}
                 </Button>
               </div>
             </>

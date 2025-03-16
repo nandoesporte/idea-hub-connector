@@ -177,11 +177,16 @@ export const uploadAndProcessPolicy = async (
     return;
   }
 
-  const bucketExists = await checkBucketExists();
+  // Check if bucket exists and create it if it doesn't
+  let bucketExists = await checkBucketExists();
   if (!bucketExists) {
-    toast.error("Sistema de armazenamento não está disponível");
-    setUploadingFile(null);
-    return;
+    // Try to create the bucket
+    bucketExists = await createStorageBucket();
+    if (!bucketExists) {
+      toast.error("Não foi possível configurar o sistema de armazenamento");
+      setUploadingFile(null);
+      return;
+    }
   }
 
   try {
