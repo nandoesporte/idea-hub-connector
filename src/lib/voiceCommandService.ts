@@ -457,10 +457,11 @@ function simulateGpt4Response(transcript: string): any {
   
   const phoneRegex = /(\d{2})?[\s-]?(\d{8,9})|(\d{2})?[\s-]?(\d{4,5})[\s-]?(\d{4})/;
   const phoneMatch = cleanedTranscript.match(phoneRegex);
+  let extractedContactPhone = '';
   if (phoneMatch) {
-    const contactPhone = phoneMatch[0].replace(/\D/g, '');
-    if (contactPhone.length === 8 || contactPhone.length === 9) {
-      contactPhone = '11' + contactPhone;
+    extractedContactPhone = phoneMatch[0].replace(/\D/g, '');
+    if (extractedContactPhone.length === 8 || extractedContactPhone.length === 9) {
+      extractedContactPhone = '11' + extractedContactPhone;
     }
   }
   
@@ -473,7 +474,7 @@ function simulateGpt4Response(transcript: string): any {
     timeInfo,
     duration,
     type,
-    contactPhone,
+    contactPhone: extractedContactPhone,
     reminderScheduledFor
   };
 }
