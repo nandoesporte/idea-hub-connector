@@ -80,6 +80,13 @@ export interface PortfolioItem {
   link?: string;
 }
 
+export interface PolicyFile {
+  file: File;
+  progress: number;
+  status: 'pending' | 'processing' | 'success' | 'error';
+  error?: string;
+}
+
 export interface VoiceCommandEvent {
   id: string;
   userId: string;

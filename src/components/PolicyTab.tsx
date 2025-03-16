@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { 
   FileText, 
   Calendar, 
@@ -15,10 +16,13 @@ import {
   Clock, 
   Upload,
   Trash2,
-  Search
+  Search,
+  FileUp,
+  Loader2
 } from "lucide-react";
 import { format, addDays, isBefore, isAfter } from "date-fns";
 import { toast } from "sonner";
+import { PolicyFile } from "@/types";
 
 interface Policy {
   id: string;
@@ -38,6 +42,8 @@ const PolicyTab = () => {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Mock data - in a real app, this would be fetched from an API
@@ -83,34 +89,106 @@ const PolicyTab = () => {
     setPolicies(mockPolicies);
   }, []);
 
-  const handleProcessWhatsAppMessage = async () => {
-    setLoading(true);
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
     
-    try {
-      // Simulate API processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    const file = event.target.files[0];
+    if (file.type !== 'application/pdf') {
+      toast.error("Por favor, selecione um arquivo PDF");
+      return;
+    }
+
+    setUploadingFile({
+      file,
+      progress: 0,
+      status: 'pending'
+    });
+
+    // Simulate upload progress
+    const interval = setInterval(() => {
+      setUploadingFile(prev => {
+        if (!prev) return null;
+        
+        const newProgress = prev.progress + 10;
+        if (newProgress >= 100) {
+          clearInterval(interval);
+          return {
+            ...prev,
+            progress: 100,
+            status: 'processing'
+          };
+        }
+        
+        return {
+          ...prev,
+          progress: newProgress
+        };
+      });
+    }, 300);
+
+    // After "upload" complete, simulate GPT-4 processing
+    setTimeout(() => {
+      clearInterval(interval);
+      setUploadingFile(prev => prev ? { ...prev, status: 'processing', progress: 100 } : null);
       
-      // Add a new policy
+      // Simulate GPT-4 analysis
+      setTimeout(() => {
+        analyzePolicy(file);
+      }, 2000);
+    }, 3000);
+  };
+
+  const analyzePolicy = (file: File) => {
+    try {
+      // Here we would normally send the file to an API for GPT-4 analysis
+      // For now, we'll simulate a response with random data
+      
+      const randomInsurers = ["Seguros Brasil", "Proteção Total", "Seguradora Nacional", "Confiança Seguros", "Seguro Premium"];
+      const randomCustomers = ["Roberto Santos", "Ana Pereira", "Marcos Oliveira", "Carolina Lima", "Fernando Costa"];
+      
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 30));
+      
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      
+      const premiumValues = ["R$ 1.200,00", "R$ 1.750,00", "R$ 2.300,00", "R$ 3.450,00", "R$ 4.100,00"];
+      
       const newPolicy: Policy = {
         id: Date.now().toString(),
-        policyNumber: `AP-2024-${Math.floor(Math.random() * 900) + 100}`,
-        insurer: "Nova Seguradora",
-        customer: "Roberto Campos",
-        startDate: new Date(),
-        endDate: addDays(new Date(), 365),
-        coverageAmount: "R$ 150.000,00",
-        premiumValue: "R$ 2.800,00",
+        policyNumber: `AP-${new Date().getFullYear()}-${Math.floor(Math.random() * 900) + 100}`,
+        insurer: randomInsurers[Math.floor(Math.random() * randomInsurers.length)],
+        customer: randomCustomers[Math.floor(Math.random() * randomCustomers.length)],
+        startDate,
+        endDate,
+        coverageAmount: `R$ ${(Math.floor(Math.random() * 900) + 100)}.000,00`,
+        premiumValue: premiumValues[Math.floor(Math.random() * premiumValues.length)],
         status: "active",
-        fileName: "apolice_roberto_campos.pdf"
+        fileName: file.name
       };
       
       setPolicies(prev => [newPolicy, ...prev]);
-      toast.success("Nova apólice recebida e processada com sucesso!");
+      setUploadingFile(prev => prev ? { ...prev, status: 'success' } : null);
+      toast.success("Apólice processada com sucesso!");
+      
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      
+      // Reset upload state after a delay
+      setTimeout(() => {
+        setUploadingFile(null);
+      }, 2000);
+      
     } catch (error) {
-      console.error("Error processing WhatsApp message:", error);
-      toast.error("Erro ao processar mensagem do WhatsApp");
-    } finally {
-      setLoading(false);
+      console.error("Error analyzing policy:", error);
+      setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao processar o arquivo' } : null);
+      toast.error("Erro ao processar a apólice");
+      
+      setTimeout(() => {
+        setUploadingFile(null);
+      }, 3000);
     }
   };
 
@@ -155,20 +233,6 @@ const PolicyTab = () => {
               <FileText className="h-5 w-5 text-primary" />
               <CardTitle>Apólices de Seguro</CardTitle>
             </div>
-            <Button 
-              onClick={handleProcessWhatsAppMessage} 
-              disabled={loading}
-              size="sm"
-            >
-              {loading ? (
-                <>Processando...</>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" /> 
-                  Simular Recebimento
-                </>
-              )}
-            </Button>
           </div>
           <CardDescription>
             Gerencie apólices de seguro recebidas via WhatsApp
@@ -199,66 +263,186 @@ const PolicyTab = () => {
                   Limpar busca
                 </Button>
               )}
+              
+              <div className="mt-6">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  ref={fileInputRef}
+                />
+                <Button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingFile !== null}
+                  className="w-full sm:w-auto"
+                >
+                  <FileUp className="h-4 w-4 mr-2" /> 
+                  Fazer upload de apólice em PDF
+                </Button>
+              </div>
+              
+              {uploadingFile && (
+                <div className="mt-4 max-w-md mx-auto bg-background border rounded-md p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium truncate max-w-[200px]">
+                      {uploadingFile.file.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {uploadingFile.status === 'pending' && 'Enviando...'}
+                      {uploadingFile.status === 'processing' && 'Analisando documento...'}
+                      {uploadingFile.status === 'success' && 'Concluído!'}
+                      {uploadingFile.status === 'error' && 'Erro!'}
+                    </span>
+                  </div>
+                  
+                  <Progress value={uploadingFile.progress} className="h-2 mb-2" />
+                  
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    {uploadingFile.status === 'pending' && (
+                      <div className="flex items-center">
+                        <Upload className="h-3.5 w-3.5 mr-1" /> Enviando arquivo...
+                      </div>
+                    )}
+                    {uploadingFile.status === 'processing' && (
+                      <div className="flex items-center">
+                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Analisando com GPT-4...
+                      </div>
+                    )}
+                    {uploadingFile.status === 'success' && (
+                      <div className="flex items-center text-green-500">
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Análise concluída com sucesso!
+                      </div>
+                    )}
+                    {uploadingFile.status === 'error' && (
+                      <div className="flex items-center text-destructive">
+                        <AlertTriangle className="h-3.5 w-3.5 mr-1" /> {uploadingFile.error || "Erro ao processar o arquivo"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Número da Apólice</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Seguradora</TableHead>
-                    <TableHead>Vigência</TableHead>
-                    <TableHead>Valor do Prêmio</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPolicies.map((policy) => (
-                    <TableRow key={policy.id}>
-                      <TableCell className="font-medium">{policy.policyNumber}</TableCell>
-                      <TableCell>{policy.customer}</TableCell>
-                      <TableCell>{policy.insurer}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span>
-                            {format(policy.startDate, "dd/MM/yyyy")} - {format(policy.endDate, "dd/MM/yyyy")}
-                          </span>
-                          {isNearExpiry(policy.endDate) && (
-                            <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{policy.premiumValue}</TableCell>
-                      <TableCell>{getStatusBadge(policy.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-7 w-7"
-                            aria-label="Baixar documento"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            aria-label="Remover"
-                            onClick={() => handleDeletePolicy(policy.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
+            <>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Número da Apólice</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Seguradora</TableHead>
+                      <TableHead>Vigência</TableHead>
+                      <TableHead>Valor do Prêmio</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPolicies.map((policy) => (
+                      <TableRow key={policy.id}>
+                        <TableCell className="font-medium">{policy.policyNumber}</TableCell>
+                        <TableCell>{policy.customer}</TableCell>
+                        <TableCell>{policy.insurer}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>
+                              {format(policy.startDate, "dd/MM/yyyy")} - {format(policy.endDate, "dd/MM/yyyy")}
+                            </span>
+                            {isNearExpiry(policy.endDate) && (
+                              <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{policy.premiumValue}</TableCell>
+                        <TableCell>{getStatusBadge(policy.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-7 w-7"
+                              aria-label="Baixar documento"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              aria-label="Remover"
+                              onClick={() => handleDeletePolicy(policy.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              <div className="flex justify-center mt-4">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  ref={fileInputRef}
+                />
+                <Button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingFile !== null}
+                  className="w-full sm:w-auto"
+                >
+                  <FileUp className="h-4 w-4 mr-2" /> 
+                  Fazer upload de apólice em PDF
+                </Button>
+              </div>
+              
+              {uploadingFile && (
+                <div className="mt-4 max-w-md mx-auto bg-background border rounded-md p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium truncate max-w-[200px]">
+                      {uploadingFile.file.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {uploadingFile.status === 'pending' && 'Enviando...'}
+                      {uploadingFile.status === 'processing' && 'Analisando documento...'}
+                      {uploadingFile.status === 'success' && 'Concluído!'}
+                      {uploadingFile.status === 'error' && 'Erro!'}
+                    </span>
+                  </div>
+                  
+                  <Progress value={uploadingFile.progress} className="h-2 mb-2" />
+                  
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    {uploadingFile.status === 'pending' && (
+                      <div className="flex items-center">
+                        <Upload className="h-3.5 w-3.5 mr-1" /> Enviando arquivo...
+                      </div>
+                    )}
+                    {uploadingFile.status === 'processing' && (
+                      <div className="flex items-center">
+                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Analisando com GPT-4...
+                      </div>
+                    )}
+                    {uploadingFile.status === 'success' && (
+                      <div className="flex items-center text-green-500">
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Análise concluída com sucesso!
+                      </div>
+                    )}
+                    {uploadingFile.status === 'error' && (
+                      <div className="flex items-center text-destructive">
+                        <AlertTriangle className="h-3.5 w-3.5 mr-1" /> {uploadingFile.error || "Erro ao processar o arquivo"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
           
           <div className="bg-muted/30 rounded-lg p-4 mt-6">
