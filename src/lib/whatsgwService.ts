@@ -243,6 +243,117 @@ export const simulateWhatsAppPolicyMessage = async (): Promise<any> => {
   }
 };
 
+// New function to upload, analyze with GPT-4, and save policy
+export const uploadAndAnalyzePolicy = async (file: File): Promise<any> => {
+  try {
+    console.log("Uploading and analyzing policy document:", file.name);
+    
+    // Step 1: Upload the file to Supabase Storage
+    const fileName = `${Date.now()}_${file.name}`;
+    const filePath = `policy_documents/${fileName}`;
+    
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('documents')
+      .upload(filePath, file);
+      
+    if (uploadError) {
+      console.error("Error uploading file:", uploadError);
+      throw uploadError;
+    }
+    
+    // Get the public URL for the uploaded file
+    const { data: urlData } = await supabase
+      .storage
+      .from('documents')
+      .getPublicUrl(filePath);
+      
+    const documentUrl = urlData?.publicUrl;
+    
+    // Step 2: Mock GPT-4 analysis (in a real implementation, this would call an AI endpoint)
+    // This simulates extracting policy information from the document
+    const policyData = await mockGpt4Analysis(file.name, documentUrl);
+    
+    // Step 3: Save the analyzed policy data to the database
+    const { data: insertData, error: insertError } = await supabase
+      .from('insurance_policies')
+      .insert([policyData])
+      .select();
+      
+    if (insertError) {
+      console.error("Error inserting policy data:", insertError);
+      throw insertError;
+    }
+    
+    return insertData?.[0] || null;
+  } catch (error) {
+    console.error("Error in uploadAndAnalyzePolicy:", error);
+    throw error;
+  }
+};
+
+// Mock function to simulate GPT-4 analysis of policy documents
+const mockGpt4Analysis = async (fileName: string, documentUrl: string): Promise<any> => {
+  console.log("Analyzing document with GPT-4:", fileName);
+  
+  // Simulate analysis delay
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  // Generate realistic policy data based on filename patterns
+  const isAuto = fileName.toLowerCase().includes('auto') || fileName.toLowerCase().includes('car');
+  const isHome = fileName.toLowerCase().includes('home') || fileName.toLowerCase().includes('house');
+  const isLife = fileName.toLowerCase().includes('life') || fileName.toLowerCase().includes('vida');
+  const isHealth = fileName.toLowerCase().includes('health') || fileName.toLowerCase().includes('saude');
+  
+  // Create policy number with appropriate prefix
+  let policyPrefix = 'GEN'; // General
+  let insurerName = "Seguradora Brasil";
+  let premium = Math.floor(Math.random() * 1000) + 500;
+  
+  if (isAuto) {
+    policyPrefix = 'AUTO';
+    insurerName = "Auto Seguro Nacional";
+    premium = Math.floor(Math.random() * 2000) + 1000;
+  } else if (isHome) {
+    policyPrefix = 'HOME';
+    insurerName = "Proteção Residencial";
+    premium = Math.floor(Math.random() * 800) + 400;
+  } else if (isLife) {
+    policyPrefix = 'LIFE';
+    insurerName = "Vida Segura";
+    premium = Math.floor(Math.random() * 500) + 200;
+  } else if (isHealth) {
+    policyPrefix = 'HLTH';
+    insurerName = "Saúde Total";
+    premium = Math.floor(Math.random() * 1500) + 800;
+  }
+  
+  const policyNumber = `${policyPrefix}-${Math.floor(Math.random() * 100000)}`;
+  
+  // Generate random customer name
+  const firstNames = ["João", "Maria", "Pedro", "Ana", "Carlos", "Lúcia", "Fernando", "Márcia"];
+  const lastNames = ["Silva", "Santos", "Oliveira", "Souza", "Pereira", "Costa", "Rodrigues"];
+  const customerName = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+  
+  // Generate policy dates
+  const startDate = new Date();
+  const endDate = new Date();
+  endDate.setFullYear(endDate.getFullYear() + 1); // 1 year policy
+  
+  return {
+    policy_number: policyNumber,
+    customer: customerName,
+    insurer: insurerName,
+    start_date: startDate,
+    end_date: endDate,
+    premium_amount: premium,
+    document_url: documentUrl,
+    status: "active",
+    processed_at: new Date(),
+    whatsapp_message_id: null
+  };
+};
+
 export const registerWhatsAppWebhook = (webhookUrl: string): void => {
   localStorage.setItem('whatsgw_webhook_url', webhookUrl);
   console.log('Saved webhook URL:', webhookUrl);
@@ -283,5 +394,6 @@ export default {
   getAllPolicies,
   simulateWhatsAppPolicyMessage,
   registerWhatsAppWebhook,
-  deletePolicy
+  deletePolicy,
+  uploadAndAnalyzePolicy
 };

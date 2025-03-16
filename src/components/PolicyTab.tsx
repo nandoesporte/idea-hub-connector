@@ -18,16 +18,17 @@ import {
   Trash2,
   Search,
   RefreshCw,
-  Database
+  Database,
+  FileUp
 } from "lucide-react";
 import { format, addDays, isBefore, isAfter } from "date-fns";
 import { toast } from "sonner";
 import { PolicyData } from "@/types";
 import { 
   getAllPolicies, 
-  simulateWhatsAppPolicyMessage, 
   registerWhatsAppWebhook,
-  deletePolicy
+  deletePolicy,
+  uploadAndAnalyzePolicy
 } from "@/lib/whatsgwService";
 
 const PolicyTab = () => {
@@ -36,6 +37,8 @@ const PolicyTab = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [databaseError, setDatabaseError] = useState<string | null>(null);
+  const [uploadingPolicy, setUploadingPolicy] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Load policies when component mounts
@@ -70,24 +73,27 @@ const PolicyTab = () => {
     }
   };
 
-  const handleProcessWhatsAppMessage = async () => {
-    setLoading(true);
-    setDatabaseError(null);
-    
+  const handleUploadPolicy = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPolicy(true);
     try {
-      const newPolicy = await simulateWhatsAppPolicyMessage();
-      
-      if (newPolicy) {
-        // Reload policies to include the new one
+      const result = await uploadAndAnalyzePolicy(file);
+      if (result) {
         await loadPolicies();
-        toast.success("Nova apólice recebida e processada com sucesso!");
+        toast.success("Apólice analisada e processada com sucesso!");
       } else {
-        // Check the console logs to see if it's a database error
-        setDatabaseError("Não foi possível processar a apólice. A tabela 'insurance_policies' pode não existir no banco de dados.");
-        toast.error("Erro ao processar a apólice. Verifique os logs para mais detalhes.");
+        toast.error("Não foi possível processar a apólice.");
       }
     } catch (error) {
-      console.error("Error processing WhatsApp message:", error);
+      console.error("Error processing policy file:", error);
       
       // Check if this is the "table doesn't exist" error
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -95,9 +101,13 @@ const PolicyTab = () => {
         setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
       }
       
-      toast.error("Erro ao processar mensagem do WhatsApp");
+      toast.error("Erro ao processar arquivo de apólice");
     } finally {
-      setLoading(false);
+      setUploadingPolicy(false);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -180,23 +190,6 @@ const PolicyTab = () => {
               <FileText className="h-5 w-5 text-primary" />
               <CardTitle>Apólices de Seguro</CardTitle>
             </div>
-            <Button 
-              onClick={handleProcessWhatsAppMessage} 
-              disabled={loading}
-              size="sm"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" /> 
-                  Simular Recebimento
-                </>
-              )}
-            </Button>
           </div>
           <CardDescription>
             Gerencie apólices de seguro recebidas via WhatsApp
@@ -224,13 +217,39 @@ const PolicyTab = () => {
             </Alert>
           )}
           
-          <div className="flex items-center space-x-2 mb-4">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por cliente, seguradora ou número de apólice..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center flex-1 space-x-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente, seguradora ou número de apólice..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1"
+              />
+            </div>
+            <Button 
+              className="ml-4"
+              onClick={handleUploadPolicy}
+              disabled={uploadingPolicy}
+            >
+              {uploadingPolicy ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <FileUp className="h-4 w-4 mr-2" /> 
+                  Enviar Apólice
+                </>
+              )}
+            </Button>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" 
+              className="hidden"
+              onChange={handleFileChange}
             />
           </div>
           
@@ -258,12 +277,12 @@ const PolicyTab = () => {
               {!databaseError && (
                 <Button 
                   variant="outline" 
-                  onClick={handleProcessWhatsAppMessage} 
+                  onClick={handleUploadPolicy} 
                   className="ml-2"
-                  disabled={loading}
+                  disabled={uploadingPolicy}
                 >
                   <Upload className="h-4 w-4 mr-2" /> 
-                  Simular recebimento de apólice
+                  Enviar apólice para análise
                 </Button>
               )}
             </div>
