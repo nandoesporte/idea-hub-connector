@@ -1,4 +1,200 @@
+
 import { supabase } from './supabase';
+
+// Store API key in localStorage
+export const setApiKey = (apiKey: string) => {
+  localStorage.setItem('whatsgw_api_key', apiKey);
+  console.log('API key saved');
+};
+
+// Get API key from localStorage
+export const getApiKey = (): string => {
+  return localStorage.getItem('whatsgw_api_key') || '';
+};
+
+// Log history management
+interface LogEntry {
+  timestamp: Date;
+  type: 'info' | 'error' | 'warning';
+  operation: string;
+  message: string;
+  details?: any;
+}
+
+// Add a log entry
+export const addLogEntry = (entry: LogEntry) => {
+  try {
+    const existingLogs = getLogHistory();
+    const updatedLogs = [entry, ...existingLogs];
+    localStorage.setItem('whatsgw_logs', JSON.stringify(updatedLogs));
+  } catch (error) {
+    console.error('Error adding log entry:', error);
+  }
+};
+
+// Get log history
+export const getLogHistory = (): LogEntry[] => {
+  try {
+    const savedLogs = localStorage.getItem('whatsgw_logs');
+    if (savedLogs) {
+      const parsedLogs = JSON.parse(savedLogs);
+      return Array.isArray(parsedLogs) ? parsedLogs.map(log => ({
+        ...log,
+        timestamp: new Date(log.timestamp)
+      })) : [];
+    }
+  } catch (error) {
+    console.error('Error getting log history:', error);
+  }
+  return [];
+};
+
+// Clear log history
+export const clearLogHistory = () => {
+  localStorage.removeItem('whatsgw_logs');
+};
+
+// Test connection to the API
+export const sendTestMessage = async (phone: string): Promise<boolean> => {
+  try {
+    const apiKey = getApiKey();
+    const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
+    
+    if (!apiKey || !apiURL) {
+      addLogEntry({
+        timestamp: new Date(),
+        type: 'error',
+        operation: 'send-message',
+        message: 'API key or URL not configured'
+      });
+      return false;
+    }
+
+    const formattedPhone = phone.startsWith('55') ? phone : `55${phone}`;
+    
+    addLogEntry({
+      timestamp: new Date(),
+      type: 'info',
+      operation: 'send-message',
+      message: `Sending test message to ${formattedPhone}`
+    });
+    
+    const response = await fetch(`${apiURL}/message`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        phone: formattedPhone,
+        message: "🔔 *Mensagem de Teste*\n\nEsta é uma mensagem automática para testar a integração com o WhatsApp. Se você está recebendo esta mensagem, a conexão foi estabelecida com sucesso!"
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      addLogEntry({
+        timestamp: new Date(),
+        type: 'error',
+        operation: 'send-message',
+        message: `Failed to send test message: ${response.status} ${response.statusText}`,
+        details: errorText
+      });
+      return false;
+    }
+    
+    const data = await response.json();
+    addLogEntry({
+      timestamp: new Date(),
+      type: 'info',
+      operation: 'send-message',
+      message: 'Test message sent successfully',
+      details: data
+    });
+    return true;
+  } catch (error) {
+    addLogEntry({
+      timestamp: new Date(),
+      type: 'error',
+      operation: 'send-message',
+      message: 'Error sending test message',
+      details: error
+    });
+    console.error('Error sending test message:', error);
+    return false;
+  }
+};
+
+// Send test to specific number for direct testing
+export const sendTestToSpecificNumber = async (): Promise<boolean> => {
+  try {
+    const apiKey = getApiKey();
+    const apiURL = process.env.NEXT_PUBLIC_WHATSGW_API_URL;
+    
+    if (!apiKey || !apiURL) {
+      addLogEntry({
+        timestamp: new Date(),
+        type: 'error',
+        operation: 'direct-test',
+        message: 'API key or URL not configured'
+      });
+      return false;
+    }
+    
+    const testNumber = '5544988057213'; // Hardcoded test number
+    
+    addLogEntry({
+      timestamp: new Date(),
+      type: 'info',
+      operation: 'direct-test',
+      message: `Sending direct test message to ${testNumber}`
+    });
+    
+    const response = await fetch(`${apiURL}/message`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        phone: testNumber,
+        message: "🔔 *Teste Direto*\n\nEsta é uma mensagem de teste direto para o número 44988057213. Se você está recebendo esta mensagem, a conexão foi estabelecida com sucesso!"
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      addLogEntry({
+        timestamp: new Date(),
+        type: 'error',
+        operation: 'direct-test',
+        message: `Failed to send direct test message: ${response.status} ${response.statusText}`,
+        details: errorText
+      });
+      return false;
+    }
+    
+    const data = await response.json();
+    addLogEntry({
+      timestamp: new Date(),
+      type: 'info',
+      operation: 'direct-test',
+      message: 'Direct test message sent successfully',
+      details: data
+    });
+    return true;
+  } catch (error) {
+    addLogEntry({
+      timestamp: new Date(),
+      type: 'error',
+      operation: 'direct-test',
+      message: 'Error sending direct test message',
+      details: error
+    });
+    console.error('Error sending direct test message:', error);
+    return false;
+  }
+};
 
 export const registerWhatsAppWebhook = (webhookUrl: string) => {
   localStorage.setItem('whatsgw_webhook_url', webhookUrl);
