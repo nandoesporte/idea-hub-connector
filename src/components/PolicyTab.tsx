@@ -20,7 +20,7 @@ import {
   FileUp,
   Loader2
 } from "lucide-react";
-import { format, addDays, isBefore, isAfter } from "date-fns";
+import { format, addDays, isBefore, isAfter, subMonths } from "date-fns";
 import { toast } from "sonner";
 import { PolicyFile } from "@/types";
 
@@ -46,47 +46,8 @@ const PolicyTab = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Mock data - in a real app, this would be fetched from an API
-    const mockPolicies: Policy[] = [
-      {
-        id: "1",
-        policyNumber: "AP-2024-001",
-        insurer: "Seguros XYZ",
-        customer: "João Silva",
-        startDate: new Date(2024, 0, 1),
-        endDate: new Date(2024, 11, 31),
-        coverageAmount: "R$ 100.000,00",
-        premiumValue: "R$ 2.500,00",
-        status: "active",
-        fileName: "apolice_joao_silva.pdf"
-      },
-      {
-        id: "2",
-        policyNumber: "AP-2023-045",
-        insurer: "Seguradora ABC",
-        customer: "Maria Oliveira",
-        startDate: new Date(2023, 5, 15),
-        endDate: new Date(2024, 5, 14),
-        coverageAmount: "R$ 250.000,00",
-        premiumValue: "R$ 3.600,00",
-        status: "active",
-        fileName: "apolice_maria_oliveira.pdf"
-      },
-      {
-        id: "3",
-        policyNumber: "AP-2023-098",
-        insurer: "Proteção Total",
-        customer: "Carlos Mendes",
-        startDate: new Date(2023, 3, 10),
-        endDate: new Date(2024, 3, 9),
-        coverageAmount: "R$ 75.000,00",
-        premiumValue: "R$ 1.800,00",
-        status: "expired",
-        fileName: "apolice_carlos_mendes.pdf"
-      }
-    ];
-    
-    setPolicies(mockPolicies);
+    // In a real app, we would fetch policies from an API
+    setPolicies([]);
   }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,81 +101,71 @@ const PolicyTab = () => {
 
   const extractPolicyDataFromPDF = (file: File) => {
     try {
-      // In a real implementation, we would send the file to a backend API that uses GPT-4 Vision
-      // to analyze the PDF and extract the relevant information
-      
+      // In a real implementation, we would send the file to a backend API
+      // that uses GPT-4 Vision to analyze the PDF and extract information
       console.log("Extracting data from PDF:", file.name);
       
-      // Extract policy number from filename (only for simulation)
-      // In a real scenario, GPT-4 would extract this from the PDF content
+      // Extract policy number from filename
       const fileNameWithoutExtension = file.name.replace('.pdf', '');
       
-      // Parse realistic data based on the PDF filename patterns
-      const policyNumber = fileNameWithoutExtension.match(/AP[0-9-]+/i) 
-        ? fileNameWithoutExtension.match(/AP[0-9-]+/i)![0] 
-        : `AP-${new Date().getFullYear()}-${Math.floor(Math.random() * 900) + 100}`;
-      
-      // Try to extract customer name from filename (real implementation would use GPT-4)
-      let customerName = "Cliente";
+      // Try to extract customer name from filename - real implementation would use OCR/GPT-4
+      let customerName = "";
       if (fileNameWithoutExtension.includes('_')) {
         const parts = fileNameWithoutExtension.split('_');
         if (parts.length >= 2) {
-          // Convert snake_case to Title Case
           customerName = parts.slice(1)
             .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
             .join(' ');
         }
       }
       
-      // Create a more realistic date range (1 year policy is common)
-      const today = new Date();
-      const startDate = new Date();
-      startDate.setMonth(today.getMonth() - Math.floor(Math.random() * 2)); // Start 0-2 months ago
+      if (!customerName) {
+        customerName = "Cliente não identificado";
+      }
       
+      // Create a date range based on today (most policies are annual)
+      const startDate = subMonths(new Date(), 1); // Assume policy started a month ago
       const endDate = new Date(startDate);
       endDate.setFullYear(endDate.getFullYear() + 1); // One year policy
       
-      // Create policy status based on dates
+      // Calculate policy status based on real dates
       let policyStatus: Policy['status'] = "active";
+      const today = new Date();
       if (isAfter(today, endDate)) {
         policyStatus = "expired";
       } else if (isBefore(today, startDate)) {
         policyStatus = "pending";
       }
       
-      // Common Brazilian insurance companies
+      // Real Brazilian insurance companies
       const insurers = [
         "Porto Seguro", 
         "Bradesco Seguros", 
         "SulAmérica", 
         "Allianz", 
         "Liberty Seguros",
-        "Mapfre Seguros",
-        "HDI Seguros",
-        "Tokio Marine",
-        "Zurich Seguros",
-        "Sompo Seguros"
+        "Mapfre Seguros"
       ];
       
-      // Format currency values realistically
-      const formatCurrency = (value: number): string => {
-        return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      };
+      // Generate a policy number based on current date if not extractable from filename
+      const extractedPolicyNumber = fileNameWithoutExtension.match(/AP[0-9-]+/i) 
+        ? fileNameWithoutExtension.match(/AP[0-9-]+/i)![0] 
+        : `AP-${new Date().getFullYear()}-${Math.floor(Math.random() * 900) + 100}`;
       
-      // Generate a realistic premium value based on coverage
-      const coverageBase = Math.floor(Math.random() * 9) + 1; // 1-9
-      const coverageAmount = formatCurrency(coverageBase * 100000); // R$ 100.000,00 to R$ 900.000,00
+      const insurer = insurers[Math.floor(Math.random() * insurers.length)];
       
-      // Premium is typically 2-5% of coverage amount annually
-      const premiumRate = (Math.random() * 3 + 2) / 100; // 2-5%
-      const premiumBase = coverageBase * 100000 * premiumRate;
-      const premiumValue = formatCurrency(premiumBase);
+      // In a real implementation, these values would be extracted from the actual PDF
+      const coverageAmount = "R$ 100.000,00";
+      const premiumValue = "R$ 2.500,00";
       
-      // Create the new policy with extracted data
+      toast.info("Nesta versão de demonstração, os dados são extraídos do nome do arquivo. Em produção, GPT-4 analisaria o conteúdo do PDF.", {
+        duration: 5000
+      });
+      
       const newPolicy: Policy = {
         id: Date.now().toString(),
-        policyNumber,
-        insurer: insurers[Math.floor(Math.random() * insurers.length)],
+        policyNumber: extractedPolicyNumber,
+        insurer,
         customer: customerName,
         startDate,
         endDate,
@@ -223,8 +174,6 @@ const PolicyTab = () => {
         status: policyStatus,
         fileName: file.name
       };
-      
-      console.log("Extracted policy data:", newPolicy);
       
       setPolicies(prev => [newPolicy, ...prev]);
       setUploadingFile(prev => prev ? { ...prev, status: 'success' } : null);
