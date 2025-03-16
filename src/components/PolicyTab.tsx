@@ -11,7 +11,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   FileText, Upload, Trash2, AlertTriangle, CheckCircle, 
-  Calendar, Download, PlusCircle, Loader2, FileLock
+  Calendar, Download, PlusCircle, Loader2, FileLock,
+  AlertTriangle as AlertIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +44,7 @@ const PolicyTab = () => {
   const { user } = useUser();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   
   useEffect(() => {
@@ -55,12 +57,14 @@ const PolicyTab = () => {
   const loadPolicies = async () => {
     try {
       setLoading(true);
+      setError(null);
       if (user?.id) {
         const data = await fetchPolicies(user.id);
         setPolicies(data);
       }
     } catch (error) {
       console.error('Error loading policies:', error);
+      setError('Erro ao carregar apólices. Funcionalidade pode não estar disponível no momento.');
       toast.error('Erro ao carregar apólices');
     } finally {
       setLoading(false);
@@ -146,6 +150,23 @@ const PolicyTab = () => {
       <div className="flex justify-center items-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <AlertIcon className="h-12 w-12 text-amber-500 mb-4" />
+          <h3 className="text-xl font-semibold mb-2">Funcionalidade não disponível</h3>
+          <p className="text-muted-foreground text-center mb-4 max-w-md">
+            {error}
+          </p>
+          <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
+            A tabela de apólices pode não existir no banco de dados. Entre em contato com o administrador do sistema.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 

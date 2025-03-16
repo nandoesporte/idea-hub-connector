@@ -12,6 +12,12 @@ export const fetchPolicies = async (userId: string): Promise<Policy[]> => {
       .order('expiry_date', { ascending: true });
 
     if (error) {
+      // Check if the error is because the table doesn't exist
+      if (error.code === '42P01') { // PostgreSQL code for "relation does not exist"
+        console.log('Insurance policies table does not exist. Returning empty array.');
+        return [];
+      }
+      
       console.error('Error fetching policies:', error);
       throw new Error(error.message);
     }
@@ -27,7 +33,8 @@ export const fetchPolicies = async (userId: string): Promise<Policy[]> => {
     }));
   } catch (error) {
     console.error('Error in fetchPolicies:', error);
-    throw error;
+    // Return empty array instead of throwing for better UX
+    return [];
   }
 };
 
@@ -51,6 +58,13 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
       .single();
 
     if (error) {
+      // Check if the error is because the table doesn't exist
+      if (error.code === '42P01') { // PostgreSQL code for "relation does not exist"
+        toast.error('Funcionalidade de apólices não está disponível no momento.');
+        console.log('Insurance policies table does not exist.');
+        return null;
+      }
+      
       console.error('Error creating policy:', error);
       throw new Error(error.message);
     }
@@ -58,7 +72,8 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
     return data;
   } catch (error) {
     console.error('Error in createPolicy:', error);
-    throw error;
+    toast.error('Não foi possível criar a apólice.');
+    return null;
   }
 };
 
@@ -85,6 +100,13 @@ export const updatePolicy = async (id: string, policy: Partial<Policy>) => {
       .single();
 
     if (error) {
+      // Check if the error is because the table doesn't exist
+      if (error.code === '42P01') { // PostgreSQL code for "relation does not exist"
+        toast.error('Funcionalidade de apólices não está disponível no momento.');
+        console.log('Insurance policies table does not exist.');
+        return null;
+      }
+      
       console.error('Error updating policy:', error);
       throw new Error(error.message);
     }
@@ -92,7 +114,8 @@ export const updatePolicy = async (id: string, policy: Partial<Policy>) => {
     return data;
   } catch (error) {
     console.error('Error in updatePolicy:', error);
-    throw error;
+    toast.error('Não foi possível atualizar a apólice.');
+    return null;
   }
 };
 
@@ -104,12 +127,19 @@ export const deletePolicy = async (id: string) => {
       .eq('id', id);
 
     if (error) {
+      // Check if the error is because the table doesn't exist
+      if (error.code === '42P01') { // PostgreSQL code for "relation does not exist"
+        toast.error('Funcionalidade de apólices não está disponível no momento.');
+        console.log('Insurance policies table does not exist.');
+        return;
+      }
+      
       console.error('Error deleting policy:', error);
       throw new Error(error.message);
     }
   } catch (error) {
     console.error('Error in deletePolicy:', error);
-    throw error;
+    toast.error('Não foi possível excluir a apólice.');
   }
 };
 
@@ -133,6 +163,7 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
     return data.publicUrl;
   } catch (error) {
     console.error('Error in uploadPolicyAttachment:', error);
+    toast.error('Não foi possível fazer upload do arquivo.');
     throw error;
   }
 };
@@ -170,6 +201,7 @@ export const analyzePolicyDocument = async (fileUrl: string) => {
     };
   } catch (error) {
     console.error('Error in analyzePolicyDocument:', error);
+    toast.error('Não foi possível analisar o documento.');
     throw error;
   }
 };
@@ -190,6 +222,12 @@ export const checkPolicyReminders = async (userId: string) => {
       .order('expiry_date', { ascending: true });
 
     if (error) {
+      // Check if the error is because the table doesn't exist
+      if (error.code === '42P01') { // PostgreSQL code for "relation does not exist"
+        console.log('Insurance policies table does not exist. Skipping reminder check.');
+        return { hasReminders: false, count: 0, policies: [] };
+      }
+      
       console.error('Error checking policy reminders:', error);
       throw new Error(error.message);
     }
@@ -231,6 +269,7 @@ export const checkPolicyReminders = async (userId: string) => {
     };
   } catch (error) {
     console.error('Error in checkPolicyReminders:', error);
-    throw error;
+    // Return empty result instead of throwing
+    return { hasReminders: false, count: 0, policies: [] };
   }
 };
