@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { VoiceCommandEvent } from '@/types';
 import { format, isToday, isPast, isFuture } from 'date-fns';
@@ -89,7 +90,7 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
   };
 
   const handleSendWhatsAppReminder = async (event: VoiceCommandEvent) => {
-    if (!event.contactPhone) {
+    if (!event.contact_phone) {
       toast.error("Este evento não possui um número de telefone para notificação");
       return;
     }
@@ -112,7 +113,7 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
         `Para remarcar ou cancelar, entre em contato conosco.`;
       
       const success = await sendWhatsAppMessage({
-        phone: event.contactPhone,
+        phone: event.contact_phone,
         message: message
       });
       
@@ -234,7 +235,7 @@ const EventsList = ({ events, loading, onDelete }: EventsListProps) => {
                       )}
                     </div>
                     <div className="flex space-x-1">
-                      {event.contactPhone && (
+                      {event.contact_phone && (
                         <Button
                           variant="ghost"
                           size="icon"

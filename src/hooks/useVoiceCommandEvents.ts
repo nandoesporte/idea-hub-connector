@@ -146,7 +146,7 @@ export function useVoiceCommandEvents() {
             message += `📝 ${event.description}\n`;
           }
           
-          message += `📞 ${event.contactPhone || 'Sem contato'}\n\n`;
+          message += `📞 ${event.contact_phone || 'Sem contato'}\n\n`;
         });
       }
       
@@ -339,7 +339,7 @@ export function useVoiceCommandEvents() {
         return false;
       }
       
-      if (!event.contactPhone) {
+      if (!event.contact_phone) {
         toast.warning('Este evento não possui número de telefone para contato');
         return false;
       }
@@ -368,7 +368,7 @@ export function useVoiceCommandEvents() {
         `Para remarcar ou cancelar, entre em contato conosco.`;
       
       const result = await sendWhatsAppMessage({
-        phone: event.contactPhone,
+        phone: event.contact_phone,
         message: message
       });
       
@@ -425,10 +425,10 @@ export function useVoiceCommandEvents() {
       
       const eventType = result.type;
       
-      if (!result.contactPhone) {
+      if (!result.contact_phone) {
         const defaultPhone = reminderSettings.defaultPhone || localStorage.getItem('default_whatsapp_number');
         if (defaultPhone) {
-          result.contactPhone = defaultPhone;
+          result.contact_phone = defaultPhone;
           console.log('Using default phone number:', defaultPhone);
         }
       }
@@ -451,13 +451,13 @@ export function useVoiceCommandEvents() {
 
       const eventForNotification: VoiceCommandEvent = {
         id: '', 
-        userId: '', 
+        user_id: '',
         title: result.title,
         description: result.description || '',
         date: result.date,
         duration: result.duration || 60,
         type: result.type,
-        contactPhone: result.contactPhone,
+        contact_phone: result.contact_phone,
         status: 'pending',
         createdAt: new Date(),
         updatedAt: new Date()

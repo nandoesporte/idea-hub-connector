@@ -133,7 +133,7 @@ const PolicyTab = () => {
                     <div>
                       <CardTitle>{policy.insurer}</CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        {policy.policyNumber} | {policy.type.toUpperCase()}
+                        {policy.policy_number} | {policy.type.toUpperCase()}
                       </p>
                     </div>
                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -145,16 +145,16 @@ const PolicyTab = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">Cliente</p>
-                      <p className="font-medium">{policy.customerName}</p>
+                      <p className="font-medium">{policy.customer_name}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Valor Segurado</p>
-                      <p className="font-medium">{formatCurrency(policy.coverageAmount)}</p>
+                      <p className="font-medium">{formatCurrency(policy.coverage_amount)}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Vigência</p>
                       <p className="font-medium">
-                        {formatDate(policy.issueDate)} a {formatDate(policy.expiryDate)}
+                        {formatDate(policy.issue_date)} a {formatDate(policy.expiry_date)}
                       </p>
                     </div>
                     <div>
@@ -163,9 +163,9 @@ const PolicyTab = () => {
                     </div>
                   </div>
                   <div className="flex justify-end mt-4 gap-2">
-                    {policy.attachmentUrl && (
+                    {policy.attachment_url && (
                       <Button variant="outline" size="sm" asChild>
-                        <a href={policy.attachmentUrl} target="_blank" rel="noopener noreferrer">
+                        <a href={policy.attachment_url} target="_blank" rel="noopener noreferrer">
                           <Download className="h-4 w-4 mr-1" /> Visualizar PDF
                         </a>
                       </Button>

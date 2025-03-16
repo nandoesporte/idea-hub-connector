@@ -1,3 +1,4 @@
+
 export interface Policy {
   id: string;
   user_id: string;
@@ -129,6 +130,14 @@ export interface PortfolioItem {
   category_id?: string;
   image_url?: string;
   project_url?: string;
+  category: string;
+  client: string;
+  completed: Date;
+  technologies: string[];
+  featured: boolean;
+  featuredImage?: string;
+  images: string[];
+  link?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -165,4 +174,47 @@ export interface DashboardComponent {
   order: number;
   enabled: boolean;
   items?: DashboardItem[];
+}
+
+export type ProjectCategory = 
+  | 'website'
+  | 'e-commerce'
+  | 'mobile-app'
+  | 'desktop-app'
+  | 'automation'
+  | 'integration'
+  | 'ai-solution'
+  | 'web-app'
+  | 'other';
+
+export interface ProjectIdea {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  category: ProjectCategory;
+  budget_range?: string;
+  timeline?: string;
+  contact_preference?: 'email' | 'phone' | 'whatsapp';
+  status: 'submitted' | 'reviewing' | 'approved' | 'rejected' | 'in_progress' | 'completed';
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface NavigationItem {
+  title: string;
+  path: string;
+  icon?: React.ReactNode;
+  children?: NavigationItem[];
+}
+
+export interface CategoryItem {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  iconColor: string;
+  link: string;
+  type: string;
+  enabled: boolean;
 }

@@ -9,12 +9,12 @@ export async function analyzePolicyDocument(fileUrl: string): Promise<Partial<Po
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
-        policyNumber: 'AP123456789',
-        customerName: 'Nome Extraído do PDF',
-        issueDate: new Date(),
-        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 ano a partir de hoje
+        policy_number: 'AP123456789',
+        customer_name: 'Nome Extraído do PDF',
+        issue_date: new Date(),
+        expiry_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 ano a partir de hoje
         insurer: 'Seguradora Identificada',
-        coverageAmount: 100000,
+        coverage_amount: 100000,
         premium: 2500,
         type: 'auto'
       });
