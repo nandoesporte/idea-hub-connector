@@ -1,5 +1,5 @@
 
--- Create policies table
+-- Create policies table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.policies (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -16,10 +16,24 @@ CREATE TABLE IF NOT EXISTS public.policies (
   created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- Enable RLS
+-- Enable RLS if not already enabled
 ALTER TABLE public.policies ENABLE ROW LEVEL SECURITY;
 
--- Check if policies for RLS exist before creating them
+-- Check if foreign key constraint exists before creating it
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'policies_user_id_fkey'
+    ) THEN
+        ALTER TABLE public.policies 
+        ADD CONSTRAINT policies_user_id_fkey
+        FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END
+$$;
+
+-- Create RLS policies if they don't exist
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -69,8 +83,10 @@ BEGIN
 END
 $$;
 
--- Create policy_documents storage bucket if it doesn't exist
--- Note: This assumes the storage extension is installed
+-- Create storage extension if not exists
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create policy_documents storage bucket
 DO $$
 DECLARE
     bucket_exists BOOLEAN;
@@ -82,33 +98,64 @@ BEGIN
     
     -- Create the bucket if it doesn't exist
     IF NOT bucket_exists THEN
-        INSERT INTO storage.buckets (id, name, public, avif_autodetection)
-        VALUES ('policy_documents', 'policy_documents', true, false);
+        -- Ensure the storage schema exists
+        CREATE SCHEMA IF NOT EXISTS storage;
         
-        -- Bucket policies to allow users to manage their own files
-        -- Allow users to read any file in the bucket (needed for downloading policies)
+        -- Create the bucket
+        INSERT INTO storage.buckets (id, name)
+        VALUES ('policy_documents', 'policy_documents')
+        ON CONFLICT (id) DO NOTHING;
+        
+        -- Set up bucket policies
+        -- Allow public access for reading files
         INSERT INTO storage.policies (name, definition, bucket_id)
         VALUES (
-            'Public Read',
-            '{"statement": {"effect": "allow", "actions": ["s3:GetObject"], "principal": "*"}}',
+            'Public Read Access',
+            jsonb_build_object(
+                'statement', jsonb_build_object(
+                    'effect', 'allow',
+                    'actions', array['s3:GetObject'],
+                    'principal', '*'
+                )
+            ),
             'policy_documents'
-        );
+        )
+        ON CONFLICT DO NOTHING;
         
         -- Allow authenticated users to upload files
         INSERT INTO storage.policies (name, definition, bucket_id)
         VALUES (
-            'Authenticated Upload',
-            '{"statement": {"effect": "allow", "actions": ["s3:PutObject"], "principal": {"id": "authenticated"}}}',
+            'Auth Upload Access',
+            jsonb_build_object(
+                'statement', jsonb_build_object(
+                    'effect', 'allow',
+                    'actions', array['s3:PutObject'],
+                    'principal', jsonb_build_object('id', 'authenticated')
+                )
+            ),
             'policy_documents'
-        );
+        )
+        ON CONFLICT DO NOTHING;
         
-        -- Allow users to manage their own folders
+        -- Allow users to manage only their own folders
         INSERT INTO storage.policies (name, definition, bucket_id)
         VALUES (
-            'Owner Access',
-            '{"statement": {"effect": "allow", "actions": ["s3:*"], "principal": {"id": "authenticated"}, "conditions": {"resource_prefix": {"prefix_match": ["policies/${auth.uid}/"]}}}}',
+            'User Folder Access',
+            jsonb_build_object(
+                'statement', jsonb_build_object(
+                    'effect', 'allow',
+                    'actions', array['s3:*'],
+                    'principal', jsonb_build_object('id', 'authenticated'),
+                    'conditions', jsonb_build_object(
+                        'resource_prefix', jsonb_build_object(
+                            'prefix_match', array['policies/${auth.uid}/']
+                        )
+                    )
+                )
+            ),
             'policy_documents'
-        );
+        )
+        ON CONFLICT DO NOTHING;
     END IF;
 END
 $$;
