@@ -88,6 +88,31 @@ USING (auth.uid() = user_id);
 -- Grant access to authenticated users
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.insurance_policies TO authenticated;
 
+-- Create storage bucket for documents if it doesn't exist
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('documents', 'documents', TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+-- Set up storage policies for the documents bucket
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM storage.policies 
+        WHERE name = 'Documents Policy'
+    ) THEN
+        DELETE FROM storage.policies WHERE name = 'Documents Policy';
+    END IF;
+END
+$$;
+
+-- Allow authenticated users to upload and access their own files
+INSERT INTO storage.policies (name, definition, owner)
+VALUES (
+    'Documents Policy',
+    '(bucket_id = ''documents''::text) AND (auth.uid() = auth.uid())',
+    'authenticated'
+);
+
 -- Check if function already exists and drop it if it does
 DO $$
 BEGIN

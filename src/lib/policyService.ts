@@ -1,58 +1,99 @@
-
 import { supabase } from './supabase';
 import { InsurancePolicy } from '@/types';
 import { createNotification } from './notificationService';
+import { toast } from 'sonner';
 
 export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy[]> => {
-  const { data, error } = await supabase
-    .from('insurance_policies')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+  try {
+    console.log('Fetching policies for user:', userId);
+    
+    const { data, error } = await supabase
+      .from('insurance_policies')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching policies:', error);
+    if (error) {
+      console.error('Error fetching policies:', error);
+      throw error;
+    }
+
+    if (!data) return [];
+
+    return data.map(policy => ({
+      ...policy,
+      id: policy.id,
+      userId: policy.user_id,
+      policyNumber: policy.policy_number,
+      customerName: policy.customer_name,
+      customerPhone: policy.customer_phone,
+      issueDate: new Date(policy.issue_date),
+      expiryDate: new Date(policy.expiry_date),
+      createdAt: new Date(policy.created_at),
+      updatedAt: new Date(policy.updated_at),
+      attachmentUrl: policy.attachment_url,
+      coverageAmount: policy.coverage_amount,
+      premium: policy.premium,
+      reminderSent: policy.reminder_sent,
+      reminderDate: policy.reminder_date ? new Date(policy.reminder_date) : undefined
+    })) as InsurancePolicy[];
+  } catch (error) {
+    console.error('Error in fetchUserPolicies:', error);
     throw error;
   }
-
-  return data.map(policy => ({
-    ...policy,
-    id: policy.id,
-    userId: policy.user_id,
-    policyNumber: policy.policy_number,
-    customerName: policy.customer_name,
-    customerPhone: policy.customer_phone,
-    issueDate: new Date(policy.issue_date),
-    expiryDate: new Date(policy.expiry_date),
-    createdAt: new Date(policy.created_at),
-    updatedAt: new Date(policy.updated_at),
-    attachmentUrl: policy.attachment_url,
-    coverageAmount: policy.coverage_amount,
-    premium: policy.premium,
-    reminderSent: policy.reminder_sent,
-    reminderDate: policy.reminder_date ? new Date(policy.reminder_date) : undefined
-  })) as InsurancePolicy[];
 };
 
 export const uploadPolicyDocument = async (file: File, userId: string): Promise<string> => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-  const filePath = `policies/${fileName}`;
+  try {
+    console.log('Uploading policy document for user:', userId);
+    
+    // Check if the bucket exists, if not, create it
+    const { data: buckets, error: bucketsError } = await supabase
+      .storage
+      .listBuckets();
+    
+    if (bucketsError) {
+      console.error('Error checking buckets:', bucketsError);
+      throw bucketsError;
+    }
+    
+    const documentsBucketExists = buckets.some(bucket => bucket.name === 'documents');
+    
+    if (!documentsBucketExists) {
+      console.log('Documents bucket does not exist, creating...');
+      const { error: createBucketError } = await supabase
+        .storage
+        .createBucket('documents', { public: true });
+        
+      if (createBucketError) {
+        console.error('Error creating documents bucket:', createBucketError);
+        throw createBucketError;
+      }
+    }
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `policies/${fileName}`;
 
-  const { data, error } = await supabase.storage
-    .from('documents')
-    .upload(filePath, file);
+    const { error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(filePath, file);
 
-  if (error) {
-    console.error('Error uploading policy document:', error);
+    if (uploadError) {
+      console.error('Error uploading policy document:', uploadError);
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('documents')
+      .getPublicUrl(filePath);
+
+    console.log('File uploaded successfully, URL:', publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error('Error in uploadPolicyDocument:', error);
     throw error;
   }
-
-  const { data: { publicUrl } } = supabase.storage
-    .from('documents')
-    .getPublicUrl(filePath);
-
-  return publicUrl;
 };
 
 interface AnalyzeResult {
@@ -69,6 +110,8 @@ interface AnalyzeResult {
 
 export const analyzePolicyDocument = async (url: string): Promise<AnalyzeResult> => {
   try {
+    console.log('Analyzing policy document:', url);
+    
     const response = await fetch('/api/analyze-policy', {
       method: 'POST',
       headers: {
@@ -78,12 +121,17 @@ export const analyzePolicyDocument = async (url: string): Promise<AnalyzeResult>
     });
 
     if (!response.ok) {
-      throw new Error(`Error analyzing policy: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('Error response from analyze-policy:', errorText);
+      throw new Error(`Error analyzing policy: ${response.statusText}. Details: ${errorText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('Analysis result:', result);
+    return result;
   } catch (error) {
     console.error('Error analyzing policy document:', error);
+    toast.error('Não foi possível analisar o documento. Por favor, verifique o formato e tente novamente.');
     throw error;
   }
 };
