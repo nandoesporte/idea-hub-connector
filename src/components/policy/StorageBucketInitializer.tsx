@@ -36,51 +36,109 @@ const StorageBucketInitializer = ({
           return;
         }
         
-        // Creating policy_documents bucket if it doesn't exist
-        const { error: createBucketError } = await supabase.storage.createBucket('policy_documents', {
-          public: false,
-          fileSizeLimit: 10485760, // 10MB
-        });
+        // First check if the bucket already exists
+        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
         
-        if (createBucketError && !createBucketError.message.includes('already exists')) {
-          console.error("Error creating bucket:", createBucketError);
+        if (bucketsError) {
+          console.error("Error checking buckets:", bucketsError);
           setBucketReady(false);
           setConfiguringStorage(false);
-          toast.error("Não foi possível configurar o armazenamento");
+          toast.error("Erro ao verificar sistema de armazenamento");
           return;
         }
         
-        console.log("Storage bucket ready or created successfully");
+        const bucketExists = buckets.some(bucket => bucket.name === 'policy_documents');
         
-        // Create user folder if it doesn't exist
-        try {
-          // We'll check if we can access the user's folder
-          const { error: folderError } = await supabase.storage
+        if (!bucketExists) {
+          // Try to list files from the bucket first to check permissions
+          const { error: accessError } = await supabase.storage
             .from('policy_documents')
-            .list(userId);
+            .list();
+          
+          if (!accessError) {
+            // We can access the bucket even though it didn't show up in listBuckets
+            console.log("Bucket exists but wasn't listed - we have access");
             
-          if (folderError) {
-            console.error("Error accessing user folder:", folderError);
-            setBucketReady(false);
-            setConfiguringStorage(false);
-            toast.error("Erro de acesso ao armazenamento");
+            // Verify we can access the user's folder
+            verifyUserFolder();
             return;
           }
           
-          console.log("Storage access verified successfully");
-          setBucketReady(true);
-          setConfiguringStorage(false);
-        } catch (folderError) {
-          console.error("Error checking user folder:", folderError);
-          setBucketReady(false);
-          setConfiguringStorage(false);
-          toast.error("Erro ao verificar pasta do usuário");
+          // Try to create the bucket
+          console.log("Bucket doesn't exist, attempting to create it");
+          const { error: createError } = await supabase.storage.createBucket('policy_documents', {
+            public: false, 
+            fileSizeLimit: 10485760 // 10MB
+          });
+          
+          if (createError) {
+            console.error("Error creating bucket:", createError);
+            setBucketReady(false);
+            setConfiguringStorage(false);
+            
+            // Special handling for RLS policy errors
+            if (createError.message.includes('violates row-level security policy')) {
+              toast.error("Erro de permissão. Você não tem permissão para criar o bucket.");
+            } else {
+              toast.error("Erro ao criar sistema de armazenamento");
+            }
+            return;
+          }
+          
+          console.log("Bucket created successfully");
+        } else {
+          console.log("Bucket already exists");
         }
+        
+        // Bucket exists or was created, now verify user folder access
+        verifyUserFolder();
       } catch (err) {
         console.error("Unexpected error initializing storage:", err);
         toast.error("Erro ao configurar sistema de armazenamento");
         setBucketReady(false);
         setConfiguringStorage(false);
+      }
+    };
+    
+    const verifyUserFolder = async () => {
+      try {
+        // Try to list files in the user's folder to verify access
+        const { error: folderError } = await supabase.storage
+          .from('policy_documents')
+          .list(userId);
+          
+        if (folderError) {
+          console.error("Error accessing user folder:", folderError);
+          
+          // Try to create an empty placeholder file to establish the folder
+          const emptyFile = new Blob([''], { type: 'text/plain' });
+          const placeholderPath = `${userId}/.placeholder`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('policy_documents')
+            .upload(placeholderPath, emptyFile, { upsert: true });
+          
+          if (uploadError) {
+            console.error("Error creating user folder:", uploadError);
+            setBucketReady(false);
+            setConfiguringStorage(false);
+            toast.error("Erro ao criar pasta do usuário");
+            return;
+          }
+          
+          console.log("User folder created successfully");
+        } else {
+          console.log("User folder exists and is accessible");
+        }
+        
+        // Storage is ready
+        setBucketReady(true);
+        setConfiguringStorage(false);
+      } catch (folderError) {
+        console.error("Error checking user folder:", folderError);
+        setBucketReady(false);
+        setConfiguringStorage(false);
+        toast.error("Erro ao verificar pasta do usuário");
       }
     };
     

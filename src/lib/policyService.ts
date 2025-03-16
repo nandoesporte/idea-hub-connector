@@ -5,6 +5,71 @@ import { toast } from "sonner";
 
 const STORAGE_BUCKET = 'policy_documents';
 
+// Check if storage is accessible
+export const checkStorageAccess = async (userId: string): Promise<boolean> => {
+  if (!userId) return false;
+  
+  try {
+    // Check authentication
+    const { data: authData, error: authError } = await supabase.auth.getSession();
+    if (authError || !authData.session) {
+      console.error("Authentication error:", authError);
+      return false;
+    }
+    
+    // Check bucket existence
+    try {
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      if (bucketsError) {
+        console.error("Error listing buckets:", bucketsError);
+        return false;
+      }
+      
+      const bucketExists = buckets.some(bucket => bucket.name === STORAGE_BUCKET);
+      if (!bucketExists) {
+        // Try to create the bucket
+        const { error: createError } = await supabase.storage.createBucket(STORAGE_BUCKET, {
+          public: false,
+          fileSizeLimit: 10485760 // 10MB
+        });
+        
+        if (createError) {
+          console.error("Error creating bucket:", createError);
+          return false;
+        }
+      }
+      
+      // Try to access the bucket
+      const { error: listError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .list(userId);
+      
+      if (listError) {
+        // Try to create an empty placeholder file to establish the folder
+        const emptyFile = new Blob([''], { type: 'text/plain' });
+        const placeholderPath = `${userId}/.placeholder`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(placeholderPath, emptyFile, { upsert: true });
+        
+        if (uploadError) {
+          console.error("Error creating user folder:", uploadError);
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error in storage access check:", error);
+      return false;
+    }
+  } catch (error) {
+    console.error("Unexpected error in storage access check:", error);
+    return false;
+  }
+};
+
 // Fetch policies
 export const fetchPolicies = async (userId: string) => {
   if (!userId) return [];
@@ -66,6 +131,14 @@ export const uploadAndProcessPolicy = async (
   }
 
   try {
+    // Verify storage is accessible first
+    const storageAccessible = await checkStorageAccess(userId);
+    if (!storageAccessible) {
+      toast.error("Sistema de armazenamento não está disponível");
+      setUploadingFile(null);
+      return;
+    }
+
     // Simulate upload progress
     const progressInterval = setInterval(() => {
       setUploadingFile(prev => {

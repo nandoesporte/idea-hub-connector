@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { useQuery } from '@tanstack/react-query';
-import { fetchPolicies } from '@/lib/policyService';
+import { fetchPolicies, checkStorageAccess } from '@/lib/policyService';
 import PolicyTabContent from './policy/PolicyTabContent';
 import StorageBucketInitializer from './policy/StorageBucketInitializer';
 
@@ -15,11 +15,26 @@ const PolicyTab = () => {
   const [configuringStorage, setConfiguringStorage] = useState(false);
 
   // Use React Query to fetch policies
-  const { data: policies = [], isLoading } = useQuery({
+  const { data: policies = [], isLoading, refetch } = useQuery({
     queryKey: ['policies', user?.id],
     queryFn: async () => fetchPolicies(user?.id || ''),
-    enabled: !!user
+    enabled: !!user && bucketReady
   });
+
+  // Verify storage access when component mounts
+  useEffect(() => {
+    if (user?.id && !bucketReady && !configuringStorage) {
+      const verifyAccess = async () => {
+        const isAccessible = await checkStorageAccess(user.id);
+        if (isAccessible) {
+          setBucketReady(true);
+          refetch();
+        }
+      };
+      
+      verifyAccess();
+    }
+  }, [user?.id, bucketReady, configuringStorage, refetch]);
 
   const handleClearSearch = () => setSearchTerm("");
 

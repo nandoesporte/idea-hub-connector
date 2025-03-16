@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Search, FileUp, Loader2, AlertTriangle } from "lucide-react";
+import { Search, FileUp, Loader2, AlertTriangle, RefreshCcw } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { PolicyFile } from "@/types";
 import { useQueryClient } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ import PolicyList from './PolicyList';
 import EmptyPolicyState from './EmptyPolicyState';
 import FileUploadProgress from './FileUploadProgress';
 import PolicySettings from './PolicySettings';
-import { uploadAndProcessPolicy } from '@/lib/policyService';
+import { uploadAndProcessPolicy, checkStorageAccess } from '@/lib/policyService';
 import PolicySearchBar from './PolicySearchBar';
 
 interface PolicyTabContentProps {
@@ -36,6 +36,7 @@ const PolicyTabContent = ({
 }: PolicyTabContentProps) => {
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
   const [processingUpload, setProcessingUpload] = useState(false);
+  const [retryingStorage, setRetryingStorage] = useState(false);
   const queryClient = useQueryClient();
 
   // Function to trigger file selection
@@ -101,6 +102,25 @@ const PolicyTabContent = ({
     }, 1000);
   };
 
+  // Function to retry storage initialization
+  const retryStorageSetup = async () => {
+    setRetryingStorage(true);
+    try {
+      const isAccessible = await checkStorageAccess(userId);
+      if (isAccessible) {
+        queryClient.invalidateQueries({ queryKey: ['policies'] });
+        toast.success("Sistema de armazenamento disponível agora");
+      } else {
+        toast.error("Sistema de armazenamento ainda não está disponível");
+      }
+    } catch (error) {
+      console.error("Error checking storage access:", error);
+      toast.error("Erro ao verificar acesso ao armazenamento");
+    } finally {
+      setRetryingStorage(false);
+    }
+  };
+
   return (
     <>
       <PolicySearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
@@ -109,13 +129,28 @@ const PolicyTabContent = ({
         <Alert variant="destructive" className="my-4">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Sistema de armazenamento indisponível</AlertTitle>
-          <AlertDescription>
-            O sistema de armazenamento de documentos não está disponível. Aguarde enquanto configuramos o sistema para você.
+          <AlertDescription className="flex flex-col gap-2">
+            <p>O sistema de armazenamento de documentos não está disponível. 
+               Isso pode ocorrer devido a problemas temporários de permissão ou conectividade.</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="self-start mt-2 flex items-center gap-2"
+              onClick={retryStorageSetup}
+              disabled={retryingStorage}
+            >
+              {retryingStorage ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCcw className="h-4 w-4" />
+              )}
+              Tentar novamente
+            </Button>
           </AlertDescription>
         </Alert>
       )}
       
-      {isLoading || configuringStorage || processingUpload ? (
+      {isLoading || configuringStorage || processingUpload || retryingStorage ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -135,7 +170,7 @@ const PolicyTabContent = ({
           <div className="flex justify-center mt-4">
             <Button 
               onClick={triggerFileSelection}
-              disabled={uploadingFile !== null || !bucketReady || processingUpload}
+              disabled={uploadingFile !== null || !bucketReady || processingUpload || retryingStorage}
               className="w-full sm:w-auto"
             >
               <FileUp className="h-4 w-4 mr-2" /> 
