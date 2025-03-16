@@ -1,450 +1,427 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
-import { 
-  Card, CardContent, CardDescription, CardHeader, CardTitle 
-} from '@/components/ui/card';
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Dialog, DialogContent, DialogDescription, DialogFooter, 
-  DialogHeader, DialogTitle
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  Search, MoreHorizontal, Eye, Edit, Trash, 
+  ArrowUpDown, ExternalLink, Plus, Copy, CheckCircle,
+  Image as ImageIcon
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { PencilIcon, Plus, Trash, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { CategoryItem } from '@/types';
-import { fetchCategories, createCategory, updateCategory, deleteCategory } from '@/lib/categoryService';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  getCategories, createCategory, updateCategory, deleteCategory 
+} from '@/lib/categoryService';
 
-// Form schema for category validation
-const categoryFormSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(3, { message: 'Título deve ter pelo menos 3 caracteres' }),
-  description: z.string().min(10, { message: 'Descrição deve ter pelo menos 10 caracteres' }),
-  icon: z.string().min(1, { message: 'Selecione um ícone' }),
-  link: z.string().url({ message: 'Insira uma URL válida (inclua http:// ou https://)' }),
-  type: z.literal('tech'),
-  iconColor: z.string().min(1, { message: 'Selecione uma cor' })
-});
+const AdminCategories = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newCategory, setNewCategory] = useState({
+    title: '',
+    description: '',
+    icon: '',
+    link: '',
+    iconColor: '#000000'
+  });
+  const [categoryState, setCategoryState] = useState<CategoryItem>({
+    id: '',
+    title: '',
+    description: '',
+    icon: '',
+    link: '',
+    type: 'tech',
+    iconColor: '',
+    order: 0
+  });
 
-type CategoryFormValues = z.infer<typeof categoryFormSchema>;
+  const queryClient = useQueryClient();
 
-// Available icons for selection
-const availableIcons = [
-  { value: 'Cpu', label: 'CPU (Desenvolvimento Web)' },
-  { value: 'Code', label: 'Código (Apps Móveis)' },
-  { value: 'Database', label: 'Banco de Dados (Sistemas de Gestão)' },
-  { value: 'BrainCircuit', label: 'IA (Soluções com IA)' },
-  { value: 'Server', label: 'Servidor (Cloud)' },
-  { value: 'FileText', label: 'Documento (Documentação)' },
-  { value: 'Zap', label: 'Raio (Rápido)' }
-];
+  const { data: categories = [], isLoading, error } = useQuery({
+    queryKey: ['categories'],
+    queryFn: getCategories,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
-// Available colors for selection
-const availableColors = [
-  { value: 'text-blue-500', label: 'Azul' },
-  { value: 'text-purple-500', label: 'Roxo' },
-  { value: 'text-green-500', label: 'Verde' },
-  { value: 'text-amber-500', label: 'Âmbar' },
-  { value: 'text-pink-500', label: 'Rosa' },
-  { value: 'text-red-500', label: 'Vermelho' },
-  { value: 'text-indigo-500', label: 'Índigo' },
-  { value: 'text-teal-500', label: 'Turquesa' }
-];
-
-const Categories = () => {
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-
-  // Initialize the form
-  const form = useForm<CategoryFormValues>({
-    resolver: zodResolver(categoryFormSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      icon: '',
-      link: '',
-      type: 'tech',
-      iconColor: ''
+  const addMutation = useMutation({
+    mutationFn: createCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast.success('Categoria adicionada com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao adicionar categoria: ${error.message}`);
     }
   });
 
-  // Fetch categories on component mount
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        const data = await fetchCategories('tech');
-        setCategories(data);
-      } catch (err) {
-        console.error('Failed to load categories:', err);
-        setError('Falha ao carregar categorias. Por favor, tente novamente.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadCategories();
-  }, []);
-
-  // Function to add or update a category
-  const handleAddCategory = async (values: CategoryFormValues) => {
-    try {
-      setIsSaving(true);
-      
-      if (values.id) {
-        // Edit existing category
-        const updatedCategory = await updateCategory(values.id, {
-          title: values.title,
-          description: values.description,
-          icon: values.icon,
-          link: values.link,
-          type: values.type,
-          iconColor: values.iconColor
-        });
-        
-        setCategories(categories.map(cat => 
-          cat.id === values.id ? updatedCategory : cat
-        ));
-        
-        toast.success('Categoria atualizada com sucesso!');
-      } else {
-        // Add new category
-        const newCategory = await createCategory({
-          title: values.title,
-          description: values.description,
-          icon: values.icon,
-          link: values.link,
-          type: values.type,
-          iconColor: values.iconColor
-        });
-        
-        setCategories([...categories, newCategory]);
-        toast.success('Nova categoria adicionada!');
-      }
-      
-      setIsDialogOpen(false);
-      form.reset();
-    } catch (err) {
-      console.error('Error saving category:', err);
-      toast.error('Erro ao salvar categoria. Por favor, tente novamente.');
-    } finally {
-      setIsSaving(false);
+  const updateMutation = useMutation({
+    mutationFn: updateCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast.success('Categoria atualizada com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao atualizar categoria: ${error.message}`);
     }
-  };
+  });
 
-  // Function to delete a category
-  const handleDeleteCategory = async (id: string) => {
-    try {
-      setIsDeleting(id);
-      
-      await deleteCategory(id);
-      setCategories(categories.filter(cat => cat.id !== id));
-      
+  const deleteMutation = useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast.success('Categoria removida com sucesso!');
-    } catch (err) {
-      console.error('Error deleting category:', err);
-      toast.error('Erro ao remover categoria. Por favor, tente novamente.');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao remover categoria: ${error.message}`);
+    }
+  });
+
+  const handleToggleSortOrder = () => {
+    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
+  const handleEditCategory = (category: CategoryItem) => {
+    setCategoryState(category);
+  };
+
+  const handleUpdateCategory = async () => {
+    try {
+      setIsSubmitting(true);
+      await updateCategory(categoryState);
+      toast.success('Categoria atualizada com sucesso!');
+    } catch (error) {
+      console.error("Erro ao atualizar categoria:", error);
+      toast.error("Erro ao atualizar categoria");
     } finally {
-      setIsDeleting(null);
+      setIsSubmitting(false);
     }
   };
 
-  // Function to edit a category
-  const handleEditCategory = (category: CategoryItem) => {
-    setEditingCategory(category);
-    form.reset(category);
-    setIsDialogOpen(true);
+  const handleDeleteCategory = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta categoria?')) {
+      try {
+        await deleteMutation.mutateAsync(id);
+        toast.success('Categoria excluída com sucesso!');
+      } catch (error) {
+        console.error("Erro ao excluir categoria:", error);
+        toast.error("Erro ao excluir categoria");
+      }
+    }
   };
 
-  // Set up new category
-  const handleNewCategory = () => {
-    setEditingCategory(null);
-    form.reset({
+  const handleAddCategory = async () => {
+    if (!newCategory.title || !newCategory.description || !newCategory.icon) {
+      toast.error("Por favor, preencha todos os campos obrigatórios");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const result = await createCategory({
+        title: newCategory.title,
+        description: newCategory.description,
+        icon: newCategory.icon,
+        link: newCategory.link || "",
+        type: "tech", // Restringindo para apenas 'tech'
+        iconColor: newCategory.iconColor || "#000000",
+        order: categories.length + 1 // Adicionando ordem automaticamente
+      });
+
+      if (result) {
+        setCategories([...categories, result]);
+        setShowAddDialog(false);
+        resetNewCategory();
+        toast.success("Categoria adicionada com sucesso!");
+      }
+    } catch (error) {
+      console.error("Erro ao adicionar categoria:", error);
+      toast.error("Erro ao adicionar categoria");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetNewCategory = () => {
+    setNewCategory({
       title: '',
       description: '',
       icon: '',
       link: '',
-      type: 'tech',
-      iconColor: ''
+      iconColor: '#000000'
     });
-    setIsDialogOpen(true);
+  };
+
+  const filteredCategories = categories.filter(category =>
+    category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    category.description.toLowerCase().includes(searchQuery.toLowerCase())
+  ).sort((a, b) => {
+    if (sortOrder === 'asc') {
+      return a.title.localeCompare(b.title);
+    } else {
+      return b.title.localeCompare(a.title);
+    }
+  });
+
+  // Ajustando o tipo para ser apenas 'tech' onde há erro de tipo
+  const handleResetForm = () => {
+    setCategoryState({
+      type: "tech", // Forçando o tipo para ser apenas 'tech'
+      id: categoryState.id,
+      link: categoryState.link,
+      title: categoryState.title,
+      icon: categoryState.icon,
+      description: categoryState.description,
+      iconColor: categoryState.iconColor,
+      order: categoryState.order // Garantindo que order esteja presente
+    });
   };
 
   return (
     <AdminLayout
-      title="Gerenciar Categorias"
-      description="Edite, adicione ou remova categorias de soluções tecnológicas."
+      title="Gerenciamento de Categorias"
+      description="Adicione e gerencie as categorias de serviços."
       actionLabel="Nova Categoria"
-      onAction={handleNewCategory}
+      onAction={() => setShowAddDialog(true)}
     >
-      {error && (
-        <Alert className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Soluções Tecnológicas</CardTitle>
-              <CardDescription>Categorias exibidas na seção de tecnologia do painel do usuário</CardDescription>
-            </div>
-            <Button onClick={handleNewCategory} size="sm">
-              <Plus className="h-4 w-4 mr-2" /> Nova Categoria
-            </Button>
+      <div className="space-y-6">
+        <div className="flex gap-4 items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por título ou descrição..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : categories.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhuma categoria encontrada. Clique em "Nova Categoria" para adicionar.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Título</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Ícone</TableHead>
-                  <TableHead>Link</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.title}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{category.description}</TableCell>
-                    <TableCell>{category.icon}</TableCell>
-                    <TableCell className="max-w-[150px] truncate">{category.link}</TableCell>
-                    <TableCell className="text-right flex justify-end gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 w-8 p-0" 
-                        onClick={() => handleEditCategory(category)}
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700" 
-                        onClick={() => handleDeleteCategory(category.id)}
-                        disabled={isDeleting === category.id}
-                      >
-                        {isDeleting === category.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Form Dialog for adding/editing categories */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
-          <DialogHeader>
-            <DialogTitle>{editingCategory ? 'Editar Categoria' : 'Adicionar Nova Categoria'}</DialogTitle>
-            <DialogDescription>
-              {editingCategory 
-                ? 'Atualize os detalhes da categoria existente.' 
-                : 'Preencha os detalhes da nova categoria.'}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleAddCategory)} className="space-y-4">
-              {/* Hidden ID field for edits */}
-              <input type="hidden" {...form.register('id')} />
-              
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Título</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Título da categoria" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Breve descrição da categoria" 
-                        className="resize-none" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="icon"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ícone</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um ícone" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {availableIcons.map((icon) => (
-                            <SelectItem key={icon.value} value={icon.value}>
-                              {icon.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="iconColor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cor do Ícone</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma cor" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {availableColors.map((color) => (
-                            <SelectItem key={color.value} value={color.value} className="flex items-center">
-                              <div className={`w-4 h-4 rounded-full mr-2 ${color.value.replace('text-', 'bg-')}`}></div>
-                              {color.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+          <Button variant="outline" size="icon" onClick={handleToggleSortOrder} title="Ordenar por nome">
+            <ArrowUpDown className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Carregando categorias...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-destructive">Erro ao carregar categorias: {(error as Error).message}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCategories.length > 0 ? (
+              filteredCategories.map((category) => (
+                <Card key={category.id}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={category.icon} alt={category.title} />
+                        <AvatarFallback>{category.title.substring(0, 2)}</AvatarFallback>
+                      </Avatar>
+                      {category.title}
+                    </CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Abrir menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                          <Edit className="h-4 w-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                            if (category.link) {
+                                navigator.clipboard.writeText(category.link);
+                                toast.success('Link copiado para a área de transferência!');
+                            } else {
+                                toast.message('Esta categoria não possui um link definido.');
+                            }
+                        }}>
+                          <Copy className="h-4 w-4 mr-2" /> Copiar Link
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCategory(category.id)}>
+                          <Trash className="h-4 w-4 mr-2" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-muted-foreground line-clamp-2">
+                      {category.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">Nenhuma categoria encontrada. Clique em "Nova Categoria" para adicionar.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Add Category Dialog */}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Nova Categoria</DialogTitle>
+              <DialogDescription>
+                Adicione uma nova categoria de serviço.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="title">Título</Label>
+                <Input
+                  id="title"
+                  placeholder="Ex: Desenvolvimento Web"
+                  value={newCategory.title}
+                  onChange={(e) => setNewCategory({ ...newCategory, title: e.target.value })}
                 />
               </div>
-              
-              <FormField
-                control={form.control}
-                name="link"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Link</FormLabel>
-                    <FormControl>
-                      <div className="flex">
-                        <span className="inline-flex items-center px-3 bg-muted border border-r-0 border-input rounded-l-md">
-                          <LinkIcon className="h-4 w-4 text-muted-foreground" />
-                        </span>
-                        <Input 
-                          placeholder="https://example.com/page" 
-                          {...field} 
-                          className="rounded-l-none"
-                        />
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Use URLs completas, incluindo http:// ou https://
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : editingCategory ? (
-                    'Salvar Alterações'
-                  ) : (
-                    'Adicionar Categoria'
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+              <div className="grid gap-2">
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Descrição da categoria"
+                  className="resize-none"
+                  value={newCategory.description}
+                  onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="icon">Ícone (URL)</Label>
+                <Input
+                  id="icon"
+                  placeholder="URL do ícone"
+                  value={newCategory.icon}
+                  onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="link">Link (opcional)</Label>
+                <Input
+                  id="link"
+                  placeholder="URL de destino"
+                  value={newCategory.link}
+                  onChange={(e) => setNewCategory({ ...newCategory, link: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="iconColor">Cor do Ícone</Label>
+                <Input
+                  type="color"
+                  id="iconColor"
+                  value={newCategory.iconColor}
+                  onChange={(e) => setNewCategory({ ...newCategory, iconColor: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowAddDialog(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" onClick={handleAddCategory} disabled={isSubmitting}>
+                {isSubmitting ? 'Adicionando...' : 'Adicionar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Category Dialog */}
+        <Dialog open={!!categoryState.id} onOpenChange={() => setCategoryState({ ...categoryState, id: '' })}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Editar Categoria</DialogTitle>
+              <DialogDescription>
+                Edite os detalhes da categoria selecionada.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="title">Título</Label>
+                <Input
+                  id="title"
+                  placeholder="Ex: Desenvolvimento Web"
+                  value={categoryState.title}
+                  onChange={(e) => setCategoryState({ ...categoryState, title: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Descrição da categoria"
+                  className="resize-none"
+                  value={categoryState.description}
+                  onChange={(e) => setCategoryState({ ...categoryState, description: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="icon">Ícone (URL)</Label>
+                <Input
+                  id="icon"
+                  placeholder="URL do ícone"
+                  value={categoryState.icon}
+                  onChange={(e) => setCategoryState({ ...categoryState, icon: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="link">Link (opcional)</Label>
+                <Input
+                  id="link"
+                  placeholder="URL de destino"
+                  value={categoryState.link}
+                  onChange={(e) => setCategoryState({ ...categoryState, link: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="iconColor">Cor do Ícone</Label>
+                <Input
+                  type="color"
+                  id="iconColor"
+                  value={categoryState.iconColor || '#000000'}
+                  onChange={(e) => setCategoryState({ ...categoryState, iconColor: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={handleResetForm}>
+                Resetar
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setCategoryState({ ...categoryState, id: '' })}>
+                Cancelar
+              </Button>
+              <Button type="submit" onClick={handleUpdateCategory} disabled={isSubmitting}>
+                {isSubmitting ? 'Atualizando...' : 'Atualizar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </AdminLayout>
   );
 };
 
-export default Categories;
+export default AdminCategories;
