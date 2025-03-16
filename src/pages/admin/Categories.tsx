@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +51,7 @@ const AdminCategories = () => {
     link: '',
     type: 'tech',
     iconColor: '',
+    enabled: true, // Added the required enabled property
     order: 0
   });
 
@@ -127,6 +129,7 @@ const AdminCategories = () => {
           link: categoryState.link,
           type: categoryState.type,
           iconColor: categoryState.iconColor,
+          enabled: categoryState.enabled,
           order: categoryState.order
         }
       });
