@@ -88,74 +88,103 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create policy_documents storage bucket
 DO $$
-DECLARE
-    bucket_exists BOOLEAN;
 BEGIN
     -- Check if the bucket exists
-    SELECT EXISTS (
+    IF NOT EXISTS (
         SELECT 1 FROM storage.buckets WHERE name = 'policy_documents'
-    ) INTO bucket_exists;
-    
-    -- Create the bucket if it doesn't exist
-    IF NOT bucket_exists THEN
-        -- Ensure the storage schema exists
-        CREATE SCHEMA IF NOT EXISTS storage;
-        
+    ) THEN
         -- Create the bucket
-        INSERT INTO storage.buckets (id, name)
-        VALUES ('policy_documents', 'policy_documents')
+        INSERT INTO storage.buckets (id, name, public)
+        VALUES ('policy_documents', 'policy_documents', false)
         ON CONFLICT (id) DO NOTHING;
         
-        -- Set up bucket policies
-        -- Allow public access for reading files
-        INSERT INTO storage.policies (name, definition, bucket_id)
-        VALUES (
-            'Public Read Access',
-            jsonb_build_object(
-                'statement', jsonb_build_object(
-                    'effect', 'allow',
-                    'actions', array['s3:GetObject'],
-                    'principal', '*'
-                )
-            ),
-            'policy_documents'
-        )
-        ON CONFLICT DO NOTHING;
+        -- Create policies for the bucket
         
-        -- Allow authenticated users to upload files
-        INSERT INTO storage.policies (name, definition, bucket_id)
-        VALUES (
-            'Auth Upload Access',
-            jsonb_build_object(
-                'statement', jsonb_build_object(
-                    'effect', 'allow',
-                    'actions', array['s3:PutObject'],
-                    'principal', jsonb_build_object('id', 'authenticated')
-                )
-            ),
+        -- 1. Policy for public read access
+        INSERT INTO storage.policies (id, name, bucket_id)
+        SELECT 
+            gen_random_uuid(), 
+            'Policy Documents Public Read', 
             'policy_documents'
-        )
-        ON CONFLICT DO NOTHING;
+        WHERE NOT EXISTS (
+            SELECT 1 FROM storage.policies 
+            WHERE name = 'Policy Documents Public Read' AND bucket_id = 'policy_documents'
+        );
         
-        -- Allow users to manage only their own folders
-        INSERT INTO storage.policies (name, definition, bucket_id)
-        VALUES (
-            'User Folder Access',
-            jsonb_build_object(
-                'statement', jsonb_build_object(
+        -- Update the policy definition
+        UPDATE storage.policies 
+        SET definition = jsonb_build_object(
+            'id', id,
+            'name', name,
+            'statements', jsonb_build_array(
+                jsonb_build_object(
                     'effect', 'allow',
-                    'actions', array['s3:*'],
+                    'actions', ARRAY['s3:GetObject'],
+                    'principal', '*',
+                    'resources', ARRAY['policy_documents/*']
+                )
+            )
+        )
+        WHERE name = 'Policy Documents Public Read' AND bucket_id = 'policy_documents';
+        
+        -- 2. Policy for authenticated users to upload
+        INSERT INTO storage.policies (id, name, bucket_id)
+        SELECT 
+            gen_random_uuid(), 
+            'Policy Documents Auth Upload', 
+            'policy_documents'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM storage.policies 
+            WHERE name = 'Policy Documents Auth Upload' AND bucket_id = 'policy_documents'
+        );
+        
+        -- Update the policy definition
+        UPDATE storage.policies 
+        SET definition = jsonb_build_object(
+            'id', id,
+            'name', name,
+            'statements', jsonb_build_array(
+                jsonb_build_object(
+                    'effect', 'allow',
+                    'actions', ARRAY['s3:PutObject'],
                     'principal', jsonb_build_object('id', 'authenticated'),
+                    'resources', ARRAY['policy_documents/*']
+                )
+            )
+        )
+        WHERE name = 'Policy Documents Auth Upload' AND bucket_id = 'policy_documents';
+        
+        -- 3. Policy for users to manage their own folders
+        INSERT INTO storage.policies (id, name, bucket_id)
+        SELECT 
+            gen_random_uuid(), 
+            'Policy Documents User Folder Access', 
+            'policy_documents'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM storage.policies 
+            WHERE name = 'Policy Documents User Folder Access' AND bucket_id = 'policy_documents'
+        );
+        
+        -- Update the policy definition
+        UPDATE storage.policies 
+        SET definition = jsonb_build_object(
+            'id', id,
+            'name', name,
+            'statements', jsonb_build_array(
+                jsonb_build_object(
+                    'effect', 'allow',
+                    'actions', ARRAY['s3:*'],
+                    'principal', jsonb_build_object('id', 'authenticated'),
+                    'resources', ARRAY['policy_documents/policies/${auth.uid}/*'],
                     'conditions', jsonb_build_object(
-                        'resource_prefix', jsonb_build_object(
-                            'prefix_match', array['policies/${auth.uid}/']
+                        'StringLike', jsonb_build_object(
+                            'resource.path', ARRAY['policies/${auth.uid}/*']
                         )
                     )
                 )
-            ),
-            'policy_documents'
+            )
         )
-        ON CONFLICT DO NOTHING;
+        WHERE name = 'Policy Documents User Folder Access' AND bucket_id = 'policy_documents';
     END IF;
 END
 $$;
