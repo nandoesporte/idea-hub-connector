@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.policies (
   status text NOT NULL CHECK (status IN ('active', 'expired', 'pending', 'cancelled')),
   document_url text,
   file_name text,
+  type text,
   created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -50,22 +51,27 @@ CREATE POLICY "Users can delete their own policies"
   FOR DELETE
   USING (auth.uid() = user_id);
 
--- Create storage bucket for policy documents if it doesn't exist
-INSERT INTO storage.buckets (id, name, public)
-SELECT 'policy_documents', 'policy_documents', false
-WHERE NOT EXISTS (
-  SELECT 1 FROM storage.buckets WHERE name = 'policy_documents'
-);
+-- Create storage bucket policies
+DO $$
+BEGIN
+  -- Create the storage bucket if it doesn't exist
+  BEGIN
+    INSERT INTO storage.buckets (id, name, public)
+    VALUES ('policy_documents', 'policy_documents', false);
+  EXCEPTION
+    WHEN unique_violation THEN
+      NULL;
+  END;
+END $$;
 
 -- Create bucket policies for accessing policies
--- Note: We use a different approach that doesn't rely on the storage.policies table
 DO $$
 BEGIN
   -- Allow users to read their own policy documents
   EXECUTE format('
     CREATE POLICY "Users can read their own policy documents" ON storage.objects
     FOR SELECT
-    USING (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = ''policies'' AND (storage.foldername(name))[2] = auth.uid()::text);
+    USING (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = auth.uid()::text);
   ');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
@@ -77,7 +83,7 @@ BEGIN
   EXECUTE format('
     CREATE POLICY "Users can insert their own policy documents" ON storage.objects
     FOR INSERT
-    WITH CHECK (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = ''policies'' AND (storage.foldername(name))[2] = auth.uid()::text);
+    WITH CHECK (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = auth.uid()::text);
   ');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
@@ -89,7 +95,7 @@ BEGIN
   EXECUTE format('
     CREATE POLICY "Users can update their own policy documents" ON storage.objects
     FOR UPDATE
-    USING (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = ''policies'' AND (storage.foldername(name))[2] = auth.uid()::text);
+    USING (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = auth.uid()::text);
   ');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
@@ -101,7 +107,7 @@ BEGIN
   EXECUTE format('
     CREATE POLICY "Users can delete their own policy documents" ON storage.objects
     FOR DELETE
-    USING (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = ''policies'' AND (storage.foldername(name))[2] = auth.uid()::text);
+    USING (bucket_id = ''policy_documents'' AND (storage.foldername(name))[1] = auth.uid()::text);
   ');
 EXCEPTION
   WHEN duplicate_object THEN NULL;

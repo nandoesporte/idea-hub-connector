@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Search, FileUp, Loader2, AlertTriangle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -10,7 +10,7 @@ import PolicyList from './PolicyList';
 import EmptyPolicyState from './EmptyPolicyState';
 import FileUploadProgress from './FileUploadProgress';
 import PolicySettings from './PolicySettings';
-import { uploadAndProcessPolicy, checkBucketExists } from '@/lib/policyService';
+import { uploadAndProcessPolicy } from '@/lib/policyService';
 import PolicySearchBar from './PolicySearchBar';
 
 interface PolicyTabContentProps {
@@ -35,7 +35,7 @@ const PolicyTabContent = ({
   userId
 }: PolicyTabContentProps) => {
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
-  const [verifyingStorage, setVerifyingStorage] = useState(false);
+  const [processingUpload, setProcessingUpload] = useState(false);
   const queryClient = useQueryClient();
 
   // Function to trigger file selection
@@ -45,12 +45,7 @@ const PolicyTabContent = ({
       return;
     }
     
-    // Double-check bucket access before upload
-    setVerifyingStorage(true);
-    const isBucketAccessible = await checkBucketExists(userId);
-    setVerifyingStorage(false);
-    
-    if (!isBucketAccessible) {
+    if (!bucketReady) {
       toast.error("Sistema de armazenamento não está disponível");
       return;
     }
@@ -82,6 +77,7 @@ const PolicyTabContent = ({
         progress: 0,
         status: 'pending'
       });
+      setProcessingUpload(true);
       
       uploadAndProcessPolicy(
         file, 
@@ -90,6 +86,7 @@ const PolicyTabContent = ({
         () => {
           // Update policy list after successful upload
           queryClient.invalidateQueries({ queryKey: ['policies'] });
+          setProcessingUpload(false);
         }
       );
     });
@@ -113,12 +110,12 @@ const PolicyTabContent = ({
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Sistema de armazenamento indisponível</AlertTitle>
           <AlertDescription>
-            O sistema de armazenamento de documentos não está disponível. Entre em contato com o administrador do sistema.
+            O sistema de armazenamento de documentos não está disponível. Aguarde enquanto configuramos o sistema para você.
           </AlertDescription>
         </Alert>
       )}
       
-      {isLoading || configuringStorage || verifyingStorage ? (
+      {isLoading || configuringStorage || processingUpload ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -138,7 +135,7 @@ const PolicyTabContent = ({
           <div className="flex justify-center mt-4">
             <Button 
               onClick={triggerFileSelection}
-              disabled={uploadingFile !== null || !bucketReady || verifyingStorage}
+              disabled={uploadingFile !== null || !bucketReady || processingUpload}
               className="w-full sm:w-auto"
             >
               <FileUp className="h-4 w-4 mr-2" /> 

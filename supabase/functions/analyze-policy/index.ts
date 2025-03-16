@@ -1,6 +1,5 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 import { corsHeaders } from '../_shared/cors.ts'
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
@@ -30,11 +29,6 @@ serve(async (req: Request) => {
   }
 
   try {
-    const supabase = createClient(
-      SUPABASE_URL!,
-      SUPABASE_ANON_KEY!
-    )
-
     if (!OPENAI_API_KEY) {
       return new Response(
         JSON.stringify({ error: 'OpenAI API key not configured' }),

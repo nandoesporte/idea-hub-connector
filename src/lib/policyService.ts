@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { Policy, PolicyFile } from "@/types";
 import { toast } from "sonner";
@@ -51,53 +52,6 @@ export const deletePolicy = async (id: string) => {
   return id;
 };
 
-// Check if bucket exists and is accessible
-export const checkBucketExists = async (userId: string): Promise<boolean> => {
-  try {
-    if (!userId) {
-      console.error("Cannot check bucket without a user ID");
-      return false;
-    }
-
-    // First verify authentication
-    const { data: authData, error: authError } = await supabase.auth.getSession();
-    if (authError || !authData.session) {
-      console.error("Authentication check failed:", authError);
-      return false;
-    }
-
-    // Check if bucket exists
-    const { data: buckets, error } = await supabase.storage.listBuckets();
-    
-    if (error) {
-      console.error("Error checking buckets:", error);
-      return false;
-    }
-    
-    const bucketExists = buckets.some(bucket => bucket.name === STORAGE_BUCKET);
-    
-    if (!bucketExists) {
-      console.error("Bucket not found:", STORAGE_BUCKET);
-      return false;
-    }
-    
-    // Then check if we can access the bucket with the current user
-    const { error: accessError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .list(userId);
-      
-    if (accessError) {
-      console.error("Error accessing bucket:", accessError);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Error checking if bucket exists:", error);
-    return false;
-  }
-};
-
 // Upload and process policy
 export const uploadAndProcessPolicy = async (
   file: File, 
@@ -107,14 +61,6 @@ export const uploadAndProcessPolicy = async (
 ) => {
   if (!userId) {
     toast.error("Usuário não autenticado");
-    setUploadingFile(null);
-    return;
-  }
-
-  // Verify bucket exists and is accessible before attempting upload
-  const bucketAccessible = await checkBucketExists(userId);
-  if (!bucketAccessible) {
-    toast.error("Sistema de armazenamento não está disponível");
     setUploadingFile(null);
     return;
   }
@@ -134,17 +80,17 @@ export const uploadAndProcessPolicy = async (
     }, 100);
 
     try {
-      // Gerar nome de arquivo único sem caracteres especiais
+      // Generate unique filename without special characters
       const timestamp = Date.now();
       const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
       const fileName = `${timestamp}_${cleanFileName}`;
       
-      // Criar caminho seguro para o arquivo
+      // Create safe path for the file
       const filePath = `${userId}/${fileName}`;
       
-      console.log("Iniciando upload para:", filePath);
+      console.log("Starting upload to:", filePath);
       
-      // Upload do arquivo
+      // Upload file
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
         .upload(filePath, file, {
@@ -161,7 +107,7 @@ export const uploadAndProcessPolicy = async (
         return;
       }
       
-      console.log("Upload concluído com sucesso, path:", uploadData?.path);
+      console.log("Upload completed successfully, path:", uploadData?.path);
   
       // Set progress to 100% for upload complete
       setUploadingFile(prev => prev ? { ...prev, progress: 100, status: 'processing' } : null);
@@ -221,7 +167,8 @@ export const uploadAndProcessPolicy = async (
               premium_value: policyData.premium,
               status: policyStatus,
               document_url: publicUrl,
-              file_name: file.name
+              file_name: file.name,
+              type: policyData.type || 'general'
             });
   
           if (saveError) {
