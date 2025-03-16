@@ -103,3 +103,6 @@ USING (auth.uid() = user_id);
 -- Grant access to authenticated users
 GRANT SELECT, INSERT, UPDATE ON public.user_settings TO authenticated;
 GRANT SELECT, UPDATE ON public.notifications TO authenticated;
+
+-- Ensure notifications table can be inserted to by the system
+GRANT INSERT ON public.notifications TO service_role;
