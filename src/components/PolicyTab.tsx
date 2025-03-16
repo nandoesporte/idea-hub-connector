@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,8 @@ import {
 import { format, addDays, isBefore, isAfter, subMonths } from "date-fns";
 import { toast } from "sonner";
 import { PolicyFile } from "@/types";
+import { supabase } from "@/lib/supabase";
+import { useUser } from "@/contexts/UserContext";
 
 interface Policy {
   id: string;
@@ -36,19 +37,62 @@ interface Policy {
   status: "active" | "expired" | "pending" | "cancelled";
   documentUrl?: string;
   fileName?: string;
+  userId?: string;
 }
 
 const PolicyTab = () => {
+  const { user } = useUser();
   const [policies, setPolicies] = useState<Policy[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadingFile, setUploadingFile] = useState<PolicyFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // In a real app, we would fetch policies from an API
-    setPolicies([]);
-  }, []);
+    fetchPolicies();
+  }, [user]);
+
+  const fetchPolicies = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('policies')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("Error fetching policies:", error);
+        toast.error("Erro ao carregar apólices");
+        return;
+      }
+
+      if (data) {
+        const formattedPolicies = data.map(policy => ({
+          ...policy,
+          id: policy.id,
+          policyNumber: policy.policy_number,
+          insurer: policy.insurer,
+          customer: policy.customer,
+          startDate: new Date(policy.start_date),
+          endDate: new Date(policy.end_date),
+          coverageAmount: policy.coverage_amount,
+          premiumValue: policy.premium_value,
+          status: policy.status,
+          documentUrl: policy.document_url,
+          fileName: policy.file_name,
+        }));
+        setPolicies(formattedPolicies);
+      }
+    } catch (error) {
+      console.error("Error fetching policies:", error);
+      toast.error("Erro ao carregar apólices");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
@@ -99,7 +143,13 @@ const PolicyTab = () => {
     }, 3000);
   };
 
-  const extractPolicyDataFromPDF = (file: File) => {
+  const extractPolicyDataFromPDF = async (file: File) => {
+    if (!user) {
+      toast.error("Usuário não autenticado");
+      setUploadingFile(null);
+      return;
+    }
+
     try {
       // In a real implementation, we would send the file to a backend API
       // that uses GPT-4 Vision to analyze the PDF and extract information
@@ -162,6 +212,7 @@ const PolicyTab = () => {
         duration: 5000
       });
       
+      // Create policy object
       const newPolicy: Policy = {
         id: Date.now().toString(),
         policyNumber: extractedPolicyNumber,
@@ -172,9 +223,41 @@ const PolicyTab = () => {
         coverageAmount,
         premiumValue,
         status: policyStatus,
-        fileName: file.name
+        fileName: file.name,
+        userId: user.id,
       };
       
+      // Save the policy to Supabase
+      const { error } = await supabase
+        .from('policies')
+        .insert({
+          id: newPolicy.id,
+          user_id: user.id,
+          policy_number: newPolicy.policyNumber,
+          insurer: newPolicy.insurer,
+          customer: newPolicy.customer,
+          start_date: newPolicy.startDate.toISOString(),
+          end_date: newPolicy.endDate.toISOString(),
+          coverage_amount: newPolicy.coverageAmount,
+          premium_value: newPolicy.premiumValue,
+          status: newPolicy.status,
+          file_name: newPolicy.fileName,
+          created_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error("Error saving policy:", error);
+        toast.error("Erro ao salvar a apólice");
+        setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao salvar a apólice' } : null);
+        
+        setTimeout(() => {
+          setUploadingFile(null);
+        }, 3000);
+        
+        return;
+      }
+      
+      // Update local state
       setPolicies(prev => [newPolicy, ...prev]);
       setUploadingFile(prev => prev ? { ...prev, status: 'success' } : null);
       toast.success("Apólice processada com sucesso!");
@@ -200,9 +283,25 @@ const PolicyTab = () => {
     }
   };
 
-  const handleDeletePolicy = (id: string) => {
-    setPolicies(prev => prev.filter(policy => policy.id !== id));
-    toast.success("Apólice removida com sucesso");
+  const handleDeletePolicy = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('policies')
+        .delete()
+        .eq('id', id);
+        
+      if (error) {
+        console.error("Error deleting policy:", error);
+        toast.error("Erro ao remover a apólice");
+        return;
+      }
+      
+      setPolicies(prev => prev.filter(policy => policy.id !== id));
+      toast.success("Apólice removida com sucesso");
+    } catch (error) {
+      console.error("Error deleting policy:", error);
+      toast.error("Erro ao remover a apólice");
+    }
   };
 
   const getStatusBadge = (status: Policy['status']) => {
@@ -257,7 +356,11 @@ const PolicyTab = () => {
             />
           </div>
           
-          {filteredPolicies.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredPolicies.length === 0 ? (
             <div className="text-center py-10">
               <FileText className="h-16 w-16 mx-auto text-muted-foreground opacity-20 mb-4" />
               <h3 className="text-lg font-medium">Nenhuma apólice encontrada</h3>
