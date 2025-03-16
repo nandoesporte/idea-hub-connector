@@ -2,6 +2,14 @@ import { toast } from "sonner";
 
 // WhatsApp API configuration based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
 const WHATSGW_API_URL = "https://app.whatsgw.com.br/api/v1";
+// Proxy service URL for bypassing CORS - we'll use a proxy service that works for this purpose
+const CORS_PROXY_URL = "https://cors-anywhere.herokuapp.com/";
+// Alternative proxies if the primary one fails
+const ALTERNATIVE_PROXIES = [
+  "https://api.allorigins.win/raw?url=",
+  "https://thingproxy.freeboard.io/fetch/"
+];
+let WHATSGW_API_KEY = ""; // This will be set dynamically
 
 // Add a log history array to keep track of recent operations
 const LOG_HISTORY_MAX_SIZE = 50;
@@ -79,33 +87,33 @@ export const clearLogHistory = (): void => {
 /**
  * Set WhatsApp API key
  */
-export const setApiKey = (apiKey: string, apiUrl: string = WHATSGW_API_URL): void => {
+export const setApiKey = (apiKey: string): void => {
+  WHATSGW_API_KEY = apiKey;
   localStorage.setItem('whatsapp_api_key', apiKey);
-  localStorage.setItem('whatsapp_api_url', apiUrl);
   addLogEntry('info', 'configuration', "WhatsApp API key set successfully");
 };
 
 /**
  * Get the API key
  */
-export const getApiKey = (): { apiKey: string, apiUrl: string } => {
-  const apiKey = localStorage.getItem('whatsapp_api_key') || '';
-  const apiUrl = localStorage.getItem('whatsapp_api_url') || WHATSGW_API_URL;
-  
-  if (apiKey) {
-    addLogEntry('info', 'configuration', "WhatsApp API key loaded from localStorage");
-  } else {
-    addLogEntry('warning', 'configuration', "No WhatsApp API key found in localStorage");
+export const getApiKey = (): string => {
+  if (!WHATSGW_API_KEY) {
+    const savedKey = localStorage.getItem('whatsapp_api_key');
+    if (savedKey) {
+      WHATSGW_API_KEY = savedKey;
+      addLogEntry('info', 'configuration', "WhatsApp API key loaded from localStorage");
+    } else {
+      addLogEntry('warning', 'configuration', "No WhatsApp API key found in localStorage");
+    }
   }
-  
-  return { apiKey, apiUrl };
+  return WHATSGW_API_KEY;
 };
 
 /**
  * Check if WhatsApp is configured
  */
 export const isWhatsAppConfigured = (): boolean => {
-  return !!getApiKey().apiKey;
+  return !!getApiKey();
 };
 
 /**
@@ -138,177 +146,273 @@ const handleApiError = (status: number, operation: string, responseData?: any): 
 };
 
 /**
- * Makes a WhatsApp API request using server-side proxy
- * This is our new approach to avoid CORS issues
+ * Attempts to send a request with different proxies if the first one fails
  */
-const makeWhatsAppApiRequest = async (endpoint: string, method: string = 'GET', body: any = null): Promise<any> => {
+const sendWithFallbackProxies = async (url: string, options: RequestInit): Promise<Response> => {
   try {
-    // We'll use our own backend as a proxy instead of direct API calls
-    const proxyEndpoint = `/api/whatsgw-proxy`;
+    // First try direct API call (may work in some environments or with CORS extensions)
+    addLogEntry('info', 'api-request', `Attempting direct API call to: ${url}`);
+    return await fetch(url, options);
+  } catch (directError) {
+    addLogEntry('warning', 'api-request', `Direct API call failed, trying with proxies`, { error: directError.message });
     
-    const { apiKey, apiUrl } = getApiKey();
-    
-    if (!apiKey) {
-      throw new Error("API key is not configured");
+    // Try main proxy
+    try {
+      const proxyUrl = `${CORS_PROXY_URL}${url}`;
+      addLogEntry('info', 'api-request', `Trying with primary proxy: ${CORS_PROXY_URL}`);
+      return await fetch(proxyUrl, {
+        ...options,
+        headers: {
+          ...options.headers,
+          "X-Requested-With": "XMLHttpRequest" // Required by some CORS proxies
+        }
+      });
+    } catch (primaryProxyError) {
+      addLogEntry('warning', 'api-request', `Primary proxy failed, trying alternatives`, { error: primaryProxyError.message });
+      
+      // Try alternative proxies
+      for (const proxy of ALTERNATIVE_PROXIES) {
+        try {
+          const proxyUrl = `${proxy}${encodeURIComponent(url)}`;
+          addLogEntry('info', 'api-request', `Trying with alternative proxy: ${proxy}`);
+          return await fetch(proxyUrl, options);
+        } catch (alternativeProxyError) {
+          addLogEntry('warning', 'api-request', `Alternative proxy ${proxy} failed`, { error: alternativeProxyError.message });
+          // Continue to next proxy
+        }
+      }
+      
+      // If all proxies fail, throw the original error
+      throw directError;
     }
-    
-    const fullUrl = `${apiUrl}/${endpoint}`.replace(/\/\//g, '/');
-    
-    addLogEntry('info', 'api-request', `Making ${method} request to ${fullUrl} via proxy`);
-    
-    const options: RequestInit = {
-      method: 'POST', // The proxy itself always receives POST requests
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        target_url: fullUrl,
-        method: method,
-        api_key: apiKey,
-        body: body
-      })
-    };
-    
-    // Simulate the proxy for development by making a direct request
-    // In a real scenario, you would implement a server-side proxy endpoint
-    console.log(`WhatsApp API request to ${fullUrl}`);
-    console.log('Request options:', JSON.stringify(options, null, 2));
-    
-    // For now, show a message to the user explaining the CORS issue
-    addLogEntry('info', 'api-request', "Using simulated proxy approach for development");
-    toast.info("Para resolver o erro CORS 403, implemente um proxy no servidor ou utilize uma extensão CORS no navegador");
-    
-    // Return a simulated successful response
-    return {
-      success: true,
-      message: "Operação simulada com sucesso devido a limitações CORS. Implemente um proxy no servidor para uso em produção."
-    };
-  } catch (error) {
-    addLogEntry('error', 'api-request', "Error making WhatsApp API request", { 
-      error: error instanceof Error ? error.message : String(error),
-      endpoint
-    });
-    throw error;
   }
 };
 
 /**
- * Send a test message to a specific number
+ * Send a test message to a specific number (44988057213)
+ * This function attempts to use multiple connection methods to test the direct API integration
  */
-export const sendTestMessage = async (phone: string): Promise<any> => {
-  try {
-    if (!isWhatsAppConfigured()) {
-      toast.error("Chave de API do WhatsApp não configurada");
-      return { success: false };
-    }
-    
-    const formattedPhone = formatPhoneNumber(phone);
-    
-    if (!formattedPhone) {
-      toast.error("Formato de número de telefone inválido");
-      return { success: false };
-    }
-    
-    const message = "🔍 *Teste de Integração*\n\nOlá! Este é um teste de envio de mensagem pelo WhatsApp. Se você recebeu esta mensagem, a integração está funcionando corretamente.";
-    
-    const requestBody = {
-      number: formattedPhone,
-      message: message
-    };
-    
-    const result = await makeWhatsAppApiRequest('send-message', 'POST', requestBody);
-    
-    if (result.success) {
-      toast.success("Mensagem de teste enviada com sucesso!");
-      return { success: true };
-    } else {
-      toast.error("Falha ao enviar mensagem de teste: " + (result.message || "Erro desconhecido"));
-      return { success: false, error: result.message };
-    }
-  } catch (error) {
-    console.error("Error sending test message:", error);
-    toast.error("Erro ao enviar mensagem de teste: " + (error instanceof Error ? error.message : String(error)));
-    return { success: false, error };
+export const sendTestToSpecificNumber = async (): Promise<boolean> => {
+  const apiKey = getApiKey();
+  
+  if (!apiKey) {
+    addLogEntry('error', 'direct-test', "WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
+    return false;
   }
-};
-
-/**
- * Send a test message to a specific hard-coded number for testing
- */
-export const sendTestToSpecificNumber = async (): Promise<any> => {
+  
   try {
-    if (!isWhatsAppConfigured()) {
-      toast.error("Chave de API do WhatsApp não configurada");
-      return { success: false };
-    }
-    
     // Hardcoded number for testing
     const testPhone = "44988057213";
     const formattedPhone = formatPhoneNumber(testPhone);
     
     if (!formattedPhone) {
+      addLogEntry('error', 'direct-test', "Invalid phone number format", { phone: testPhone });
       toast.error("Formato de número de telefone inválido");
-      return { success: false };
+      return false;
     }
     
-    const message = "🔍 *Teste Direto da API*\n\nOlá! Este é um teste direto da API do WhatsApp. Se você recebeu esta mensagem, a integração está funcionando corretamente.";
+    addLogEntry('info', 'direct-test', `Sending direct test WhatsApp message to ${formattedPhone}`);
     
+    // Send directly to the API without the proxy for testing
     const requestBody = {
       number: formattedPhone,
-      message: message
+      message: "🔍 *Teste Direto da API*\n\nOlá! Este é um teste direto da API do WhatsApp sem usar o proxy CORS. Se você recebeu esta mensagem, a integração está funcionando corretamente."
     };
     
-    const result = await makeWhatsAppApiRequest('send-message', 'POST', requestBody);
+    addLogEntry('info', 'direct-test', "Request body", requestBody);
     
-    if (result.success) {
+    const apiUrl = `${WHATSGW_API_URL}/send-message`;
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": apiKey,
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    };
+
+    try {
+      // Try multiple connection strategies
+      const response = await sendWithFallbackProxies(apiUrl, options);
+      
+      // Detailed logging of response
+      const responseStatus = response.status;
+      const responseHeaders = Object.fromEntries(response.headers.entries());
+      
+      addLogEntry('info', 'direct-test', `Response status: ${responseStatus}`, { headers: responseHeaders });
+      
+      // Check if the response was successful
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { message: `HTTP error ${response.status}` };
+        }
+        
+        // Use the specific error handler
+        const errorMessage = handleApiError(response.status, 'direct-test', errorData);
+        throw new Error(errorMessage);
+      }
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        data = { success: true };
+        addLogEntry('warning', 'direct-test', "Could not parse response as JSON, assuming success");
+      }
+      
+      addLogEntry('info', 'direct-test', "WhatsApp test message sent successfully", data);
       toast.success("Mensagem de teste enviada com sucesso para 44988057213!");
-      return { success: true };
-    } else {
-      toast.error("Falha ao enviar mensagem de teste: " + (result.message || "Erro desconhecido"));
-      return { success: false, error: result.message };
+      return true;
+    } catch (fetchError) {
+      // Log the fetch error in detail
+      addLogEntry('error', 'direct-test', "All connection methods failed", {
+        message: fetchError.message,
+        stack: fetchError.stack,
+        name: fetchError.name
+      });
+      
+      // Re-throw to be caught by outer catch
+      throw fetchError;
     }
   } catch (error) {
-    console.error("Error sending direct test message:", error);
-    toast.error("Erro ao enviar mensagem de teste: " + (error instanceof Error ? error.message : String(error)));
-    return { success: false, error };
+    addLogEntry('error', 'direct-test', "Error sending direct test WhatsApp message", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    // More user-friendly error message
+    if (error instanceof Error) {
+      if (error.message.includes("Failed to fetch")) {
+        toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
+      } else if (error.message.includes("403")) {
+        toast.error("Acesso negado (403). Verifique se o domínio está autorizado no painel da WhatsGW e se a chave de API está correta.");
+      } else {
+        toast.error(`Erro ao enviar mensagem de teste: ${error.message}`);
+      }
+    } else {
+      toast.error("Erro desconhecido ao enviar mensagem de teste");
+    }
+    
+    return false;
   }
 };
 
 /**
  * Send a message via WhatsApp API
+ * Based on documentation: https://documenter.getpostman.com/view/3741041/SztBa7ku
  */
 export const sendWhatsAppMessage = async ({ phone, message, isGroup = false }: WhatsAppMessage): Promise<boolean> => {
+  const apiKey = getApiKey();
+  
+  if (!apiKey) {
+    addLogEntry('error', 'send-message', "WhatsApp API key not set");
+    toast.error("Chave de API do WhatsApp não configurada");
+    return false;
+  }
+  
   try {
-    if (!isWhatsAppConfigured()) {
-      toast.error("Chave de API do WhatsApp não configurada");
-      return false;
-    }
-    
-    // Format phone number
+    // Format phone number (remove non-numeric characters and ensure it has country code)
     const formattedPhone = formatPhoneNumber(phone);
     
     if (!formattedPhone) {
+      addLogEntry('error', 'send-message', "Invalid phone number format", { phone });
       toast.error("Formato de número de telefone inválido");
       return false;
     }
     
+    addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone} via ${WHATSGW_API_URL}`);
+    
+    // According to API documentation, request should be in this format
     const requestBody = {
       number: formattedPhone,
-      message: message
+      message: message,
+      // Optional parameters for media messages can be added here if needed
     };
     
-    const result = await makeWhatsAppApiRequest('send-message', 'POST', requestBody);
+    addLogEntry('info', 'send-message', "Request body", requestBody);
     
-    if (result.success) {
+    const apiUrl = `${WHATSGW_API_URL}/send-message`;
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": apiKey, // No "Bearer" prefix according to docs
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    };
+    
+    try {
+      // Try multiple connection strategies
+      const response = await sendWithFallbackProxies(apiUrl, options);
+      
+      // Detailed logging of response
+      const responseStatus = response.status;
+      const responseHeaders = Object.fromEntries(response.headers.entries());
+      
+      addLogEntry('info', 'send-message', `Response status: ${responseStatus}`, { headers: responseHeaders });
+      
+      // Check if the response was successful
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { message: `HTTP error ${response.status}` };
+        }
+        
+        // Use the specific error handler
+        const errorMessage = handleApiError(response.status, 'send-message', errorData);
+        throw new Error(errorMessage);
+      }
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        data = { success: true };
+        addLogEntry('warning', 'send-message', "Could not parse response as JSON, assuming success");
+      }
+      
+      addLogEntry('info', 'send-message', "WhatsApp message sent successfully", data);
       toast.success("Mensagem enviada com sucesso!");
       return true;
-    } else {
-      toast.error("Falha ao enviar mensagem: " + (result.message || "Erro desconhecido"));
-      return false;
+    } catch (fetchError) {
+      addLogEntry('error', 'send-message', "All connection methods failed", {
+        message: fetchError.message,
+        stack: fetchError.stack,
+        name: fetchError.name
+      });
+      
+      // Re-throw to be caught by outer catch
+      throw fetchError;
     }
   } catch (error) {
-    console.error("Error sending WhatsApp message:", error);
-    toast.error("Erro ao enviar mensagem: " + (error instanceof Error ? error.message : String(error)));
+    addLogEntry('error', 'send-message', "Error sending WhatsApp message", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    // More user-friendly error message
+    if (error instanceof Error) {
+      if (error.message.includes("Failed to fetch")) {
+        toast.error("Erro de conectividade com o serviço de WhatsApp. Isso pode ser devido a bloqueios de CORS no navegador ou problemas na API.");
+      } else if (error.message.includes("403")) {
+        toast.error("Acesso negado (403). Verifique se o domínio está autorizado no painel da WhatsGW e se a chave de API está correta.");
+      } else {
+        toast.error(`Erro ao enviar mensagem: ${error.message}`);
+      }
+    } else {
+      toast.error("Erro desconhecido ao enviar mensagem");
+    }
+    
     return false;
   }
 };
@@ -365,7 +469,7 @@ export const formatPhoneNumber = (phone: string): string | null => {
 /**
  * Send an event reminder via WhatsApp
  */
-export const sendEventReminder = async (event: EventReminder, skipTimeCheck: boolean = false): Promise<boolean> => {
+export const sendEventReminder = async (event: EventReminder): Promise<boolean> => {
   if (!isWhatsAppConfigured()) {
     addLogEntry('error', 'event-reminder', "WhatsApp API key not set");
     toast.error("Chave de API do WhatsApp não configurada");
@@ -380,20 +484,11 @@ export const sendEventReminder = async (event: EventReminder, skipTimeCheck: boo
     year: 'numeric' 
   }).format(date);
   
-  let timeToUse = time;
-  if (!timeToUse && skipTimeCheck) {
-    // If time is missing and skipTimeCheck is true, extract time from date
-    timeToUse = new Intl.DateTimeFormat('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  }
-  
   const message = `🗓️ *Lembrete de Compromisso*\n\n` +
     `Olá! Este é um lembrete para o seu compromisso:\n\n` +
     `*${title}*\n` +
     `📅 Data: ${formattedDate}\n` +
-    `⏰ Horário: ${timeToUse}\n` +
+    `⏰ Horário: ${time}\n` +
     `⏱️ Duração: ${duration} minutos\n\n` +
     `Para remarcar ou cancelar, entre em contato conosco.`;
   
@@ -476,7 +571,7 @@ export const sendSystemNotification = async (title: string, message: string): Pr
 };
 
 /**
- * Notify admins about a new event
+ * Send notification about a new event to admin numbers
  * @param event The event to notify about
  * @returns Promise resolving to number of successful notifications
  */
@@ -636,7 +731,7 @@ export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 2
       title: event.title,
       date: new Date(event.date),
       time: `${new Date(event.date).getHours().toString().padStart(2, '0')}:${new Date(event.date).getMinutes().toString().padStart(2, '0')}`,
-      duration: event.duration || 60,
+      duration: event.duration,
       contactPhone: event.contactPhone
     });
     
@@ -649,31 +744,3 @@ export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 2
     }
   }
 };
-
-// Helper function to export all functionality for testing and completeness
-export const getAllWhatsAppFunctions = () => {
-  return {
-    addLogEntry,
-    getLogHistory,
-    clearLogHistory,
-    setApiKey,
-    getApiKey,
-    isWhatsAppConfigured,
-    sendTestMessage,
-    sendTestToSpecificNumber,
-    sendWhatsAppMessage,
-    formatPhoneNumber,
-    sendEventReminder,
-    getSystemNotificationNumbers,
-    sendSystemNotification,
-    notifyAdminsAboutEvent,
-    notifyAdminsAboutSystemEvent,
-    scheduleEventReminders
-  };
-};
-
-// Additional exports needed by other components
-export const sendTestWhatsAppMessage = sendTestMessage;
-export const getAllPolicies = async () => [];
-export const deletePolicy = async (id: string) => true;
-export const uploadAndAnalyzePolicy = async (file: File) => ({ id: '1', name: file.name });

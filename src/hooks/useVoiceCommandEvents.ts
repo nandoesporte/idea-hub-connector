@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -218,7 +217,6 @@ export function useVoiceCommandEvents() {
         return false;
       }
       
-      // Fixed: Pass the message parameter directly instead of as an object
       const successCount = await notifyAdminsAboutSystemEvent(message);
       
       if (successCount > 0) {
@@ -387,18 +385,8 @@ export function useVoiceCommandEvents() {
         console.log('No phone number to send reminder to');
         return;
       }
-      
-      // Create the EventReminder object with the required properties
-      const reminderEvent = {
-        title: event.title,
-        date: event.date,
-        time: `${event.date.getHours().toString().padStart(2, '0')}:${event.date.getMinutes().toString().padStart(2, '0')}`,
-        duration: event.duration || 60,
-        contactPhone: phoneNumber
-      };
 
-      // Fixed: Pass the correctly formatted reminder object
-      const success = await sendEventReminder(reminderEvent);
+      const success = await sendEventReminder(event);
       return success;
     } catch (error) {
       console.error('Error sending WhatsApp reminder:', error);

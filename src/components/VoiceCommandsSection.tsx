@@ -12,11 +12,11 @@ const VoiceCommandsSection = () => {
     <Card className="w-full">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="text-xl md:text-2xl">Comandos de Voz</CardTitle>
+          <CardTitle>Comandos de Voz</CardTitle>
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="text-base">
-                <Info size={20} className="mr-2" />
+              <Button variant="outline" size="sm">
+                <Info size={16} className="mr-2" />
                 Ajuda
               </Button>
             </DialogTrigger>
@@ -25,11 +25,11 @@ const VoiceCommandsSection = () => {
             </DialogContent>
           </Dialog>
         </div>
-        <CardDescription className="text-lg">
+        <CardDescription>
           Crie eventos rapidamente usando comandos de voz
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col items-center p-6 space-y-4">
+      <CardContent className="flex justify-center pb-6">
         <VoiceInputButton />
       </CardContent>
     </Card>

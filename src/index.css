@@ -75,7 +75,6 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
-    font-size: 16px;
   }
 
   /* Smooth scrolling */
@@ -91,27 +90,7 @@
   /* Base font size adjustments for better readability on mobile */
   @media (max-width: 640px) {
     html {
-      font-size: 16px;
-    }
-    
-    h1 {
-      font-size: 1.75rem;
-    }
-    
-    h2 {
-      font-size: 1.5rem;
-    }
-    
-    h3 {
-      font-size: 1.25rem;
-    }
-    
-    p, li, a, button, input, textarea, select {
-      font-size: 1rem;
-    }
-    
-    .text-sm {
-      font-size: 0.95rem;
+      font-size: 14px;
     }
   }
 }
@@ -263,21 +242,6 @@
   /* Improved touch targets */
   button, a {
     touch-action: manipulation;
-    min-height: 44px;
-    padding: 8px 16px;
-  }
-  
-  /* Increase font size for better readability */
-  .card-title {
-    font-size: 1.25rem;
-  }
-  
-  .card-description {
-    font-size: 0.95rem;
-  }
-  
-  input, select, textarea {
-    font-size: 1rem !important;
   }
 }
 

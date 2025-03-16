@@ -68,7 +68,8 @@ export default function Dashboard() {
       {/* Dashboard Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
         <div className="lg:col-span-2 space-y-4">
-          {/* Welcome card moved above VoiceCommandsSection */}
+          <VoiceCommandsSection />
+          
           <Card className="shadow-sm border-none bg-gradient-to-br from-primary/5 to-primary/10">
             <CardHeader className="pb-2 px-4 pt-4">
               <div className="flex items-center gap-3">
@@ -84,8 +85,6 @@ export default function Dashboard() {
               </div>
             </CardHeader>
           </Card>
-          
-          <VoiceCommandsSection />
         </div>
         
         {/* Agenda Card */}
