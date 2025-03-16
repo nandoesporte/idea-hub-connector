@@ -85,14 +85,17 @@ const VoiceInputButton = () => {
 
   const stopListening = async () => {
     if (recognitionRef.current) {
-      console.log('Stop listening called, current transcript:', finalTranscriptRef.current);
+      console.log('Stop listening called, current transcript:', finalTranscriptRef.current || transcript);
       
       // First stop the recognition to prevent more updates
       recognitionRef.current.stop();
       
-      // Process the command (using the finalTranscriptRef to ensure we have the complete text)
-      if (finalTranscriptRef.current) {
-        const success = await createEventFromVoiceCommand(finalTranscriptRef.current);
+      // Use a combination of both refs to ensure we have text
+      const finalText = finalTranscriptRef.current || transcript;
+      
+      // Process the command
+      if (finalText && finalText.trim() !== '') {
+        const success = await createEventFromVoiceCommand(finalText);
         if (success) {
           // Reset transcript after successful processing
           setTranscript('');
