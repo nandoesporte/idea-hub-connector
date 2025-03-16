@@ -8,12 +8,11 @@ import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   CalendarDays, FileText, Lightbulb, ListChecks, Plus, User, LayoutDashboard, 
-  Shield, FileCheck, Calendar, FileSpreadsheet 
+  Shield, Calendar, FileSpreadsheet 
 } from 'lucide-react';
 import EventsList from '@/components/EventsList';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
 import { isWhatsAppConfigured } from '@/lib/whatsgwService';
-import PolicyTab from '@/components/PolicyTab';
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -112,18 +111,6 @@ export default function Dashboard() {
                       </TabsTrigger>
                     </div>
                     
-                    {isAdmin && (
-                      <div className="flex items-center gap-2">
-                        <TabsTrigger 
-                          value="policies" 
-                          className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
-                        >
-                          <FileCheck className="h-4 w-4 text-primary" />
-                          <span>Apólices</span>
-                        </TabsTrigger>
-                      </div>
-                    )}
-                    
                     {!isAdmin && (
                       <div className="flex items-center gap-2">
                         <TabsTrigger 
@@ -181,10 +168,6 @@ export default function Dashboard() {
                     <Plus className="h-4 w-4" /> Adicionar Ideia
                   </Button>
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="policies" className="mt-0 pt-2 border-t">
-                <PolicyTab />
               </TabsContent>
               
               <TabsContent value="tasks" className="mt-0 pt-2 border-t">
