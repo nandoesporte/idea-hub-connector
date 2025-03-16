@@ -13,9 +13,19 @@ export interface CategoryItem {
   icon: string;
   iconColor?: string;
   link: string;
+  type?: 'tech' | 'insurance';
 }
 
-export type ProjectCategory = 'website' | 'e-commerce' | 'mobile-app' | 'desktop-app' | 'automation' | 'integration' | 'ai-solution' | 'web-app' | 'other';
+export type ProjectCategory = 
+  | 'website' 
+  | 'e-commerce' 
+  | 'mobile-app' 
+  | 'desktop-app' 
+  | 'automation' 
+  | 'integration' 
+  | 'ai-solution' 
+  | 'web-app' 
+  | 'other';
 
 export interface VoiceCommandEvent {
   id: string;
@@ -50,6 +60,12 @@ export interface ProjectIdea {
   createdAt: Date;
   updatedAt: Date;
   urgency: 'baixa' | 'normal' | 'alta';
+  statusUpdates?: Array<{
+    date: Date;
+    status: 'pending' | 'under-review' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+    message: string;
+  }>;
+  attachments?: string[];
 }
 
 export interface PortfolioItem {
@@ -66,6 +82,7 @@ export interface PortfolioItem {
   challenge?: string;
   solution?: string;
   results?: string;
+  featured?: boolean;
   testimonial?: {
     text: string;
     author: string;
@@ -82,6 +99,8 @@ export interface Notification {
   isRead: boolean;
   createdAt: Date;
   link?: string;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
 }
 
 export interface Policy {

@@ -97,6 +97,17 @@ const categoryExplanations: Record<ProjectCategory, CategoryExplanation> = {
     ],
     whenToChoose: 'Escolha quando precisa de sistemas inteligentes que aprendem com dados, reconhecem padrões ou automatizam decisões complexas.'
   },
+  'web-app': {
+    title: 'Aplicativo Web',
+    description: 'Uma aplicação completa que roda no navegador com funcionalidades avançadas.',
+    examples: [
+      'Sistema de gestão financeira online',
+      'Ferramenta de gerenciamento de projetos',
+      'Plataforma de aprendizado',
+      'Dashboard para análise de dados'
+    ],
+    whenToChoose: 'Ideal para aplicações complexas que precisam ser acessadas de qualquer lugar, sem necessidade de instalação.'
+  },
   'other': {
     title: 'Outro',
     description: 'Qualquer tipo de projeto que não se encaixe nas categorias acima.',
