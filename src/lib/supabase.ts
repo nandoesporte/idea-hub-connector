@@ -50,7 +50,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       eventsPerSecond: 10,
     },
   },
-  debug: process.env.NODE_ENV === 'development',
 });
 
 // Test connection

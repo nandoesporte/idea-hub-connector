@@ -18,15 +18,38 @@ serve(async (req) => {
   }
 
   try {
-    const { url } = await req.json() as RequestBody;
+    // Add combined headers for all responses
+    const responseHeaders = {
+      ...corsHeaders,
+      'Content-Type': 'application/json',
+    };
 
-    if (!url) {
+    // Check if the API keys are available
+    if (!openaiApiKey) {
+      console.error('OpenAI API key is not set');
+      return new Response(
+        JSON.stringify({ error: 'Configuração de API ausente. Contate o administrador.' }),
+        { status: 500, headers: responseHeaders }
+      );
+    }
+
+    // Parse the request body
+    let body: RequestBody;
+    try {
+      body = await req.json() as RequestBody;
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      return new Response(
+        JSON.stringify({ error: 'Formato de requisição inválido' }),
+        { status: 400, headers: responseHeaders }
+      );
+    }
+
+    // Validate the URL
+    if (!body.url) {
       return new Response(
         JSON.stringify({ error: 'URL do documento é obrigatório' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        { status: 400, headers: responseHeaders }
       );
     }
 
@@ -34,23 +57,27 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch PDF content
-    const pdfResponse = await fetch(url);
+    console.log(`Attempting to fetch document from URL: ${body.url}`);
+    const pdfResponse = await fetch(body.url);
+    
     if (!pdfResponse.ok) {
+      console.error(`Error downloading document: ${pdfResponse.status} ${pdfResponse.statusText}`);
       return new Response(
-        JSON.stringify({ error: 'Erro ao baixar o PDF da apólice' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        JSON.stringify({ error: `Erro ao baixar o documento: ${pdfResponse.statusText}` }),
+        { status: 500, headers: responseHeaders }
       );
     }
 
+    // Convert to base64
     const pdfBuffer = await pdfResponse.arrayBuffer();
     const pdfBase64 = btoa(
       new Uint8Array(pdfBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
     );
 
+    console.log('Document successfully fetched and converted to base64');
+
     // Analyze PDF with GPT-4 Vision
+    console.log('Sending to OpenAI for analysis');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -90,24 +117,25 @@ serve(async (req) => {
       console.error('OpenAI API error:', errorData);
       return new Response(
         JSON.stringify({ error: 'Erro na análise do documento' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        { status: 500, headers: responseHeaders }
       );
     }
 
     const data = await response.json();
+    console.log('Received response from OpenAI');
+    
     let extractedData;
-
     try {
       // Try to parse the JSON from the GPT-4 response
       const content = data.choices[0].message.content;
+      console.log('GPT-4 response content:', content);
+      
       // Find JSON object in the response if it's not pure JSON
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       
       if (jsonMatch) {
         extractedData = JSON.parse(jsonMatch[0]);
+        console.log('Successfully parsed JSON from response:', extractedData);
       } else {
         throw new Error('No JSON found in the response');
       }
@@ -115,30 +143,21 @@ serve(async (req) => {
       console.error('Error parsing GPT-4 response:', error);
       return new Response(
         JSON.stringify({ error: 'Erro ao processar a resposta do analisador' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        { status: 500, headers: responseHeaders }
       );
     }
 
     // Return the extracted data
     return new Response(
       JSON.stringify(extractedData),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 200, headers: responseHeaders }
     );
 
   } catch (error) {
     console.error('Error processing request:', error);
     return new Response(
       JSON.stringify({ error: 'Erro interno do servidor' }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

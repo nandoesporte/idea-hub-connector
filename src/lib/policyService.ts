@@ -1,3 +1,4 @@
+
 import { supabase } from './supabase';
 import { InsurancePolicy } from '@/types';
 import { createNotification } from './notificationService';
@@ -47,43 +48,37 @@ export const uploadPolicyDocument = async (file: File, userId: string): Promise<
   try {
     console.log('Uploading policy document for user:', userId);
     
-    // Check if the bucket exists, if not, create it
-    const { data: buckets, error: bucketsError } = await supabase
-      .storage
-      .listBuckets();
-    
-    if (bucketsError) {
-      console.error('Error checking buckets:', bucketsError);
-      throw bucketsError;
-    }
-    
-    const documentsBucketExists = buckets.some(bucket => bucket.name === 'documents');
-    
-    if (!documentsBucketExists) {
-      console.log('Documents bucket does not exist, creating...');
-      const { error: createBucketError } = await supabase
-        .storage
-        .createBucket('documents', { public: true });
-        
-      if (createBucketError) {
-        console.error('Error creating documents bucket:', createBucketError);
-        throw createBucketError;
-      }
-    }
-    
+    // Generate a unique file name to avoid collisions
     const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const fileName = `${userId}-${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
     const filePath = `policies/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
+    // Upload directly to the documents bucket
+    const { error: uploadError, data } = await supabase.storage
       .from('documents')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
     if (uploadError) {
       console.error('Error uploading policy document:', uploadError);
+      
+      // Check specific error types and provide better messages
+      if (uploadError.message?.includes('bucket not found')) {
+        toast.error('Falha no sistema de armazenamento. Por favor, contate o suporte.');
+        throw new Error('Storage bucket not found. Please contact admin to set up storage.');
+      }
+      
+      if (uploadError.message?.includes('row-level security')) {
+        toast.error('Erro de permissão. Por favor, tente fazer login novamente.');
+        throw new Error('Permission denied due to RLS policy. Please check storage permissions.');
+      }
+      
       throw uploadError;
     }
 
+    // Get the public URL for the uploaded file
     const { data: { publicUrl } } = supabase.storage
       .from('documents')
       .getPublicUrl(filePath);
@@ -92,6 +87,12 @@ export const uploadPolicyDocument = async (file: File, userId: string): Promise<
     return publicUrl;
   } catch (error) {
     console.error('Error in uploadPolicyDocument:', error);
+    
+    // Provide a user-friendly error message
+    if (!toast.dismiss()) {
+      toast.error('Erro ao fazer upload do documento. Verifique sua conexão ou tente novamente mais tarde.');
+    }
+    
     throw error;
   }
 };

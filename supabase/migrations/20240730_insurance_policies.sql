@@ -1,5 +1,5 @@
 
--- Create insurance_policies table
+-- Create insurance_policies table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.insurance_policies (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -88,41 +88,76 @@ USING (auth.uid() = user_id);
 -- Grant access to authenticated users
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.insurance_policies TO authenticated;
 
--- Create storage bucket for documents if it doesn't exist
+------------------------------------------------------------------------
+-- Create and configure storage bucket with proper permissions
+------------------------------------------------------------------------
+
+-- First check if the extension is available
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create documents bucket if it doesn't exist
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('documents', 'documents', TRUE)
+VALUES ('documents', 'documents', false)
 ON CONFLICT (id) DO NOTHING;
 
--- Set up storage policies for the documents bucket
+-- Set up RLS for storage
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- Clear existing policies for the documents bucket
 DO $$
 BEGIN
+    -- Delete policies for documents bucket if they exist
     IF EXISTS (
-        SELECT 1 FROM storage.policies 
-        WHERE name = 'Documents Policy'
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents User Access'
     ) THEN
-        DELETE FROM storage.policies WHERE name = 'Documents Policy';
+        DROP POLICY "Documents User Access" ON storage.objects;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents Public Access'
+    ) THEN
+        DROP POLICY "Documents Public Access" ON storage.objects;
     END IF;
 END
 $$;
 
--- Allow authenticated users to upload and access their own files
-INSERT INTO storage.policies (name, definition, owner)
-VALUES (
-    'Documents Policy',
-    '(bucket_id = ''documents''::text) AND (auth.uid() = auth.uid())',
-    'authenticated'
+-- Policy for authenticated users to manage their own files
+CREATE POLICY "Documents User Access"
+ON storage.objects
+FOR ALL
+TO authenticated
+USING (
+  bucket_id = 'documents' 
+  AND (auth.uid() = owner OR owner IS NULL)
+)
+WITH CHECK (
+  bucket_id = 'documents' 
+  AND (auth.uid() = owner OR owner IS NULL)
 );
 
--- Check if function already exists and drop it if it does
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'check_policy_expirations') THEN
-        DROP FUNCTION public.check_policy_expirations();
-    END IF;
-END
-$$;
+-- Policy for public access to read files
+CREATE POLICY "Documents Public Access"
+ON storage.objects
+FOR SELECT
+TO public
+USING (
+  bucket_id = 'documents' 
+  AND public = true
+);
 
--- Create a function to check for policies nearing expiration
+-- Grant usage on storage schema
+GRANT USAGE ON SCHEMA storage TO public;
+GRANT USAGE ON SCHEMA storage TO authenticated;
+GRANT USAGE ON SCHEMA storage TO anon;
+
+-- Grant all on storage buckets to authenticated users
+GRANT ALL ON storage.buckets TO authenticated;
+GRANT SELECT ON storage.buckets TO public;
+GRANT SELECT ON storage.buckets TO anon;
+
+-- Policy check function
 CREATE OR REPLACE FUNCTION public.check_policy_expirations()
 RETURNS VOID AS $$
 DECLARE
