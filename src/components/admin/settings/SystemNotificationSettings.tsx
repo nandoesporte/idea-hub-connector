@@ -153,6 +153,23 @@ const SystemNotificationSettings: React.FC<SystemNotificationSettingsProps> = ({
               
               <div className="flex items-start gap-2">
                 <Checkbox 
+                  id="notifyPolicyRenewals" 
+                  checked={notificationSettings.types.policyRenewals}
+                  onCheckedChange={() => onToggleType('policyRenewals')}
+                />
+                <div className="space-y-1 leading-none">
+                  <Label htmlFor="notifyPolicyRenewals" className="flex items-center gap-2">
+                    <FileCheck className="h-4 w-4" />
+                    Renovações de Apólices
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Receba notificações sobre vencimentos de apólices de seguro
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <Checkbox 
                   id="notifyDailyReport" 
                   checked={notificationSettings.types.dailyReport}
                   onCheckedChange={() => onToggleType('dailyReport')}
