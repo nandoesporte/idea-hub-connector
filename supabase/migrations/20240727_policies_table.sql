@@ -50,44 +50,41 @@ CREATE POLICY "Users can delete their own policies"
   FOR DELETE
   USING (auth.uid() = user_id);
 
--- Create storage bucket for policy documents
-DO $$
-DECLARE
-  bucket_exists boolean;
-BEGIN
-  -- Check if the bucket exists
-  SELECT EXISTS (
-    SELECT 1 FROM storage.buckets WHERE name = 'policy_documents'
-  ) INTO bucket_exists;
+-- Create storage bucket for policy documents if it doesn't exist
+INSERT INTO storage.buckets (id, name, public)
+SELECT 'policy_documents', 'policy_documents', false
+WHERE NOT EXISTS (
+  SELECT 1 FROM storage.buckets WHERE name = 'policy_documents'
+);
 
-  IF NOT bucket_exists THEN
-    -- Create the bucket
-    INSERT INTO storage.buckets (id, name, public)
-    VALUES ('policy_documents', 'policy_documents', false);
-    
-    -- Create storage policy for authenticated users to read their own files
-    INSERT INTO storage.policies (id, name, definition)
-    VALUES (
-      gen_random_uuid(),
-      'Allow authenticated users to read their own policy documents',
-      '{"version": "1.0", "statements": [{"effect": "allow", "principal": {"id": "authenticated"}, "action": "object:read", "resource": "policy_documents/policies/${auth.uid}/*"}]}'
-    );
-    
-    -- Create storage policy for authenticated users to upload their own files
-    INSERT INTO storage.policies (id, name, definition)
-    VALUES (
-      gen_random_uuid(),
-      'Allow authenticated users to upload their own policy documents',
-      '{"version": "1.0", "statements": [{"effect": "allow", "principal": {"id": "authenticated"}, "action": "object:create", "resource": "policy_documents/policies/${auth.uid}/*"}]}'
-    );
-    
-    -- Create storage policy for authenticated users to delete their own files
-    INSERT INTO storage.policies (id, name, definition)
-    VALUES (
-      gen_random_uuid(),
-      'Allow authenticated users to delete their own policy documents',
-      '{"version": "1.0", "statements": [{"effect": "allow", "principal": {"id": "authenticated"}, "action": "object:delete", "resource": "policy_documents/policies/${auth.uid}/*"}]}'
-    );
-  END IF;
+-- Create bucket policies using the correct approach
+DO $$
+BEGIN
+  -- Create storage policy for authenticated users to read their own files
+  INSERT INTO storage.policies (name, definition)
+  SELECT 
+    'policy_documents_read',
+    '{"version": "1.0", "statements": [{"effect": "allow", "principal": {"id": "authenticated"}, "action": "object:read", "resource": "policy_documents/policies/${auth.uid}/*"}]}'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM storage.policies WHERE name = 'policy_documents_read'
+  );
+  
+  -- Create storage policy for authenticated users to upload their own files
+  INSERT INTO storage.policies (name, definition)
+  SELECT 
+    'policy_documents_create',
+    '{"version": "1.0", "statements": [{"effect": "allow", "principal": {"id": "authenticated"}, "action": "object:create", "resource": "policy_documents/policies/${auth.uid}/*"}]}'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM storage.policies WHERE name = 'policy_documents_create'
+  );
+  
+  -- Create storage policy for authenticated users to delete their own files
+  INSERT INTO storage.policies (name, definition)
+  SELECT 
+    'policy_documents_delete',
+    '{"version": "1.0", "statements": [{"effect": "allow", "principal": {"id": "authenticated"}, "action": "object:delete", "resource": "policy_documents/policies/${auth.uid}/*"}]}'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM storage.policies WHERE name = 'policy_documents_delete'
+  );
 END
 $$;
