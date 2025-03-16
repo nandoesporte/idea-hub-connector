@@ -64,6 +64,70 @@ supabase.auth.getSession().then(({ data, error }) => {
   }
 });
 
+// Function to create the documents bucket if it doesn't exist
+const ensureDocumentsBucketExists = async () => {
+  try {
+    console.log('Checking if documents bucket exists');
+    const { data: buckets, error: bucketsError } = await supabase
+      .storage
+      .listBuckets();
+      
+    if (bucketsError) {
+      console.error('Error listing buckets:', bucketsError);
+      return false;
+    }
+    
+    console.log('Available buckets:', buckets.map(b => b.name));
+    const documentsBucketExists = buckets.some(bucket => bucket.name === 'documents');
+    
+    if (!documentsBucketExists) {
+      console.log('Documents bucket does not exist, creating it...');
+      
+      // Try to create the bucket
+      const { data: newBucket, error: createError } = await supabase
+        .storage
+        .createBucket('documents', {
+          public: false,
+          fileSizeLimit: 10485760, // 10MB
+        });
+        
+      if (createError) {
+        console.error('Error creating documents bucket:', createError);
+        
+        if (createError.message?.includes('already exists')) {
+          console.log('Bucket already exists despite not being in the list');
+          return true;
+        }
+        
+        return false;
+      }
+      
+      console.log('Documents bucket created successfully:', newBucket);
+      
+      // Set bucket policy to allow public access
+      const { error: policyError } = await supabase
+        .storage
+        .updateBucket('documents', {
+          public: true
+        });
+        
+      if (policyError) {
+        console.error('Error setting bucket policy:', policyError);
+      } else {
+        console.log('Bucket policy updated successfully');
+      }
+      
+      return true;
+    } else {
+      console.log('Documents bucket already exists');
+      return true;
+    }
+  } catch (error) {
+    console.error('Exception while checking/creating bucket:', error);
+    return false;
+  }
+};
+
 // Check database structure
 export const checkDatabaseStructure = async () => {
   try {
@@ -105,25 +169,11 @@ export const checkDatabaseStructure = async () => {
     console.log('user_id column exists in insurance_policies table');
     
     // Check if documents bucket exists
-    console.log('Checking if documents bucket exists');
-    const { data: buckets, error: bucketsError } = await supabase
-      .storage
-      .listBuckets();
-      
-    if (bucketsError) {
-      console.error('Error listing buckets:', bucketsError);
-      toast.error('Erro no sistema de armazenamento. Contate o administrador.');
-      return false;
-    }
-    
-    const documentsBucketExists = buckets.some(bucket => bucket.name === 'documents');
+    const documentsBucketExists = await ensureDocumentsBucketExists();
     if (!documentsBucketExists) {
-      console.error('Documents bucket does not exist');
-      toast.error('Bucket de documentos não configurado. Contate o administrador.');
-      return false;
+      toast.error('Bucket de documentos não configurado. Tentando criar automaticamente...');
     }
     
-    console.log('Documents bucket exists');
     return true;
   } catch (error) {
     console.error('Error checking database structure:', error);
@@ -131,11 +181,22 @@ export const checkDatabaseStructure = async () => {
   }
 };
 
-// Run check on initialization with a delay to not block other operations
+// Run checks on initialization with a delay to not block other operations
 setTimeout(() => {
+  // First check database structure
   checkDatabaseStructure().then(isValid => {
     if (isValid) {
       console.log('Database structure validation passed');
+      
+      // Then try to create documents bucket if needed
+      ensureDocumentsBucketExists().then(bucketExists => {
+        if (bucketExists) {
+          console.log('Documents bucket is ready');
+        } else {
+          console.error('Could not ensure documents bucket exists');
+          toast.error('Não foi possível configurar o bucket de documentos. Contate o administrador.');
+        }
+      });
     } else {
       console.error('Database structure validation failed');
     }
