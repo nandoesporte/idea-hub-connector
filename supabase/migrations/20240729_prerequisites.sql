@@ -28,6 +28,49 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 -- Set up RLS policies for user_settings
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 
+-- Drop policies if they exist before creating them
+DO $$
+BEGIN
+    -- Drop user_settings policies if they exist
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'user_settings' AND policyname = 'Users can view their own settings'
+    ) THEN
+        DROP POLICY "Users can view their own settings" ON public.user_settings;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'user_settings' AND policyname = 'Users can insert their own settings'
+    ) THEN
+        DROP POLICY "Users can insert their own settings" ON public.user_settings;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'user_settings' AND policyname = 'Users can update their own settings'
+    ) THEN
+        DROP POLICY "Users can update their own settings" ON public.user_settings;
+    END IF;
+    
+    -- Drop notifications policies if they exist
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'notifications' AND policyname = 'Users can view their own notifications'
+    ) THEN
+        DROP POLICY "Users can view their own notifications" ON public.notifications;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'notifications' AND policyname = 'Users can update their own notifications'
+    ) THEN
+        DROP POLICY "Users can update their own notifications" ON public.notifications;
+    END IF;
+END
+$$;
+
+-- Create user_settings policies
 CREATE POLICY "Users can view their own settings"
 ON public.user_settings
 FOR SELECT
@@ -46,6 +89,7 @@ USING (auth.uid() = user_id);
 -- Set up RLS policies for notifications
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
+-- Create notifications policies
 CREATE POLICY "Users can view their own notifications"
 ON public.notifications
 FOR SELECT
