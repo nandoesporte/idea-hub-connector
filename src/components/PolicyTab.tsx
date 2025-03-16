@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ const PolicyTab = () => {
 
     setUploadingPolicy(true);
     try {
+      console.log(`Uploading and analyzing policy document: ${file.name}`);
       const result = await uploadAndAnalyzePolicy(file);
       if (result) {
         await loadPolicies();
@@ -249,25 +251,6 @@ const PolicyTab = () => {
               {searchTerm && (
                 <Button variant="outline" onClick={() => setSearchTerm("")}>
                   Limpar busca
-                </Button>
-              )}
-              {!databaseError && (
-                <Button 
-                  onClick={handleUploadPolicy} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white ml-2"
-                  disabled={uploadingPolicy}
-                >
-                  {uploadingPolicy ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <FileUp className="h-4 w-4 mr-2" /> 
-                      Enviar apólice para análise
-                    </>
-                  )}
                 </Button>
               )}
             </div>
