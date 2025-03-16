@@ -48,12 +48,14 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         console.error('Error uploading file:', error);
         setProgress('error');
         setErrorMessage('Não foi possível fazer upload do arquivo. Verifique se o armazenamento está configurado.');
+        setUploading(false);
         return;
       }
       
       if (!fileUrl) {
         setProgress('error');
         setErrorMessage('Falha ao obter URL do arquivo.');
+        setUploading(false);
         return;
       }
       
@@ -66,10 +68,12 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       let policyData;
       try {
         policyData = await analyzePolicyDocument(fileUrl);
+        console.log('Dados da apólice extraídos:', policyData);
       } catch (error) {
         console.error('Error analyzing policy:', error);
         setProgress('error');
         setErrorMessage('Falha ao analisar o documento. Serviço de IA pode estar indisponível.');
+        setAnalyzing(false);
         return;
       }
       
@@ -80,7 +84,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           user_id: user.id,
           policy_number: policyData.policy_number || `AP${Math.floor(Math.random() * 1000000)}`,
           customer_name: policyData.customer_name || 'Nome do Cliente',
-          customer_phone: policyData.customer_phone,
+          customer_phone: policyData.customer_phone || '',
           issue_date: policyData.issue_date || new Date(),
           expiry_date: policyData.expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
           insurer: policyData.insurer || 'Seguradora',
@@ -93,7 +97,16 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         };
         
         try {
-          await createPolicy(policyToCreate);
+          const result = await createPolicy(policyToCreate);
+          
+          if (result === null) {
+            // Se createPolicy retornar null, significa que a tabela não existe ou houve um erro
+            setProgress('error');
+            setErrorMessage('A tabela de apólices não existe no banco de dados. Execute as migrações necessárias ou ative o módulo de apólices no sistema.');
+            setAnalyzing(false);
+            return;
+          }
+          
           setProgress('complete');
           toast.success('Apólice cadastrada com sucesso!');
           
@@ -103,8 +116,13 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           console.error('Error creating policy:', error);
           setProgress('error');
           setErrorMessage('Falha ao cadastrar a apólice. A tabela pode não existir no banco de dados.');
+          setAnalyzing(false);
           return;
         }
+      } else {
+        setProgress('error');
+        setErrorMessage('Não foi possível extrair dados do documento.');
+        setAnalyzing(false);
       }
     } catch (error) {
       console.error('Erro ao processar documento:', error);
