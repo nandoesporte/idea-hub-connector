@@ -1,97 +1,85 @@
+export type User = {
+  id: string;
+  email: string;
+  name?: string;
+  phone?: string;
+  role?: 'admin' | 'user';
+  created_at?: string;
+  updated_at?: string;
+};
 
-export interface CategoryItem {
+export type ProjectIdea = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  status: 'open' | 'in progress' | 'completed' | 'on hold';
+  priority: 'low' | 'medium' | 'high';
+  user_id: string;
+  created_at: string;
+};
+
+export type Notification = {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'error' | 'success';
+  isRead: boolean;
+  createdAt: Date;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
+};
+
+export type CategoryItem = {
   id: string;
   title: string;
   description: string;
   icon: string;
   iconColor?: string;
   link: string;
-  type?: 'tech';
-}
+  type: 'tech' | 'insurance';
+  order: number;
+};
 
-export type ProjectCategory = 
-  | 'website' 
-  | 'e-commerce' 
-  | 'mobile-app' 
-  | 'desktop-app' 
-  | 'automation' 
-  | 'integration' 
-  | 'ai-solution' 
-  | 'web-app' 
-  | 'other';
-
-export interface VoiceCommandEvent {
+export type Policy = {
   id: string;
   userId: string;
-  title: string;
-  description: string;
-  date: Date;
-  duration?: number;
-  type: string;
-  contactPhone?: string;
-  createdAt: Date;
-  reminderScheduledFor?: Date;
-}
-
-export interface NavigationItem {
-  label: string;
-  href: string;
-  icon?: string;
-}
-
-export interface ProjectIdea {
-  id: string;
-  title: string;
-  description: string;
-  category: ProjectCategory;
-  budget?: string;
-  timeline?: string;
-  features?: string[];
-  userId: string;
-  clientName?: string;
-  status: 'pending' | 'under-review' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+  policyNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  issueDate: Date;
+  expiryDate: Date;
+  insurer: string;
+  coverageAmount: number;
+  premium: number;
+  status: 'active' | 'expired' | 'cancelled';
+  type: 'auto' | 'life' | 'health' | 'home' | 'business' | 'other';
+  attachmentUrl?: string;
+  notes?: string;
+  reminderSent: boolean;
+  reminderDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  urgency: 'baixa' | 'normal' | 'alta';
-  statusUpdates?: Array<{
-    date: Date;
-    status: 'pending' | 'under-review' | 'approved' | 'in-progress' | 'completed' | 'rejected';
-    message: string;
-  }>;
-  attachments?: string[];
-}
+};
 
-export interface PortfolioItem {
+export type DashboardItem = {
   id: string;
   title: string;
   description: string;
-  category: string;
-  technologies: string[];
-  featuredImage?: string;
-  images?: string[];
-  link?: string;
-  client?: string;
-  completed: Date;
-  challenge?: string;
-  solution?: string;
-  results?: string;
-  featured?: boolean;
-  testimonial?: {
-    text: string;
-    author: string;
-    position?: string;
-  };
-}
+  icon?: string;
+  color?: string;
+  link: string;
+  enabled: boolean;
+};
 
-export interface Notification {
+export type DashboardComponent = {
   id: string;
-  userId: string;
   title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  isRead: boolean;
-  createdAt: Date;
-  link?: string;
-  relatedEntityType?: string;
-  relatedEntityId?: string;
-}
+  description: string;
+  type: 'tech' | 'insurance' | 'action' | 'quote';
+  size?: 'small' | 'medium' | 'large' | 'full';
+  order: number;
+  enabled: boolean;
+  items?: DashboardItem[];
+};
