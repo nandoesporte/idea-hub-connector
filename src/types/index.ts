@@ -37,7 +37,7 @@ export interface ProjectIdea {
   urgency?: 'baixa' | 'normal' | 'alta';
   clientName?: string;
   userId?: string;
-  statusUpdates?: Array<{date: Date, status: string, message: string}>;
+  statusUpdates?: Array<{date: Date, status: 'new' | 'reviewing' | 'approved' | 'in-progress' | 'completed' | 'rejected' | 'pending' | 'under-review', message: string}>;
   attachments?: string[];
 }
 
@@ -107,4 +107,12 @@ export interface VoiceCommandEvent {
   reminderScheduledFor?: Date;
   created_at: string | Date;
   createdAt?: Date;
+}
+
+export interface WhatsAppLogEntry {
+  timestamp: Date;
+  type: 'info' | 'error' | 'warning';
+  operation: string;
+  message: string;
+  details?: any;
 }
