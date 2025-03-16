@@ -74,7 +74,13 @@ const PolicyTabContent = ({
     );
   };
 
-  const handleUploadButtonClick = () => fileInputRef.current?.click();
+  const handleUploadButtonClick = () => {
+    if (!bucketReady) {
+      toast.error("Sistema de armazenamento não está disponível. Tente novamente em alguns instantes.");
+      return;
+    }
+    fileInputRef.current?.click();
+  };
 
   return (
     <>
@@ -107,7 +113,7 @@ const PolicyTabContent = ({
             />
             <Button 
               onClick={handleUploadButtonClick}
-              disabled={uploadingFile !== null || !bucketReady || configuringStorage}
+              disabled={uploadingFile !== null || configuringStorage}
               className="w-full sm:w-auto"
             >
               {configuringStorage ? (

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { Policy, PolicyFile } from "@/types";
 import { toast } from "sonner";
@@ -21,79 +20,80 @@ export const createStorageBucket = async () => {
       return true;
     }
     
-    // Create the bucket if it doesn't exist
-    const { data, error } = await supabase.storage.createBucket(STORAGE_BUCKET, {
-      public: false,
-      fileSizeLimit: 10485760, // 10MB
-      allowedMimeTypes: ['application/pdf']
-    });
-    
-    if (error) {
-      console.error("Error creating bucket:", error);
+    // Attempt to create the bucket if it doesn't exist
+    try {
+      const { data, error } = await supabase.storage.createBucket(STORAGE_BUCKET, {
+        public: false,
+        fileSizeLimit: 10485760, // 10MB
+        allowedMimeTypes: ['application/pdf']
+      });
+      
+      if (error) {
+        // If we can't create it (usually due to permissions), log the error
+        console.error("Error creating bucket:", error);
+        return false;
+      }
+      
+      // If bucket was created successfully, try to set up policies
+      // But continue even if policies fail - admin might set them up later
+      try {
+        // Enable RLS on the bucket
+        await supabase.rpc('enable_storage_rls', { bucket_name: STORAGE_BUCKET });
+        
+        // Create policies (these might fail if user doesn't have permission)
+        try {
+          await supabase.rpc('create_storage_policy', { 
+            bucket: STORAGE_BUCKET,
+            policy_name: 'Users can read their own policy documents',
+            definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+            operation: 'SELECT'
+          });
+        } catch (e) {
+          console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
+        }
+        
+        try {
+          await supabase.rpc('create_storage_policy', { 
+            bucket: STORAGE_BUCKET,
+            policy_name: 'Users can insert their own policy documents',
+            definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+            operation: 'INSERT'
+          });
+        } catch (e) {
+          console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
+        }
+        
+        try {
+          await supabase.rpc('create_storage_policy', { 
+            bucket: STORAGE_BUCKET,
+            policy_name: 'Users can update their own policy documents',
+            definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+            operation: 'UPDATE'
+          });
+        } catch (e) {
+          console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
+        }
+        
+        try {
+          await supabase.rpc('create_storage_policy', { 
+            bucket: STORAGE_BUCKET,
+            policy_name: 'Users can delete their own policy documents',
+            definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
+            operation: 'DELETE'
+          });
+        } catch (e) {
+          console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
+        }
+      } catch (policyError) {
+        console.error("Error setting up bucket policies:", policyError);
+        // Continue as the bucket might still be usable
+      }
+      
+      return true;
+    } catch (createError) {
+      console.error("Error creating bucket:", createError);
       return false;
     }
-    
-    // Now set up RLS policies for the bucket
-    try {
-      // First we need to enable RLS on the bucket 
-      const { error: rlsError } = await supabase.rpc('enable_storage_rls', { bucket_name: STORAGE_BUCKET });
-      if (rlsError) {
-        console.error("Error enabling RLS on bucket:", rlsError);
-        // We'll continue anyway as the bucket was created
-      }
-      
-      // Then let's make sure the policies are created
-      // These might fail if they already exist, which is fine
-      try {
-        await supabase.rpc('create_storage_policy', { 
-          bucket: STORAGE_BUCKET,
-          policy_name: 'Users can read their own policy documents',
-          definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-          operation: 'SELECT'
-        });
-      } catch (e) {
-        console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
-      }
-      
-      try {
-        await supabase.rpc('create_storage_policy', { 
-          bucket: STORAGE_BUCKET,
-          policy_name: 'Users can insert their own policy documents',
-          definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-          operation: 'INSERT'
-        });
-      } catch (e) {
-        console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
-      }
-      
-      try {
-        await supabase.rpc('create_storage_policy', { 
-          bucket: STORAGE_BUCKET,
-          policy_name: 'Users can update their own policy documents',
-          definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-          operation: 'UPDATE'
-        });
-      } catch (e) {
-        console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
-      }
-      
-      try {
-        await supabase.rpc('create_storage_policy', { 
-          bucket: STORAGE_BUCKET,
-          policy_name: 'Users can delete their own policy documents',
-          definition: 'bucket_id = \'' + STORAGE_BUCKET + '\' AND (storage.foldername(name))[1] = \'policies\' AND (storage.foldername(name))[2] = auth.uid()::text',
-          operation: 'DELETE'
-        });
-      } catch (e) {
-        console.warn("Policy creation might have failed, but it's ok if it already exists:", e);
-      }
-      
-    } catch (policyError) {
-      console.error("Error setting up bucket policies:", policyError);
-      // Continue as the bucket was still created
-    }
-    
-    return true;
   } catch (error) {
     console.error("Error creating storage bucket:", error);
     return false;
@@ -177,19 +177,15 @@ export const uploadAndProcessPolicy = async (
     return;
   }
 
-  // Check if bucket exists and create it if it doesn't
-  let bucketExists = await checkBucketExists();
-  if (!bucketExists) {
-    // Try to create the bucket
-    bucketExists = await createStorageBucket();
+  try {
+    // Check if bucket exists before attempting to upload
+    const bucketExists = await checkBucketExists();
     if (!bucketExists) {
-      toast.error("Não foi possível configurar o sistema de armazenamento");
+      toast.error("Sistema de armazenamento não está disponível. Por favor, contate o administrador.");
       setUploadingFile(null);
       return;
     }
-  }
 
-  try {
     // Simulate upload progress
     const progressInterval = setInterval(() => {
       setUploadingFile(prev => {
@@ -203,141 +199,148 @@ export const uploadAndProcessPolicy = async (
       });
     }, 100);
 
-    // Get the user folder path
-    const userFolderPath = `policies/${userId}`;
-    
-    // Upload the file to Supabase Storage
-    const fileName = `${Date.now()}_${file.name}`;
-    const filePath = `${userFolderPath}/${fileName}`;
-    
-    // Check if the user folder exists
     try {
-      const { error: folderCheckError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .list(userFolderPath);
-        
-      if (folderCheckError && folderCheckError.message !== "The resource was not found") {
-        console.error("Error checking folder:", folderCheckError);
-      }
-    } catch (folderError) {
-      console.log("Folder doesn't exist yet, will be created with upload");
-    }
-    
-    // Upload the file
-    const { error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
-
-    clearInterval(progressInterval);
-    
-    if (uploadError) {
-      console.error("Error uploading file:", uploadError);
-      setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao fazer upload do arquivo' } : null);
-      toast.error("Erro ao fazer upload do arquivo");
-      return;
-    }
-
-    // Set progress to 100% for upload complete
-    setUploadingFile(prev => prev ? { ...prev, progress: 100, status: 'processing' } : null);
-
-    // Get the file URL
-    const { data: { publicUrl } } = supabase.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(filePath);
-
-    // Convert PDF to base64 for GPT-4 Vision
-    const reader = new FileReader();
-    reader.onload = async () => {
+      // Get the user folder path
+      const userFolderPath = `policies/${userId}`;
+      
+      // Upload the file to Supabase Storage
+      const fileName = `${Date.now()}_${file.name}`;
+      const filePath = `${userFolderPath}/${fileName}`;
+      
+      // Check if the user folder exists
       try {
-        const base64Data = reader.result?.toString().split(',')[1];
-        
-        // Call GPT-4 Vision to analyze the PDF
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-policy`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            pdfBase64: base64Data,
-            fileName: file.name
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to analyze PDF');
+        const { error: folderCheckError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .list(userFolderPath);
+          
+        if (folderCheckError && folderCheckError.message !== "The resource was not found") {
+          console.error("Error checking folder:", folderCheckError);
         }
-
-        const policyData = await response.json();
-
-        // Use the extracted data to create a policy record
-        const today = new Date();
-        
-        // Set policy status based on date
-        let policyStatus: Policy['status'] = "active";
-        if (new Date(today) > new Date(policyData.expiryDate)) {
-          policyStatus = "expired";
-        } else if (new Date(today) < new Date(policyData.issueDate)) {
-          policyStatus = "pending";
-        }
-        
-        // Save the policy to Supabase
-        const { error: saveError } = await supabase
-          .from('policies')
-          .insert({
-            user_id: userId,
-            policy_number: policyData.policyNumber,
-            insurer: policyData.insurer,
-            customer: policyData.customerName,
-            start_date: new Date(policyData.issueDate).toISOString(),
-            end_date: new Date(policyData.expiryDate).toISOString(),
-            coverage_amount: policyData.coverageAmount,
-            premium_value: policyData.premium,
-            status: policyStatus,
-            document_url: publicUrl,
-            file_name: file.name
-          });
-
-        if (saveError) {
-          console.error("Error saving policy:", saveError);
-          setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao salvar a apólice' } : null);
-          toast.error("Erro ao salvar a apólice");
-          return;
-        }
-        
-        // Update success status
-        setUploadingFile(prev => prev ? { ...prev, status: 'success' } : null);
-        toast.success("Apólice processada com sucesso!");
-        
-        // Call success callback
-        onSuccess();
-        
-        // Reset upload state after a delay
-        setTimeout(() => {
-          setUploadingFile(null);
-        }, 2000);
-        
-      } catch (error) {
-        console.error("Error analyzing policy:", error);
-        setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao analisar o documento' } : null);
-        toast.error("Erro ao analisar o documento PDF");
-        
-        setTimeout(() => {
-          setUploadingFile(null);
-        }, 3000);
+      } catch (folderError) {
+        console.log("Folder doesn't exist yet, will be created with upload");
       }
-    };
-
-    reader.onerror = () => {
-      console.error("Error reading file:", reader.error);
-      setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao ler o arquivo' } : null);
-      toast.error("Erro ao ler o arquivo");
-    };
-
-    reader.readAsDataURL(file);
+      
+      // Upload the file
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+  
+      clearInterval(progressInterval);
+      
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError);
+        setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao fazer upload do arquivo' } : null);
+        toast.error("Erro ao fazer upload do arquivo");
+        return;
+      }
+  
+      // Set progress to 100% for upload complete
+      setUploadingFile(prev => prev ? { ...prev, progress: 100, status: 'processing' } : null);
+  
+      // Get the file URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(filePath);
+  
+      // Convert PDF to base64 for GPT-4 Vision
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result?.toString().split(',')[1];
+          
+          // Call GPT-4 Vision to analyze the PDF
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-policy`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              pdfBase64: base64Data,
+              fileName: file.name
+            }),
+          });
+  
+          if (!response.ok) {
+            throw new Error('Failed to analyze PDF');
+          }
+  
+          const policyData = await response.json();
+  
+          // Use the extracted data to create a policy record
+          const today = new Date();
+          
+          // Set policy status based on date
+          let policyStatus: Policy['status'] = "active";
+          if (new Date(today) > new Date(policyData.expiryDate)) {
+            policyStatus = "expired";
+          } else if (new Date(today) < new Date(policyData.issueDate)) {
+            policyStatus = "pending";
+          }
+          
+          // Save the policy to Supabase
+          const { error: saveError } = await supabase
+            .from('policies')
+            .insert({
+              user_id: userId,
+              policy_number: policyData.policyNumber,
+              insurer: policyData.insurer,
+              customer: policyData.customerName,
+              start_date: new Date(policyData.issueDate).toISOString(),
+              end_date: new Date(policyData.expiryDate).toISOString(),
+              coverage_amount: policyData.coverageAmount,
+              premium_value: policyData.premium,
+              status: policyStatus,
+              document_url: publicUrl,
+              file_name: file.name
+            });
+  
+          if (saveError) {
+            console.error("Error saving policy:", saveError);
+            setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao salvar a apólice' } : null);
+            toast.error("Erro ao salvar a apólice");
+            return;
+          }
+          
+          // Update success status
+          setUploadingFile(prev => prev ? { ...prev, status: 'success' } : null);
+          toast.success("Apólice processada com sucesso!");
+          
+          // Call success callback
+          onSuccess();
+          
+          // Reset upload state after a delay
+          setTimeout(() => {
+            setUploadingFile(null);
+          }, 2000);
+          
+        } catch (error) {
+          console.error("Error analyzing policy:", error);
+          setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao analisar o documento' } : null);
+          toast.error("Erro ao analisar o documento PDF");
+          
+          setTimeout(() => {
+            setUploadingFile(null);
+          }, 3000);
+        }
+      };
+  
+      reader.onerror = () => {
+        console.error("Error reading file:", reader.error);
+        setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao ler o arquivo' } : null);
+        toast.error("Erro ao ler o arquivo");
+      };
+  
+      reader.readAsDataURL(file);
+    } catch (uploadProcessError) {
+      clearInterval(progressInterval);
+      console.error("Error in upload process:", uploadProcessError);
+      setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro no processo de upload' } : null);
+      toast.error("Erro no processo de upload");
+    }
   } catch (error) {
     console.error("Error processing policy:", error);
     setUploadingFile(prev => prev ? { ...prev, status: 'error', error: 'Erro ao processar o arquivo' } : null);
