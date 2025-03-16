@@ -217,7 +217,17 @@ export function useVoiceCommandEvents() {
         return false;
       }
       
-      const successCount = await notifyAdminsAboutSystemEvent(message);
+      let successCount = 0;
+      for (const number of adminNumbers) {
+        const success = await sendWhatsAppMessage({
+          phone: number,
+          message: message
+        });
+        
+        if (success) {
+          successCount++;
+        }
+      }
       
       if (successCount > 0) {
         toast.success(`Notificação enviada para ${successCount} número(s) de administrador`);
@@ -357,12 +367,12 @@ export function useVoiceCommandEvents() {
         `⏱️ Duração: ${event.duration || 60} minutos\n\n` +
         `Para remarcar ou cancelar, entre em contato conosco.`;
       
-      const success = await sendWhatsAppMessage({
+      const result = await sendWhatsAppMessage({
         phone: event.contactPhone,
         message: message
       });
       
-      if (success) {
+      if (result) {
         toast.success('Lembrete enviado com sucesso!');
         return true;
       } else {
@@ -386,11 +396,15 @@ export function useVoiceCommandEvents() {
         return;
       }
 
-      const success = await sendEventReminder(event);
-      return success;
+      await sendEventReminder({
+        title: event.title,
+        description: event.description || '',
+        date: new Date(event.date),
+        duration: event.duration || 60,
+        contactPhone: phoneNumber
+      });
     } catch (error) {
       console.error('Error sending WhatsApp reminder:', error);
-      return false;
     }
   };
 
@@ -472,9 +486,9 @@ export function useVoiceCommandEvents() {
 
       if (isWhatsAppConfigured() && apiConnected !== false) {
         try {
-          const adminNotificationCount = await notifyAdminsAboutEvent(eventForNotification);
-          if (adminNotificationCount > 0) {
-            toast.success(`Notificação enviada para ${adminNotificationCount} administrador(es)`);
+          const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
+          if (adminNotifications > 0) {
+            toast.success(`Notificação enviada para ${adminNotifications} administrador(es)`);
           }
         } catch (error) {
           console.error('Error sending admin notifications:', error);

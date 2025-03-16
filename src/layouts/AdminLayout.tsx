@@ -5,26 +5,12 @@ import { cn } from '@/lib/utils';
 import Navbar from '@/components/Navbar';
 import { 
   LayoutDashboard, Users, Briefcase, MessageSquare, FileText, 
-  Settings, Plus, Folder, Grid3x3, ChevronDown, Home, Menu
+  Settings, ChevronLeft, ChevronRight, Plus, Folder, Grid3x3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUser } from '@/contexts/UserContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -91,11 +77,14 @@ const AdminLayout = ({
   actionLabel = "Novo item",
   onAction 
 }: AdminLayoutProps) => {
+  // Start with collapsed sidebar by default
+  const [collapsed, setCollapsed] = useState(true);
+  // Start with hidden sidebar - can be toggled to show
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useUser();
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Check if user is admin
   const isAdmin = user?.user_metadata?.role === 'admin';
@@ -105,179 +94,179 @@ const AdminLayout = ({
     return null;
   }
 
-  // Separate items into primary and secondary navigation
-  const primaryNav = navItems.slice(0, 4);  // First 4 items for main nav
-  const secondaryNav = navItems.slice(4);   // Rest for dropdown
+  const toggleSidebar = () => {
+    setSidebarHidden(!sidebarHidden);
+  };
+
+  const renderNavLink = (item: NavItem) => {
+    const isActive = pathname === item.href;
+    const linkContent = (
+      <>
+        <item.icon className={cn("h-4 w-4 shrink-0")} />
+        {!collapsed && <span>{item.title}</span>}
+      </>
+    );
+
+    if (item.external) {
+      return (
+        <a
+          href={item.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
+            isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground",
+            collapsed && "justify-center px-2"
+          )}
+        >
+          {linkContent}
+        </a>
+      );
+    }
+
+    return (
+      <Link
+        to={item.href}
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
+          isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground",
+          collapsed && "justify-center px-2"
+        )}
+      >
+        {linkContent}
+      </Link>
+    );
+  };
+
+  // Mobile Footer Navigation
+  const MobileFooterNav = () => (
+    <nav className="fixed bottom-0 left-0 z-50 w-full h-16 bg-card border-t flex items-center justify-around px-4">
+      {navItems.map((item) => {
+        const isActive = pathname === item.href;
+        
+        const FooterLink = ({ children }: { children: React.ReactNode }) => {
+          if (item.external) {
+            return (
+              <a
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center"
+              >
+                {children}
+              </a>
+            );
+          }
+          return (
+            <Link to={item.href} className="flex flex-col items-center">
+              {children}
+            </Link>
+          );
+        };
+        
+        return (
+          <FooterLink key={item.href}>
+            <item.icon 
+              className={cn(
+                "h-5 w-5 mb-1",
+                isActive ? "text-primary" : "text-muted-foreground"
+              )} 
+            />
+            <span className={cn(
+              "text-xs",
+              isActive ? "text-primary" : "text-muted-foreground"
+            )}>
+              {item.title}
+            </span>
+          </FooterLink>
+        );
+      })}
+    </nav>
+  );
 
   return (
-    <div className="min-h-screen flex flex-col antialiased bg-background">
+    <div className="min-h-screen flex flex-col antialiased">
       <Navbar />
-      
-      {/* Admin Top Navigation */}
-      <div className="border-b bg-card sticky top-14 z-30">
-        <div className="container flex items-center h-14 px-4">
-          <div className="flex items-center gap-2 mr-2 md:mr-6">
-            {isMobile && (
-              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden mr-1">
-                    <Menu className="h-5 w-5" />
+      <div className="flex items-center px-4 py-2 border-b">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 w-8 p-0 mr-2" 
+          onClick={toggleSidebar}
+        >
+          {sidebarHidden ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </Button>
+        {title && <h1 className="text-lg font-medium">{title}</h1>}
+      </div>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar - hidden on mobile */}
+        {!isMobile && !sidebarHidden && (
+          <aside 
+            className={cn(
+              "bg-card border-r shrink-0 overflow-y-auto flex flex-col transition-all duration-300 h-[calc(100vh-4rem)]",
+              collapsed ? "w-[60px]" : "w-[220px]"
+            )}
+          >
+            <div className="flex-1 py-4">
+              <div className="px-2 mb-4 flex justify-end">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 w-7 p-0" 
+                  onClick={() => setCollapsed(!collapsed)}
+                >
+                  {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                </Button>
+              </div>
+              <nav className="grid gap-1 px-2">
+                {navItems.map((item) => (
+                  <TooltipProvider key={item.href} delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {renderNavLink(item)}
+                      </TooltipTrigger>
+                      {collapsed && (
+                        <TooltipContent side="right">
+                          {item.title}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                ))}
+              </nav>
+            </div>
+          </aside>
+        )}
+        
+        {/* Main content */}
+        <main className={cn(
+          "flex-1 overflow-y-auto bg-background",
+          isMobile ? "h-[calc(100vh-4rem-4rem)]" : "h-[calc(100vh-4rem)]",
+          isMobile && "pb-16" // Add padding at bottom for mobile to prevent content being hidden behind footer
+        )}>
+          <div className="container py-4 px-4 lg:px-6">
+            {/* Page header with title and action button */}
+            {(title || onAction) && (
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  {title && <h1 className="text-2xl font-bold">{title}</h1>}
+                  {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
+                </div>
+                {onAction && (
+                  <Button onClick={onAction} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    {actionLabel}
                   </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[240px] sm:w-[280px] pt-16">
-                  <div className="flex flex-col gap-2 mt-2">
-                    {navItems.map((item) => (
-                      <Link 
-                        key={item.href}
-                        to={item.href}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-md",
-                          pathname === item.href 
-                            ? "bg-accent text-accent-foreground" 
-                            : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
-                        )}
-                        onClick={() => setSidebarOpen(false)}
-                      >
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
-                      </Link>
-                    ))}
-                  </div>
-                </SheetContent>
-              </Sheet>
+                )}
+              </div>
             )}
-            
-            <Link to="/admin" className="font-medium flex items-center whitespace-nowrap">
-              <Home className="h-5 w-5 text-primary hidden xs:block mr-2" />
-              <span>Admin</span>
-            </Link>
+            {children}
           </div>
-          
-          <NavigationMenu className="hidden md:flex">
-            <NavigationMenuList>
-              {primaryNav.map((item) => (
-                <NavigationMenuItem key={item.href}>
-                  <Link 
-                    to={item.href}
-                    className={cn(
-                      navigationMenuTriggerStyle(),
-                      pathname === item.href && "bg-accent text-accent-foreground",
-                      "gap-1.5"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </Link>
-                </NavigationMenuItem>
-              ))}
-              
-              <NavigationMenuItem>
-                <NavigationMenuTrigger className="gap-1.5">
-                  <Folder className="h-4 w-4" />
-                  <span>Mais</span>
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="grid w-[250px] gap-1 p-2">
-                    {secondaryNav.map((item) => (
-                      <li key={item.href}>
-                        <NavigationMenuLink asChild>
-                          <Link 
-                            to={item.href}
-                            className={cn(
-                              "flex w-full items-center gap-2 rounded-md p-2 hover:bg-accent hover:text-accent-foreground",
-                              pathname === item.href && "bg-accent text-accent-foreground"
-                            )}
-                          >
-                            <item.icon className="h-4 w-4" />
-                            <span>{item.title}</span>
-                          </Link>
-                        </NavigationMenuLink>
-                      </li>
-                    ))}
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
-          
-          <div className="ml-auto flex items-center gap-2">
-            {onAction && (
-              <Button onClick={onAction} size="sm" className="gap-1.5 hidden sm:flex">
-                <Plus className="h-4 w-4" />
-                {actionLabel}
-              </Button>
-            )}
-            
-            {/* Mobile only action button */}
-            {onAction && isMobile && (
-              <Button onClick={onAction} size="icon" className="sm:hidden" variant="ghost">
-                <Plus className="h-5 w-5" />
-              </Button>
-            )}
-            
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.name || 'Avatar'} />
-              <AvatarFallback>{(user?.user_metadata?.name || 'A').charAt(0)}</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
+        </main>
       </div>
       
-      {/* Mobile Navigation Menu - Bottom Bar */}
-      {isMobile && (
-        <nav className="fixed bottom-0 left-0 z-50 w-full h-16 bg-card border-t flex items-center justify-around px-4">
-          {navItems.slice(0, 5).map((item) => {
-            const isActive = pathname === item.href;
-            
-            return (
-              <Link to={item.href} key={item.href} className="flex flex-col items-center">
-                <item.icon 
-                  className={cn(
-                    "h-5 w-5 mb-1",
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  )} 
-                />
-                <span className={cn(
-                  "text-xs",
-                  isActive ? "text-primary" : "text-muted-foreground"
-                )}>
-                  {item.title}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-      )}
-      
-      {/* Page Header and Content */}
-      <main className={cn(
-        "flex-1 overflow-y-auto bg-background",
-        isMobile && "pb-16" // Add padding at bottom for mobile to prevent content being hidden behind footer
-      )}>
-        <div className="container py-4 px-4 md:py-6">
-          {/* Page header with title and action button */}
-          {(title || onAction) && (
-            <div className="flex justify-between items-center mb-4 md:mb-6">
-              <div>
-                {title && <h1 className="text-xl md:text-2xl font-bold">{title}</h1>}
-                {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
-              </div>
-              
-              {/* Mobile floating action button */}
-              {onAction && isMobile && (
-                <Button 
-                  onClick={onAction} 
-                  size="icon" 
-                  className="fixed right-4 bottom-20 z-50 h-12 w-12 rounded-full shadow-lg sm:hidden"
-                >
-                  <Plus className="h-6 w-6" />
-                </Button>
-              )}
-            </div>
-          )}
-          {children}
-        </div>
-      </main>
+      {/* Mobile Footer Navigation */}
+      {isMobile && <MobileFooterNav />}
     </div>
   );
 };

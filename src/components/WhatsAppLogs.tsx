@@ -23,10 +23,17 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { getLogHistory, clearLogHistory } from "@/lib/whatsgwService";
-import { WhatsAppLogEntry } from '@/types';
+
+interface LogEntry {
+  timestamp: Date;
+  type: 'info' | 'error' | 'warning';
+  operation: string;
+  message: string;
+  details?: any;
+}
 
 const WhatsAppLogs = () => {
-  const [logs, setLogs] = useState<WhatsAppLogEntry[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState<'all' | 'error' | 'warning' | 'info'>('all');
   const [operationFilter, setOperationFilter] = useState<string>('all');
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -142,7 +149,7 @@ const WhatsAppLogs = () => {
     }
   };
   
-  const isCorsError = (log: WhatsAppLogEntry): boolean => {
+  const isCorsError = (log: LogEntry): boolean => {
     if (log.type !== 'error') return false;
     
     const message = log.message?.toLowerCase() || '';

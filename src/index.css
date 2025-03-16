@@ -86,13 +86,6 @@
   ::selection {
     @apply bg-primary/20 text-primary;
   }
-  
-  /* Base font size adjustments for better readability on mobile */
-  @media (max-width: 640px) {
-    html {
-      font-size: 14px;
-    }
-  }
 }
 
 @layer components {
@@ -133,7 +126,7 @@
   
   /* Responsive spacing utility classes */
   .section-padding {
-    @apply py-6 md:py-10 lg:py-16 px-4 md:px-6 lg:px-8;
+    @apply py-10 md:py-16 px-4 md:px-6 lg:px-8;
   }
   
   .container-tight {
@@ -151,30 +144,6 @@
   
   .glass-dark {
     @apply bg-black/20 backdrop-blur-lg border border-white/10 rounded-xl;
-  }
-  
-  /* Mobile optimized button sizes */
-  .btn-mobile {
-    @apply h-9 px-3 text-sm;
-  }
-  
-  .btn-icon-mobile {
-    @apply h-8 w-8;
-  }
-  
-  /* Touch-friendly tap targets */
-  .tap-target {
-    @apply min-h-[44px] min-w-[44px];
-  }
-  
-  /* Scrollable areas that hide scrollbars */
-  .scrollbar-none {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
   }
 }
 
@@ -222,40 +191,11 @@
 /* Mobile optimizations */
 @media (max-width: 640px) {
   .container {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
   
   h1, h2, h3 {
     text-wrap: balance;
-  }
-  
-  /* Safe area insets for modern mobile browsers */
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 16px);
-  }
-  
-  .safe-top {
-    padding-top: env(safe-area-inset-top, 0px);
-  }
-  
-  /* Improved touch targets */
-  button, a {
-    touch-action: manipulation;
-  }
-}
-
-/* Custom screen size for extra small devices */
-@media (min-width: 400px) {
-  .xs\:block {
-    display: block;
-  }
-  
-  .xs\:hidden {
-    display: none;
-  }
-  
-  .xs\:flex {
-    display: flex;
   }
 }

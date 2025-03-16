@@ -27,18 +27,11 @@ export interface ProjectIdea {
   contactName: string;
   contactEmail: string;
   contactPhone?: string;
-  status: 'new' | 'reviewing' | 'approved' | 'in-progress' | 'completed' | 'rejected' | 'pending' | 'under-review';
+  status: 'new' | 'reviewing' | 'approved' | 'in-progress' | 'completed' | 'rejected';
   priority?: 'low' | 'medium' | 'high';
   notes?: string;
   createdAt: Date;
   updatedAt?: Date;
-  // Additional properties used in the code
-  features?: string[];
-  urgency?: 'baixa' | 'normal' | 'alta';
-  clientName?: string;
-  userId?: string;
-  statusUpdates?: Array<{date: Date, status: 'new' | 'reviewing' | 'approved' | 'in-progress' | 'completed' | 'rejected' | 'pending' | 'under-review', message: string}>;
-  attachments?: string[];
 }
 
 // Portfolio types
@@ -71,12 +64,9 @@ export interface CategoryItem {
 
 // Navigation types
 export interface NavigationItem {
-  id?: string;
-  title?: string;
-  path?: string;
-  // For compatibility with existing code
-  label?: string;
-  href?: string;
+  id: string;
+  title: string;
+  path: string;
   icon?: string;
   children?: NavigationItem[];
   requiresAuth?: boolean;
@@ -107,12 +97,4 @@ export interface VoiceCommandEvent {
   reminderScheduledFor?: Date;
   created_at: string | Date;
   createdAt?: Date;
-}
-
-export interface WhatsAppLogEntry {
-  timestamp: Date;
-  type: 'info' | 'error' | 'warning';
-  operation: string;
-  message: string;
-  details?: any;
 }

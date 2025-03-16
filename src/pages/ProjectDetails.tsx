@@ -39,8 +39,6 @@ const mockProjects: ProjectIdea[] = [
     createdAt: new Date('2023-10-15'),
     updatedAt: new Date('2023-10-18'),
     urgency: 'normal',
-    contactName: 'João Silva',
-    contactEmail: 'joao.silva@example.com',
     statusUpdates: [
       { date: new Date('2023-10-15'), status: 'pending', message: 'Projeto submetido' },
       { date: new Date('2023-10-16'), status: 'under-review', message: 'Projeto em análise pela equipe técnica' },
@@ -59,8 +57,6 @@ const mockProjects: ProjectIdea[] = [
     createdAt: new Date('2023-11-05'),
     updatedAt: new Date('2023-11-10'),
     urgency: 'alta',
-    contactName: 'Maria Oliveira',
-    contactEmail: 'maria.oliveira@example.com',
     statusUpdates: [
       { date: new Date('2023-11-05'), status: 'pending', message: 'Projeto submetido' },
       { date: new Date('2023-11-07'), status: 'under-review', message: 'Projeto em análise pela equipe técnica' },
@@ -81,8 +77,6 @@ const mockProjects: ProjectIdea[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 dias atrás
     updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 dias atrás
     urgency: 'baixa',
-    contactName: 'Carlos Santos',
-    contactEmail: 'carlos.santos@example.com',
     statusUpdates: [
       { date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), status: 'pending', message: 'Projeto submetido. Em análise inicial.' }
     ]
