@@ -65,6 +65,7 @@ export default function Dashboard() {
         </div>
       </div>
       
+      {/* Dashboard Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2">
           <VoiceCommandsSection />
@@ -86,6 +87,7 @@ export default function Dashboard() {
           </Card>
         </div>
         
+        {/* Agenda Card */}
         <Card className="lg:col-span-3 shadow-sm border-none">
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
@@ -99,8 +101,8 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="events" className="w-full">
-              <div className="flex gap-6">
-                <div className="w-56">
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="w-full md:w-56">
                   <TabsList className="flex flex-col space-y-1 bg-transparent h-auto p-0 w-full">
                     <TabsTrigger 
                       value="events" 
@@ -148,7 +150,7 @@ export default function Dashboard() {
                   </TabsList>
                 </div>
                 
-                <div className="flex-1 border-l pl-6">
+                <div className="flex-1 md:border-l md:pl-6">
                   <TabsContent value="events" className="mt-0">
                     <EventsList events={events} loading={loading} onDelete={deleteEvent} />
                   </TabsContent>
