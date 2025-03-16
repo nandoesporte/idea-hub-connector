@@ -6,7 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarDays, FileText, Lightbulb, ListChecks, Plus, User, LayoutDashboard, Shield, FileCheck } from 'lucide-react';
+import { 
+  CalendarDays, FileText, Lightbulb, ListChecks, Plus, User, LayoutDashboard, 
+  Shield, FileCheck, Calendar, FileSpreadsheet 
+} from 'lucide-react';
 import EventsList from '@/components/EventsList';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
 import { isWhatsAppConfigured } from '@/lib/whatsgwService';
@@ -88,7 +91,7 @@ export default function Dashboard() {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <div className="bg-primary/10 p-1.5 rounded-md">
-                  <CalendarDays className="h-4 w-4 text-primary" />
+                  <Calendar className="h-4 w-4 text-primary" />
                 </div>
                 <CardTitle className="text-lg">Agenda</CardTitle>
               </div>
@@ -96,38 +99,71 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="events" className="w-full">
-              <TabsList className="grid grid-cols-{isAdmin ? 4 : 5} mb-6 bg-muted/30 p-1">
-                <TabsTrigger value="events" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <CalendarDays className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Eventos</span>
-                </TabsTrigger>
-                {!isAdmin && (
-                  <TabsTrigger value="ideas" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                    <Lightbulb className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Ideias</span>
-                  </TabsTrigger>
-                )}
-                {isAdmin && (
-                  <TabsTrigger value="policies" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                    <FileCheck className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Apólices</span>
-                  </TabsTrigger>
-                )}
-                <TabsTrigger value="tasks" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <ListChecks className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Tarefas</span>
-                </TabsTrigger>
-                <TabsTrigger value="docs" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <FileText className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Docs</span>
-                </TabsTrigger>
-              </TabsList>
+              <div className="mb-6">
+                <div className="flex flex-col space-y-2">
+                  <TabsList className="w-full p-0 h-auto bg-transparent space-y-1">
+                    <div className="flex items-center gap-2">
+                      <TabsTrigger 
+                        value="events" 
+                        className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                      >
+                        <CalendarDays className="h-4 w-4 text-primary" />
+                        <span>Eventos</span>
+                      </TabsTrigger>
+                    </div>
+                    
+                    {isAdmin && (
+                      <div className="flex items-center gap-2">
+                        <TabsTrigger 
+                          value="policies" 
+                          className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                        >
+                          <FileCheck className="h-4 w-4 text-primary" />
+                          <span>Apólices</span>
+                        </TabsTrigger>
+                      </div>
+                    )}
+                    
+                    {!isAdmin && (
+                      <div className="flex items-center gap-2">
+                        <TabsTrigger 
+                          value="ideas" 
+                          className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                        >
+                          <Lightbulb className="h-4 w-4 text-primary" />
+                          <span>Ideias</span>
+                        </TabsTrigger>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2">
+                      <TabsTrigger 
+                        value="tasks" 
+                        className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                      >
+                        <ListChecks className="h-4 w-4 text-primary" />
+                        <span>Tarefas</span>
+                      </TabsTrigger>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <TabsTrigger 
+                        value="docs" 
+                        className="flex items-center gap-2 w-full justify-start px-3 py-2 h-auto text-left bg-transparent data-[state=active]:bg-muted/50 hover:bg-muted/30 rounded-md"
+                      >
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span>Docs</span>
+                      </TabsTrigger>
+                    </div>
+                  </TabsList>
+                </div>
+              </div>
               
-              <TabsContent value="events" className="mt-0">
+              <TabsContent value="events" className="mt-0 pt-2 border-t">
                 <EventsList events={events} loading={loading} onDelete={deleteEvent} />
               </TabsContent>
               
-              <TabsContent value="ideas" className="mt-0">
+              <TabsContent value="ideas" className="mt-0 pt-2 border-t">
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-muted/30 rounded-full p-6 mb-4">
                     <Lightbulb className="h-10 w-10 text-muted-foreground" />
@@ -147,11 +183,11 @@ export default function Dashboard() {
                 </div>
               </TabsContent>
               
-              <TabsContent value="policies" className="mt-0">
+              <TabsContent value="policies" className="mt-0 pt-2 border-t">
                 <PolicyTab />
               </TabsContent>
               
-              <TabsContent value="tasks" className="mt-0">
+              <TabsContent value="tasks" className="mt-0 pt-2 border-t">
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-muted/30 rounded-full p-6 mb-4">
                     <ListChecks className="h-10 w-10 text-muted-foreground" />
@@ -163,7 +199,7 @@ export default function Dashboard() {
                 </div>
               </TabsContent>
               
-              <TabsContent value="docs" className="mt-0">
+              <TabsContent value="docs" className="mt-0 pt-2 border-t">
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-muted/30 rounded-full p-6 mb-4">
                     <FileText className="h-10 w-10 text-muted-foreground" />
