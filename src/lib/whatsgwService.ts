@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 interface LogEntry {
@@ -35,6 +34,52 @@ export interface EventReminder {
   duration: number;
   contactPhone: string;
 }
+
+export interface PolicyData {
+  policyNumber: string;
+  insurer: string;
+  customer: string;
+  startDate: Date;
+  endDate: Date;
+  coverageAmount: string;
+  premiumValue: string;
+  documentUrl?: string;
+  fileName?: string;
+}
+
+// Mock database for policies until we have a real database connection
+let policyDatabase: PolicyData[] = [
+  {
+    policyNumber: "AP-2024-001",
+    insurer: "Seguros XYZ",
+    customer: "João Silva",
+    startDate: new Date(2024, 0, 1),
+    endDate: new Date(2024, 11, 31),
+    coverageAmount: "R$ 100.000,00",
+    premiumValue: "R$ 2.500,00",
+    fileName: "apolice_joao_silva.pdf"
+  },
+  {
+    policyNumber: "AP-2023-045",
+    insurer: "Seguradora ABC",
+    customer: "Maria Oliveira",
+    startDate: new Date(2023, 5, 15),
+    endDate: new Date(2024, 5, 14),
+    coverageAmount: "R$ 250.000,00",
+    premiumValue: "R$ 3.600,00",
+    fileName: "apolice_maria_oliveira.pdf"
+  },
+  {
+    policyNumber: "AP-2023-098",
+    insurer: "Proteção Total",
+    customer: "Carlos Mendes",
+    startDate: new Date(2023, 3, 10),
+    endDate: new Date(2024, 3, 9),
+    coverageAmount: "R$ 75.000,00",
+    premiumValue: "R$ 1.800,00",
+    fileName: "apolice_carlos_mendes.pdf"
+  }
+];
 
 /**
  * Adds an entry to the log history
@@ -655,4 +700,155 @@ const formatNewEventMessage = (event: any): string => {
  */
 export const notifyAdminsAboutEvent = async (event: any): Promise<number> => {
   return notifyAdminsAboutSystemEvent('new-event', { event });
+};
+
+/**
+ * Register a WhatsApp webhook
+ */
+export const registerWhatsAppWebhook = (webhookUrl: string): void => {
+  addLogEntry('info', 'webhook-setup', `Registering webhook at ${webhookUrl}`);
+  // In a real implementation, you would register the webhook with the WhatsGW API
+  // This is a placeholder for demonstration
+  localStorage.setItem('whatsgw_webhook_url', webhookUrl);
+};
+
+/**
+ * Get all policies from the database
+ */
+export const getAllPolicies = (): PolicyData[] => {
+  return [...policyDatabase];
+};
+
+/**
+ * Add a policy to the database
+ */
+export const addPolicy = (policy: PolicyData): void => {
+  policyDatabase.unshift(policy);
+  addLogEntry('info', 'policy-added', `Added policy ${policy.policyNumber} for ${policy.customer}`);
+};
+
+/**
+ * Process a WhatsApp message that contains a policy document
+ */
+export const processWhatsAppPolicyMessage = async (
+  message: any, 
+  documentUrl: string, 
+  fileName: string
+): Promise<PolicyData | null> => {
+  try {
+    addLogEntry('info', 'process-policy', `Processing policy document: ${fileName}`);
+    
+    // In a real implementation, we would use GPT-4 to extract information from the PDF
+    // For now, we'll simulate the extraction with a delay and mock data
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
+    
+    // Generate a random policy from mock data (in real implementation, this would come from GPT-4 analysis)
+    const randomNames = ['Ana Costa', 'Roberto Santos', 'Carolina Lima', 'Marcos Oliveira', 'Juliana Ferreira'];
+    const randomInsurers = ['Seguradora Nacional', 'Proteção Seguros', 'Garantia Total', 'Confiança Mútua', 'Tranquilidade S.A.'];
+    
+    const customer = randomNames[Math.floor(Math.random() * randomNames.length)];
+    const insurer = randomInsurers[Math.floor(Math.random() * randomInsurers.length)];
+    
+    const startDate = new Date();
+    const endDate = new Date(startDate);
+    endDate.setFullYear(endDate.getFullYear() + 1); // One year policy
+    
+    const coverageAmount = `R$ ${(Math.floor(Math.random() * 900) + 100)}.000,00`;
+    const premiumValue = `R$ ${(Math.floor(Math.random() * 50) + 15)}.${(Math.floor(Math.random() * 900) + 100)},00`;
+    const policyNumber = `AP-${new Date().getFullYear()}-${(Math.floor(Math.random() * 900) + 100)}`;
+    
+    const newPolicy: PolicyData = {
+      policyNumber,
+      insurer,
+      customer,
+      startDate,
+      endDate,
+      coverageAmount,
+      premiumValue,
+      documentUrl,
+      fileName
+    };
+    
+    // Add the policy to our database
+    addPolicy(newPolicy);
+    
+    addLogEntry('info', 'process-policy', `Successfully processed policy: ${policyNumber}`, newPolicy);
+    
+    return newPolicy;
+  } catch (error) {
+    addLogEntry('error', 'process-policy', `Failed to process policy document: ${error.message}`, {
+      error,
+      fileName
+    });
+    return null;
+  }
+};
+
+/**
+ * Handler for incoming WhatsApp webhook events
+ */
+export const handleWhatsAppWebhook = async (event: any): Promise<boolean> => {
+  try {
+    // Log the incoming webhook event
+    addLogEntry('info', 'webhook-received', 'Received WhatsApp webhook event', event);
+    
+    // Extract message data from the event
+    const { message, sender, media, caption } = event;
+    
+    // Check if this is a policy document message
+    const isPolicyMessage = 
+      (message && message.toLowerCase().includes('apolice')) || 
+      (caption && caption.toLowerCase().includes('apolice'));
+    
+    if (isPolicyMessage && media && media.url) {
+      // This is a policy document with attachment
+      const result = await processWhatsAppPolicyMessage(
+        message || caption,
+        media.url,
+        media.fileName || `apolice_${Date.now()}.pdf`
+      );
+      
+      if (result) {
+        // Notify admins about the new policy
+        notifyAdminsAboutSystemEvent('custom-message', {
+          title: 'Nova Apólice Recebida',
+          message: `Uma nova apólice foi recebida e processada automaticamente:\n\nCliente: ${result.customer}\nSeguradora: ${result.insurer}\nNúmero: ${result.policyNumber}`
+        });
+        
+        return true;
+      }
+    }
+    
+    // If we got here, it wasn't a policy message or processing failed
+    return false;
+  } catch (error) {
+    addLogEntry('error', 'webhook-handler', `Error processing webhook: ${error.message}`, {
+      error
+    });
+    return false;
+  }
+};
+
+/**
+ * Simulation function for testing - in a real app, this would be called by the webhook
+ */
+export const simulateWhatsAppPolicyMessage = async (): Promise<PolicyData | null> => {
+  const mockEvent = {
+    sender: "5511987654321",
+    message: "Segue a apólice do cliente para cadastro no sistema",
+    media: {
+      url: "https://example.com/sample.pdf",
+      fileName: `apolice_${Date.now()}.pdf`,
+      mimeType: "application/pdf"
+    },
+    caption: "Apólice de seguro para cadastro"
+  };
+  
+  addLogEntry('info', 'simulation', 'Simulating WhatsApp policy message', mockEvent);
+  
+  return processWhatsAppPolicyMessage(
+    mockEvent.message,
+    mockEvent.media.url,
+    mockEvent.media.fileName
+  );
 };

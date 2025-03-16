@@ -15,97 +15,54 @@ import {
   Clock, 
   Upload,
   Trash2,
-  Search
+  Search,
+  RefreshCw
 } from "lucide-react";
 import { format, addDays, isBefore, isAfter } from "date-fns";
 import { toast } from "sonner";
-
-interface Policy {
-  id: string;
-  policyNumber: string;
-  insurer: string;
-  customer: string;
-  startDate: Date;
-  endDate: Date;
-  coverageAmount: string;
-  premiumValue: string;
-  status: "active" | "expired" | "pending" | "cancelled";
-  documentUrl?: string;
-  fileName?: string;
-}
+import { 
+  getAllPolicies, 
+  simulateWhatsAppPolicyMessage, 
+  PolicyData,
+  registerWhatsAppWebhook
+} from "@/lib/whatsgwService";
 
 const PolicyTab = () => {
-  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [policies, setPolicies] = useState<PolicyData[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
 
   useEffect(() => {
-    // Mock data - in a real app, this would be fetched from an API
-    const mockPolicies: Policy[] = [
-      {
-        id: "1",
-        policyNumber: "AP-2024-001",
-        insurer: "Seguros XYZ",
-        customer: "João Silva",
-        startDate: new Date(2024, 0, 1),
-        endDate: new Date(2024, 11, 31),
-        coverageAmount: "R$ 100.000,00",
-        premiumValue: "R$ 2.500,00",
-        status: "active",
-        fileName: "apolice_joao_silva.pdf"
-      },
-      {
-        id: "2",
-        policyNumber: "AP-2023-045",
-        insurer: "Seguradora ABC",
-        customer: "Maria Oliveira",
-        startDate: new Date(2023, 5, 15),
-        endDate: new Date(2024, 5, 14),
-        coverageAmount: "R$ 250.000,00",
-        premiumValue: "R$ 3.600,00",
-        status: "active",
-        fileName: "apolice_maria_oliveira.pdf"
-      },
-      {
-        id: "3",
-        policyNumber: "AP-2023-098",
-        insurer: "Proteção Total",
-        customer: "Carlos Mendes",
-        startDate: new Date(2023, 3, 10),
-        endDate: new Date(2024, 3, 9),
-        coverageAmount: "R$ 75.000,00",
-        premiumValue: "R$ 1.800,00",
-        status: "expired",
-        fileName: "apolice_carlos_mendes.pdf"
-      }
-    ];
+    // Load policies when component mounts
+    loadPolicies();
     
-    setPolicies(mockPolicies);
+    // Load saved webhook URL if any
+    const savedWebhookUrl = localStorage.getItem('whatsgw_webhook_url');
+    if (savedWebhookUrl) {
+      setWebhookUrl(savedWebhookUrl);
+    }
   }, []);
+
+  const loadPolicies = () => {
+    // Get policies from our service
+    const loadedPolicies = getAllPolicies();
+    setPolicies(loadedPolicies);
+  };
 
   const handleProcessWhatsAppMessage = async () => {
     setLoading(true);
     
     try {
-      // Simulate API processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const newPolicy = await simulateWhatsAppPolicyMessage();
       
-      // Add a new policy
-      const newPolicy: Policy = {
-        id: Date.now().toString(),
-        policyNumber: `AP-2024-${Math.floor(Math.random() * 900) + 100}`,
-        insurer: "Nova Seguradora",
-        customer: "Roberto Campos",
-        startDate: new Date(),
-        endDate: addDays(new Date(), 365),
-        coverageAmount: "R$ 150.000,00",
-        premiumValue: "R$ 2.800,00",
-        status: "active",
-        fileName: "apolice_roberto_campos.pdf"
-      };
-      
-      setPolicies(prev => [newPolicy, ...prev]);
-      toast.success("Nova apólice recebida e processada com sucesso!");
+      if (newPolicy) {
+        // Reload policies to include the new one
+        loadPolicies();
+        toast.success("Nova apólice recebida e processada com sucesso!");
+      } else {
+        toast.error("Erro ao processar a apólice. Verifique os logs para mais detalhes.");
+      }
     } catch (error) {
       console.error("Error processing WhatsApp message:", error);
       toast.error("Erro ao processar mensagem do WhatsApp");
@@ -114,23 +71,36 @@ const PolicyTab = () => {
     }
   };
 
-  const handleDeletePolicy = (id: string) => {
-    setPolicies(prev => prev.filter(policy => policy.id !== id));
+  const handleSaveWebhook = () => {
+    if (!webhookUrl.trim()) {
+      toast.error("Por favor, insira uma URL de webhook válida");
+      return;
+    }
+    
+    try {
+      registerWhatsAppWebhook(webhookUrl);
+      toast.success("URL de webhook salva com sucesso!");
+    } catch (error) {
+      console.error("Error saving webhook URL:", error);
+      toast.error("Erro ao salvar URL de webhook");
+    }
+  };
+
+  const handleDeletePolicy = (policyNumber: string) => {
+    // In a real app, this would call a delete API
+    setPolicies(prev => prev.filter(policy => policy.policyNumber !== policyNumber));
     toast.success("Apólice removida com sucesso");
   };
 
-  const getStatusBadge = (status: Policy['status']) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-500">Ativa</Badge>;
-      case 'expired':
-        return <Badge variant="destructive">Vencida</Badge>;
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Pendente</Badge>;
-      case 'cancelled':
-        return <Badge variant="secondary">Cancelada</Badge>;
-      default:
-        return <Badge variant="outline">Desconhecida</Badge>;
+  const getStatusBadge = (startDate: Date, endDate: Date) => {
+    const today = new Date();
+    
+    if (isAfter(today, endDate)) {
+      return <Badge variant="destructive">Vencida</Badge>;
+    } else if (isBefore(today, startDate)) {
+      return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Pendente</Badge>;
+    } else {
+      return <Badge className="bg-green-500">Ativa</Badge>;
     }
   };
 
@@ -161,7 +131,10 @@ const PolicyTab = () => {
               size="sm"
             >
               {loading ? (
-                <>Processando...</>
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                  Processando...
+                </>
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" /> 
@@ -216,7 +189,7 @@ const PolicyTab = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredPolicies.map((policy) => (
-                    <TableRow key={policy.id}>
+                    <TableRow key={policy.policyNumber}>
                       <TableCell className="font-medium">{policy.policyNumber}</TableCell>
                       <TableCell>{policy.customer}</TableCell>
                       <TableCell>{policy.insurer}</TableCell>
@@ -232,7 +205,7 @@ const PolicyTab = () => {
                         </div>
                       </TableCell>
                       <TableCell>{policy.premiumValue}</TableCell>
-                      <TableCell>{getStatusBadge(policy.status)}</TableCell>
+                      <TableCell>{getStatusBadge(policy.startDate, policy.endDate)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button 
@@ -248,7 +221,7 @@ const PolicyTab = () => {
                             size="icon" 
                             className="h-7 w-7 text-destructive hover:text-destructive"
                             aria-label="Remover"
-                            onClick={() => handleDeletePolicy(policy.id)}
+                            onClick={() => handleDeletePolicy(policy.policyNumber)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -269,7 +242,34 @@ const PolicyTab = () => {
             <p className="text-sm text-muted-foreground mb-3">
               Documentos de apólice recebidos via WhatsApp com a palavra "apolice" serão automaticamente processados e adicionados ao sistema.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <div className="mt-4 border-t pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="webhook-url" className="text-xs">URL do Webhook para WhatsApp</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="webhook-url" 
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    placeholder="https://seu-webhook.com/whatsgw-events" 
+                    className="text-xs flex-1"
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={handleSaveWebhook}
+                    disabled={!webhookUrl.trim()}
+                  >
+                    Salvar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Configure esta URL no painel de controle do WhatsGW para receber automaticamente mensagens de documentos de apólice.
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <div>
                 <Label htmlFor="days-before" className="text-xs flex items-center gap-1">
                   <Clock className="h-3 w-3" /> Dias para lembrete antes do vencimento
