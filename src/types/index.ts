@@ -1,3 +1,4 @@
+
 export type ProjectCategory = 
   | 'automation'
   | 'website'
@@ -102,6 +103,8 @@ export interface PolicyData {
   details?: any;
   created_at?: string;
   updated_at?: string;
+  
+  // Adding the missing properties used in PolicyTab
   policyNumber?: string;
   customer?: string;
   insurer?: string;

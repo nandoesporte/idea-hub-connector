@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,10 +19,10 @@ import {
 } from "lucide-react";
 import { format, addDays, isBefore, isAfter } from "date-fns";
 import { toast } from "sonner";
+import { PolicyData } from "@/types";
 import { 
   getAllPolicies, 
   simulateWhatsAppPolicyMessage, 
-  PolicyData,
   registerWhatsAppWebhook,
   deletePolicy
 } from "@/lib/whatsgwService";
@@ -116,7 +115,9 @@ const PolicyTab = () => {
     }
   };
 
-  const getStatusBadge = (startDate: Date, endDate: Date) => {
+  const getStatusBadge = (startDate: Date | undefined, endDate: Date | undefined) => {
+    if (!startDate || !endDate) return <Badge variant="outline">Desconhecido</Badge>;
+    
     const today = new Date();
     
     if (isAfter(today, endDate)) {
@@ -128,17 +129,25 @@ const PolicyTab = () => {
     }
   };
 
-  const isNearExpiry = (date: Date) => {
+  const isNearExpiry = (date: Date | undefined) => {
+    if (!date) return false;
+    
     const today = new Date();
     const thirtyDaysFromNow = addDays(today, 30);
     return isAfter(date, today) && isBefore(date, thirtyDaysFromNow);
   };
 
-  const filteredPolicies = policies.filter(policy => 
-    policy.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    policy.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    policy.insurer.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPolicies = policies.filter(policy => {
+    const policyNumber = policy.policyNumber || policy.policy_number || '';
+    const customer = policy.customer || '';
+    const insurer = policy.insurer || '';
+    
+    return (
+      policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insurer.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -218,22 +227,22 @@ const PolicyTab = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredPolicies.map((policy) => (
-                    <TableRow key={policy.id || policy.policyNumber}>
-                      <TableCell className="font-medium">{policy.policyNumber}</TableCell>
-                      <TableCell>{policy.customer}</TableCell>
-                      <TableCell>{policy.insurer}</TableCell>
+                    <TableRow key={policy.id || policy.policyNumber || policy.policy_number}>
+                      <TableCell className="font-medium">{policy.policyNumber || policy.policy_number}</TableCell>
+                      <TableCell>{policy.customer || "N/A"}</TableCell>
+                      <TableCell>{policy.insurer || "N/A"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>
-                            {format(policy.startDate, "dd/MM/yyyy")} - {format(policy.endDate, "dd/MM/yyyy")}
+                            {policy.startDate ? format(policy.startDate, "dd/MM/yyyy") : "N/A"} - {policy.endDate ? format(policy.endDate, "dd/MM/yyyy") : "N/A"}
                           </span>
-                          {isNearExpiry(policy.endDate) && (
+                          {policy.endDate && isNearExpiry(policy.endDate) && (
                             <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{policy.premiumValue}</TableCell>
+                      <TableCell>{policy.premiumValue || `R$ ${policy.premium_amount?.toFixed(2)}` || "N/A"}</TableCell>
                       <TableCell>{getStatusBadge(policy.startDate, policy.endDate)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">

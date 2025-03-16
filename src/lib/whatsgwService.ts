@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { toast } from "sonner";
-import { VoiceCommandEvent } from '@/types';
+import { VoiceCommandEvent, PolicyData } from '@/types';
 
 // Store API key in localStorage
 const API_KEY_STORAGE_KEY = 'whatsgw_api_key';
@@ -364,32 +364,18 @@ export const getAllPolicies = async () => {
     return data.map((policy: PolicyData) => ({
       ...policy,
       policyNumber: policy.policy_number,
-      customer: 'Customer Name', // Default or from policy.details
-      insurer: 'Insurance Company', // Default or from policy.details
-      startDate: new Date(new Date(policy.created_at || '').getTime() - 30 * 24 * 60 * 60 * 1000), // 30 days before created_at
-      endDate: new Date(policy.expiry_date),
-      premiumValue: `R$ ${policy.premium_amount.toFixed(2)}`,
-      documentUrl: policy.details?.documentUrl || null
+      customer: policy.customer || 'Customer Name', // Default or from policy.details
+      insurer: policy.insurer || 'Insurance Company', // Default or from policy.details
+      startDate: policy.startDate || (policy.created_at ? new Date(new Date(policy.created_at).getTime() - 30 * 24 * 60 * 60 * 1000) : new Date()), // 30 days before created_at
+      endDate: policy.endDate || (policy.expiry_date ? new Date(policy.expiry_date) : new Date()),
+      premiumValue: policy.premiumValue || `R$ ${policy.premium_amount?.toFixed(2) || '0.00'}`,
+      documentUrl: policy.documentUrl || policy.details?.documentUrl || null
     }));
   } catch (error) {
     console.error('Error getting all policies:', error);
     return [];
   }
 };
-
-// Interface for policy data
-export interface PolicyData {
-  id?: string;
-  user_id?: string;
-  policy_number: string;
-  policy_type: string;
-  expiry_date: string;
-  premium_amount: number;
-  status: 'active' | 'expired' | 'pending';
-  details?: any;
-  created_at?: string;
-  updated_at?: string;
-}
 
 // Save policy
 export const savePolicy = async (policyData: PolicyData) => {
