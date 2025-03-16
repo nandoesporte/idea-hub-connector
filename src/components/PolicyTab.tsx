@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,10 +40,8 @@ const PolicyTab = () => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Load policies when component mounts
     loadPolicies();
     
-    // Load saved webhook URL if any
     const savedWebhookUrl = localStorage.getItem('whatsgw_webhook_url');
     if (savedWebhookUrl) {
       setWebhookUrl(savedWebhookUrl);
@@ -55,13 +52,11 @@ const PolicyTab = () => {
     setLoading(true);
     setDatabaseError(null);
     try {
-      // Get policies from our service
       const loadedPolicies = await getAllPolicies();
       setPolicies(loadedPolicies);
     } catch (error) {
       console.error("Error loading policies:", error);
       
-      // Check if this is the "table doesn't exist" error
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("does not exist") || errorMessage.includes("Failed to get policies")) {
         setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
@@ -95,7 +90,6 @@ const PolicyTab = () => {
     } catch (error) {
       console.error("Error processing policy file:", error);
       
-      // Check if this is the "table doesn't exist" error
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("does not exist")) {
         setDatabaseError("A tabela 'insurance_policies' ainda não existe no banco de dados. Execute a migração correspondente no Supabase.");
@@ -104,7 +98,6 @@ const PolicyTab = () => {
       toast.error("Erro ao processar arquivo de apólice");
     } finally {
       setUploadingPolicy(false);
-      // Clear the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -357,9 +350,6 @@ const PolicyTab = () => {
               <CheckCircle2 className="h-4 w-4 text-green-500" />
               Recebimento Automático via WhatsApp
             </h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Documentos de apólice recebidos via WhatsApp com a palavra "apolice" serão automaticamente processados e adicionados ao sistema.
-            </p>
             
             <div className="mt-4 border-t pt-4">
               <div className="space-y-2">
@@ -381,9 +371,6 @@ const PolicyTab = () => {
                     Salvar
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Configure esta URL no painel de controle do WhatsGW para receber automaticamente mensagens de documentos de apólice.
-                </p>
               </div>
             </div>
             
