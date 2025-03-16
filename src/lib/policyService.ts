@@ -9,6 +9,7 @@ export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy
     console.log('Fetching policies for user:', userId);
     
     // Check if table exists before querying
+    console.log('Checking if insurance_policies table exists');
     const { data: tableExists, error: tableCheckError } = await supabase
       .from('insurance_policies')
       .select('count', { count: 'exact', head: true });
@@ -17,6 +18,7 @@ export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy
       console.error('Error checking if table exists:', tableCheckError);
       // Create table if it doesn't exist
       if (tableCheckError.message.includes('does not exist')) {
+        console.error('Table does not exist:', tableCheckError.message);
         toast.error('Tabela de apólices não configurada. Contate o administrador.');
         return [];
       }
@@ -25,6 +27,7 @@ export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy
     
     // Check if user_id column exists
     try {
+      console.log('Querying insurance_policies for user:', userId);
       const { data, error } = await supabase
         .from('insurance_policies')
         .select('*')
@@ -36,6 +39,7 @@ export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy
         
         // Handle the specific case of user_id column not existing
         if (error.message.includes('user_id does not exist')) {
+          console.error('Column user_id does not exist in table insurance_policies:', error.message);
           toast.error('Sistema de apólices não está configurado corretamente. Contate o administrador.');
           return [];
         }
@@ -43,8 +47,13 @@ export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy
         throw error;
       }
 
-      if (!data) return [];
+      if (!data) {
+        console.log('No policies found for user:', userId);
+        return [];
+      }
 
+      console.log(`Found ${data.length} policies for user:`, userId);
+      
       return data.map(policy => ({
         ...policy,
         id: policy.id,
@@ -74,9 +83,11 @@ export const fetchUserPolicies = async (userId: string): Promise<InsurancePolicy
 
 export const uploadPolicyDocument = async (file: File, userId: string): Promise<string> => {
   try {
-    console.log('Uploading policy document for user:', userId);
+    console.log('Starting policy document upload for user:', userId);
+    console.log('File details:', { name: file.name, type: file.type, size: file.size });
     
     // Check if documents bucket exists, try to create it if not
+    console.log('Checking if documents bucket exists');
     const { data: buckets, error: bucketsError } = await supabase
       .storage
       .listBuckets();
@@ -87,18 +98,56 @@ export const uploadPolicyDocument = async (file: File, userId: string): Promise<
       throw bucketsError;
     }
     
+    console.log('Available buckets:', buckets.map(b => b.name));
     const documentsBucketExists = buckets.some(bucket => bucket.name === 'documents');
     
     if (!documentsBucketExists) {
-      console.log('Documents bucket does not exist, attempting to create it');
-      toast.error('O bucket de documentos não existe. Contate o administrador para configurar o armazenamento.');
-      throw new Error('Storage bucket "documents" does not exist');
+      console.error('Documents bucket does not exist');
+      // Try to create the bucket
+      try {
+        console.log('Attempting to create documents bucket');
+        const { data: newBucket, error: createError } = await supabase
+          .storage
+          .createBucket('documents', {
+            public: false,
+            fileSizeLimit: 10485760, // 10MB
+          });
+          
+        if (createError) {
+          console.error('Error creating documents bucket:', createError);
+          toast.error('Não foi possível criar o bucket de documentos. Contate o administrador.');
+          throw new Error(`Failed to create storage bucket: ${createError.message}`);
+        }
+        
+        console.log('Documents bucket created successfully:', newBucket);
+        
+        // Set bucket policy to allow public access
+        const { error: policyError } = await supabase
+          .storage
+          .updateBucket('documents', {
+            public: true
+          });
+          
+        if (policyError) {
+          console.error('Error setting bucket policy:', policyError);
+        } else {
+          console.log('Bucket policy updated successfully');
+        }
+      } catch (createBucketError) {
+        console.error('Exception while creating bucket:', createBucketError);
+        toast.error('O bucket de documentos não existe. Contate o administrador para configurar o armazenamento.');
+        throw new Error('Storage bucket "documents" does not exist');
+      }
+    } else {
+      console.log('Documents bucket exists');
     }
     
     // Generate a unique file name to avoid collisions
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}-${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
     const filePath = `policies/${fileName}`;
+
+    console.log('Uploading file to path:', filePath);
 
     // Upload directly to the documents bucket
     const { error: uploadError, data } = await supabase.storage
@@ -113,11 +162,13 @@ export const uploadPolicyDocument = async (file: File, userId: string): Promise<
       
       // Check specific error types and provide better messages
       if (uploadError.message?.includes('bucket not found')) {
+        console.error('Bucket not found error:', uploadError.message);
         toast.error('Falha no sistema de armazenamento. Por favor, contate o suporte.');
         throw new Error('Storage bucket not found. Please contact admin to set up storage.');
       }
       
       if (uploadError.message?.includes('row-level security')) {
+        console.error('RLS policy error:', uploadError.message);
         toast.error('Erro de permissão. Por favor, tente fazer login novamente.');
         throw new Error('Permission denied due to RLS policy. Please check storage permissions.');
       }
@@ -160,6 +211,7 @@ export const analyzePolicyDocument = async (url: string): Promise<AnalyzeResult>
   try {
     console.log('Analyzing policy document:', url);
     
+    console.log('Sending request to analyze-policy Edge Function');
     const response = await fetch('/api/analyze-policy', {
       method: 'POST',
       headers: {
@@ -168,15 +220,20 @@ export const analyzePolicyDocument = async (url: string): Promise<AnalyzeResult>
       body: JSON.stringify({ url }),
     });
 
+    console.log('Received response from analyze-policy:', { 
+      status: response.status, 
+      statusText: response.statusText 
+    });
+
     if (!response.ok) {
       let errorDetails;
       try {
         errorDetails = await response.json();
+        console.error('Error response JSON from analyze-policy:', errorDetails);
       } catch (e) {
         errorDetails = await response.text();
+        console.error('Error response text from analyze-policy:', errorDetails);
       }
-      
-      console.error('Error response from analyze-policy:', errorDetails);
       
       let errorMessage = 'Não foi possível analisar o documento.';
       if (typeof errorDetails === 'object' && errorDetails.error) {

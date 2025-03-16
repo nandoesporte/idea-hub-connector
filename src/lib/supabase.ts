@@ -8,7 +8,34 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // For debugging purposes - log connection info but not keys
 console.log('Initializing Supabase client with URL:', supabaseUrl);
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create the Supabase client with detailed logging
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+  },
+  global: {
+    // Enhanced logging for debugging
+    fetch: (url, options) => {
+      const method = options?.method || 'GET';
+      const truncatedUrl = typeof url === 'string' 
+        ? (url.length > 100 ? url.substring(0, 100) + '...' : url)
+        : 'non-string-url';
+        
+      console.log(`Supabase ${method} request to: ${truncatedUrl}`);
+      
+      return fetch(url, options)
+        .then((response) => {
+          console.log(`Supabase response: ${response.status} ${response.statusText}`);
+          return response;
+        })
+        .catch((error) => {
+          console.error(`Supabase ${method} request failed:`, error);
+          throw error;
+        });
+    }
+  }
+});
 
 // Test connection
 supabase.auth.getSession().then(({ data, error }) => {
