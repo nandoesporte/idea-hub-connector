@@ -160,7 +160,7 @@ const PolicyTab = () => {
   };
 
   const filteredPolicies = policies.filter(policy => {
-    const policyNumber = policy.policyNumber || policy.policy_number || '';
+    const policyNumber = policy.policy_number || '';
     const customer = policy.customer || '';
     const insurer = policy.insurer || '';
     
@@ -283,32 +283,32 @@ const PolicyTab = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredPolicies.map((policy) => (
-                    <TableRow key={policy.id || policy.policyNumber || policy.policy_number}>
-                      <TableCell className="font-medium">{policy.policyNumber || policy.policy_number}</TableCell>
+                    <TableRow key={policy.id || policy.policy_number}>
+                      <TableCell className="font-medium">{policy.policy_number}</TableCell>
                       <TableCell>{policy.customer || "N/A"}</TableCell>
                       <TableCell>{policy.insurer || "N/A"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>
-                            {policy.startDate ? format(policy.startDate, "dd/MM/yyyy") : "N/A"} - {policy.endDate ? format(policy.endDate, "dd/MM/yyyy") : "N/A"}
+                            {policy.start_date ? format(new Date(policy.start_date), "dd/MM/yyyy") : "N/A"} - {policy.end_date ? format(new Date(policy.end_date), "dd/MM/yyyy") : "N/A"}
                           </span>
-                          {policy.endDate && isNearExpiry(policy.endDate) && (
+                          {policy.end_date && isNearExpiry(new Date(policy.end_date)) && (
                             <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" aria-label="Próximo ao vencimento" />
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{policy.premiumValue || `R$ ${policy.premium_amount?.toFixed(2)}` || "N/A"}</TableCell>
-                      <TableCell>{getStatusBadge(policy.startDate, policy.endDate)}</TableCell>
+                      <TableCell>{`R$ ${policy.premium_amount?.toFixed(2)}` || "N/A"}</TableCell>
+                      <TableCell>{getStatusBadge(policy.start_date ? new Date(policy.start_date) : undefined, policy.end_date ? new Date(policy.end_date) : undefined)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {policy.documentUrl && (
+                          {policy.document_url && (
                             <Button 
                               variant="outline" 
                               size="icon" 
                               className="h-7 w-7"
                               aria-label="Baixar documento"
-                              onClick={() => window.open(policy.documentUrl, '_blank')}
+                              onClick={() => window.open(policy.document_url, '_blank')}
                             >
                               <Download className="h-3.5 w-3.5" />
                             </Button>
