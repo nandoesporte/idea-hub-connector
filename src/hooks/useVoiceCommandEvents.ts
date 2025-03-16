@@ -423,13 +423,7 @@ export function useVoiceCommandEvents() {
       
       console.log('Voice command processed:', result);
       
-      let eventType = result.type;
-      
-      if (result.type === "meeting" || result.type === "appointment") {
-        eventType = "appointment";
-      } else if (result.type === "deadline" || result.type === "reminder") {
-        eventType = "reminder";
-      }
+      const eventType = result.type;
       
       if (!result.contactPhone) {
         const defaultPhone = reminderSettings.defaultPhone || localStorage.getItem('default_whatsapp_number');
@@ -443,7 +437,7 @@ export function useVoiceCommandEvents() {
       
       const saveResult = await saveVoiceCommandEvent({
         ...result,
-        type: eventType as VoiceCommandEvent['type'],
+        type: eventType,
         reminderScheduledFor: reminderTime
       });
       
@@ -462,7 +456,7 @@ export function useVoiceCommandEvents() {
         description: result.description || '',
         date: result.date,
         duration: result.duration || 60,
-        type: eventType as VoiceCommandEvent['type'],
+        type: result.type,
         contactPhone: result.contactPhone,
         status: 'pending',
         createdAt: new Date(),

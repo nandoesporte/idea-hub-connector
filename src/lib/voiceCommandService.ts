@@ -1,6 +1,8 @@
+
 import { addDays, setHours, setMinutes, parse, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from './supabase';
+import { VoiceCommandEvent } from '@/types';
 
 interface VoiceCommandResult {
   success: boolean;
@@ -8,7 +10,7 @@ interface VoiceCommandResult {
   description?: string;
   date: Date;
   duration?: number;
-  type: 'meeting' | 'deadline' | 'task' | 'other';
+  type: VoiceCommandEvent['type'];
   contactPhone?: string;
   reminderScheduledFor?: Date | null;
 }
@@ -172,9 +174,7 @@ export async function deleteVoiceCommandEvent(id: string): Promise<{ success: bo
 /**
  * Validates and returns a proper event type
  */
-function validateEventType(type: string): 'meeting' | 'deadline' | 'task' | 'other' {
-  const validTypes = ['meeting', 'deadline', 'task', 'other'];
-  
+function validateEventType(type: string): VoiceCommandEvent['type'] {
   if (!type) return 'other';
   
   if (type.includes('reuni') || type.includes('meet'))
@@ -183,10 +183,10 @@ function validateEventType(type: string): 'meeting' | 'deadline' | 'task' | 'oth
     return 'deadline';
   if (type.includes('tarefa') || type.includes('task'))
     return 'task';
-  
-  if (validTypes.includes(type as any)) {
-    return type as 'meeting' | 'deadline' | 'task' | 'other';
-  }
+  if (type === 'appointment')
+    return 'appointment';
+  if (type === 'reminder')
+    return 'reminder';
   
   return 'other';
 }
