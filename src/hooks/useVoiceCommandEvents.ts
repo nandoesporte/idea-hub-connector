@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -31,7 +32,8 @@ export function useVoiceCommandEvents() {
       minutes: 0
     },
     sendOnDay: true,
-    reminderTime: "09:00"
+    reminderTime: "09:00",
+    defaultPhone: ""
   });
 
   useEffect(() => {
@@ -422,12 +424,16 @@ export function useVoiceCommandEvents() {
       
       console.log('Voice command processed:', result);
       
-      const defaultPhone = localStorage.getItem('default_whatsapp_number');
-      if (!result.contactPhone && defaultPhone) {
-        result.contactPhone = defaultPhone;
-        console.log('Using default phone number:', defaultPhone);
+      // Use default phone number from settings if contact phone is not provided
+      if (!result.contactPhone) {
+        const defaultPhone = reminderSettings.defaultPhone || localStorage.getItem('default_whatsapp_number');
+        if (defaultPhone) {
+          result.contactPhone = defaultPhone;
+          console.log('Using default phone number:', defaultPhone);
+        }
       }
       
+      // Calculate reminder time based on admin settings
       const reminderTime = calculateReminderTime(result.date);
       
       const saveResult = await saveVoiceCommandEvent({
@@ -465,6 +471,7 @@ export function useVoiceCommandEvents() {
         }
       }
 
+      // Notify admins about the new event, but don't send a reminder yet
       if (isWhatsAppConfigured() && apiConnected !== false) {
         try {
           const adminNotifications = await notifyAdminsAboutEvent(eventForNotification);
@@ -508,6 +515,13 @@ export function useVoiceCommandEvents() {
   const updateReminderSettings = (settings: typeof reminderSettings) => {
     setReminderSettings(settings);
     localStorage.setItem('reminder_settings', JSON.stringify(settings));
+    
+    if (settings.defaultPhone && settings.defaultPhone.trim() !== '') {
+      localStorage.setItem('default_whatsapp_number', settings.defaultPhone.trim());
+    } else {
+      localStorage.removeItem('default_whatsapp_number');
+    }
+    
     toast.success('Configurações de lembretes atualizadas com sucesso');
   };
 

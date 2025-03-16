@@ -51,5 +51,6 @@ export interface NotificationSettings {
     };
     sendOnDay: boolean;
     reminderTime: string;
+    defaultPhone?: string;
   };
 }

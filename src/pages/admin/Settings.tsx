@@ -13,6 +13,7 @@ import SocialSettings from '@/components/admin/settings/SocialSettings';
 import FeatureSettings from '@/components/admin/settings/FeatureSettings';
 import NotificationSettings from '@/components/admin/settings/NotificationSettings';
 import SystemNotificationSettings from '@/components/admin/settings/SystemNotificationSettings';
+import DefaultReminderSettings from '@/components/admin/settings/DefaultReminderSettings';
 import SeoSettings from '@/components/admin/settings/SeoSettings';
 
 // Import types
@@ -97,6 +98,30 @@ const getInitialNotificationSettings = (): NotificationSettingsType => {
   };
 };
 
+const getInitialReminderSettings = () => {
+  const savedSettings = localStorage.getItem('reminder_settings');
+  
+  if (savedSettings) {
+    try {
+      return JSON.parse(savedSettings);
+    } catch (error) {
+      console.error('Error parsing saved reminder settings:', error);
+    }
+  }
+  
+  return {
+    enabled: true,
+    sendBefore: {
+      days: 1,
+      hours: 0,
+      minutes: 0
+    },
+    sendOnDay: true,
+    reminderTime: "09:00",
+    defaultPhone: ""
+  };
+};
+
 const AdminSettings = () => {
   const [settings, setSettings] = useState<SiteSettings>(getInitialSettings());
   const [isGeneralFormDirty, setIsGeneralFormDirty] = useState(false);
@@ -107,6 +132,8 @@ const AdminSettings = () => {
   const [notificationNumbers, setNotificationNumbers] = useState<string[]>(['', '', '']);
   const [isNotificationsFormDirty, setIsNotificationsFormDirty] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettingsType>(getInitialNotificationSettings());
+  const [reminderSettings, setReminderSettings] = useState(getInitialReminderSettings());
+  const [isReminderSettingsFormDirty, setIsReminderSettingsFormDirty] = useState(false);
   const [isSystemNotificationsFormDirty, setIsSystemNotificationsFormDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -220,15 +247,9 @@ const AdminSettings = () => {
     setIsSystemNotificationsFormDirty(true);
   };
 
-  const handleReminderSettingsChange = (settings: Partial<NotificationSettingsType['reminders']>) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      reminders: {
-        ...prev.reminders,
-        ...settings
-      }
-    }));
-    setIsSystemNotificationsFormDirty(true);
+  const handleReminderSettingsChange = (settings: any) => {
+    setReminderSettings(settings);
+    setIsReminderSettingsFormDirty(true);
   };
 
   const saveGeneralSettings = () => {
@@ -311,6 +332,24 @@ const AdminSettings = () => {
     }, 500);
   };
 
+  const saveReminderSettings = () => {
+    setIsSaving(true);
+    
+    localStorage.setItem('reminder_settings', JSON.stringify(reminderSettings));
+    
+    if (reminderSettings.defaultPhone && reminderSettings.defaultPhone.trim() !== '') {
+      localStorage.setItem('default_whatsapp_number', reminderSettings.defaultPhone.trim());
+    } else {
+      localStorage.removeItem('default_whatsapp_number');
+    }
+    
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Configurações de lembretes salvas com sucesso!');
+      setIsReminderSettingsFormDirty(false);
+    }, 500);
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -322,12 +361,13 @@ const AdminSettings = () => {
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="social">Redes Sociais</TabsTrigger>
             <TabsTrigger value="features">Funcionalidades</TabsTrigger>
             <TabsTrigger value="notifications">Notificações WhatsApp</TabsTrigger>
             <TabsTrigger value="system-notifications">Notificações Sistema</TabsTrigger>
+            <TabsTrigger value="reminders">Lembretes</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
           </TabsList>
           
@@ -384,6 +424,16 @@ const AdminSettings = () => {
               onReminderSettingsChange={handleReminderSettingsChange}
               onSave={saveSystemNotificationSettings}
               isDirty={isSystemNotificationsFormDirty}
+              isSaving={isSaving}
+            />
+          </TabsContent>
+          
+          <TabsContent value="reminders" className="space-y-4 mt-6">
+            <DefaultReminderSettings 
+              reminderSettings={reminderSettings}
+              onSettingsChange={handleReminderSettingsChange}
+              onSave={saveReminderSettings}
+              isDirty={isReminderSettingsFormDirty}
               isSaving={isSaving}
             />
           </TabsContent>
