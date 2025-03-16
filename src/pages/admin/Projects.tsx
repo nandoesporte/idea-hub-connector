@@ -23,13 +23,13 @@ import { toast } from 'sonner';
 
 const ProjectStatusIcon = ({ status }: { status: ProjectIdea['status'] }) => {
   switch (status) {
-    case 'pending':
+    case 'submitted':
       return <Clock className="h-5 w-5 text-yellow-500" />;
-    case 'under-review':
+    case 'reviewing':
       return <RotateCcw className="h-5 w-5 text-blue-500" />;
     case 'approved':
       return <CheckCircle className="h-5 w-5 text-green-500" />;
-    case 'in-progress':
+    case 'in_progress':
       return <PlayCircle className="h-5 w-5 text-indigo-500" />;
     case 'completed':
       return <CheckCircle className="h-5 w-5 text-green-600" />;
@@ -42,12 +42,15 @@ const ProjectStatusIcon = ({ status }: { status: ProjectIdea['status'] }) => {
 
 const ProjectStatusBadge = ({ status }: { status: ProjectIdea['status'] }) => {
   const statusMap = {
+    'submitted': { label: 'Pendente', variant: 'warning' as const },
+    'reviewing': { label: 'Em Análise', variant: 'info' as const },
+    'approved': { label: 'Aprovado', variant: 'success' as const },
+    'in_progress': { label: 'Em Desenvolvimento', variant: 'secondary' as const },
+    'completed': { label: 'Concluído', variant: 'success' as const },
+    'rejected': { label: 'Rejeitado', variant: 'destructive' as const },
     'pending': { label: 'Pendente', variant: 'warning' as const },
     'under-review': { label: 'Em Análise', variant: 'info' as const },
-    'approved': { label: 'Aprovado', variant: 'success' as const },
-    'in-progress': { label: 'Em Desenvolvimento', variant: 'secondary' as const },
-    'completed': { label: 'Concluído', variant: 'success' as const },
-    'rejected': { label: 'Rejeitado', variant: 'destructive' as const }
+    'in-progress': { label: 'Em Desenvolvimento', variant: 'secondary' as const }
   };
 
   const statusInfo = statusMap[status] || { label: 'Desconhecido', variant: 'outline' as const };
@@ -93,7 +96,7 @@ const AdminProjectCard = ({ project, onUpdateStatus }: {
               <ProjectStatusIcon status={project.status} />
               <ProjectStatusBadge status={project.status} />
               <span className="text-xs text-gray-500">
-                ID: {project.id} • Cliente: {project.clientName || project.userId}
+                ID: {project.id} • Cliente: {project.clientName || project.user_id}
               </span>
             </div>
           </div>
@@ -173,7 +176,7 @@ const AdminProjects = () => {
       project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (project.clientName && project.clientName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (project.userId && project.userId.toLowerCase().includes(searchQuery.toLowerCase()));
+      (project.user_id && project.user_id.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesStatus = !selectedStatus || project.status === selectedStatus;
     
@@ -210,10 +213,10 @@ const AdminProjects = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os status</SelectItem>
-                <SelectItem value="pending">Pendente</SelectItem>
-                <SelectItem value="under-review">Em Análise</SelectItem>
+                <SelectItem value="submitted">Pendente</SelectItem>
+                <SelectItem value="reviewing">Em Análise</SelectItem>
                 <SelectItem value="approved">Aprovado</SelectItem>
-                <SelectItem value="in-progress">Em Desenvolvimento</SelectItem>
+                <SelectItem value="in_progress">Em Desenvolvimento</SelectItem>
                 <SelectItem value="completed">Concluído</SelectItem>
                 <SelectItem value="rejected">Rejeitado</SelectItem>
               </SelectContent>
@@ -230,10 +233,10 @@ const AdminProjects = () => {
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="all">Todos ({projects.length})</TabsTrigger>
             <TabsTrigger value="new">
-              Novos ({projects.filter(p => p.status === 'pending' || p.status === 'under-review').length})
+              Novos ({projects.filter(p => p.status === 'submitted' || p.status === 'reviewing').length})
             </TabsTrigger>
             <TabsTrigger value="active">
-              Ativos ({projects.filter(p => p.status === 'approved' || p.status === 'in-progress').length})
+              Ativos ({projects.filter(p => p.status === 'approved' || p.status === 'in_progress').length})
             </TabsTrigger>
             <TabsTrigger value="closed">
               Encerrados ({projects.filter(p => p.status === 'completed' || p.status === 'rejected').length})
@@ -270,9 +273,9 @@ const AdminProjects = () => {
           </TabsContent>
           
           <TabsContent value="new" className="mt-6">
-            {filteredProjects.filter(p => p.status === 'pending' || p.status === 'under-review').length > 0 ? (
+            {filteredProjects.filter(p => p.status === 'submitted' || p.status === 'reviewing').length > 0 ? (
               filteredProjects
-                .filter(p => p.status === 'pending' || p.status === 'under-review')
+                .filter(p => p.status === 'submitted' || p.status === 'reviewing')
                 .map(project => (
                   <AdminProjectCard 
                     key={project.id} 
@@ -296,9 +299,9 @@ const AdminProjects = () => {
           </TabsContent>
           
           <TabsContent value="active" className="mt-6">
-            {filteredProjects.filter(p => p.status === 'approved' || p.status === 'in-progress').length > 0 ? (
+            {filteredProjects.filter(p => p.status === 'approved' || p.status === 'in_progress').length > 0 ? (
               filteredProjects
-                .filter(p => p.status === 'approved' || p.status === 'in-progress')
+                .filter(p => p.status === 'approved' || p.status === 'in_progress')
                 .map(project => (
                   <AdminProjectCard 
                     key={project.id} 

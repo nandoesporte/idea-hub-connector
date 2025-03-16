@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,12 +7,12 @@ import { useUser } from '@/contexts/UserContext';
 import UserProfile from './UserProfile';
 
 const navigationItems: NavigationItem[] = [
-  { id: '1', title: 'Início', href: '/' },
-  { id: '2', title: 'Como Funciona', href: '/#how-it-works' },
-  { id: '3', title: 'Projetos', href: '/projects' },
-  { id: '4', title: 'Portfolio', href: '/portfolio' },
-  { id: '5', title: 'Preços', href: '/#pricing' },
-  { id: '6', title: 'Contato', href: '/#contact' },
+  { title: 'Início', path: '/' },
+  { title: 'Como Funciona', path: '/#how-it-works' },
+  { title: 'Projetos', path: '/projects' },
+  { title: 'Portfolio', path: '/portfolio' },
+  { title: 'Preços', path: '/#pricing' },
+  { title: 'Contato', path: '/#contact' },
 ];
 
 const Navbar = () => {
@@ -32,7 +31,6 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close mobile menu when route changes
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
@@ -50,15 +48,14 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Desktop Menu */}
         <nav className="hidden md:flex items-center space-x-4">
           <ul className="flex items-center space-x-4">
             {navigationItems.map((item) => (
-              <li key={item.href}>
+              <li key={item.path}>
                 <Link 
-                  to={item.href}
+                  to={item.path}
                   className={`text-sm font-medium transition-all duration-300 hover:text-primary relative after:absolute after:w-full after:h-0.5 after:bg-primary after:bottom-0 after:left-0 after:scale-x-0 after:origin-right after:transition-transform hover:after:scale-x-100 hover:after:origin-left ${
-                    location.pathname === item.href ? 'text-primary after:scale-x-100' : 'text-muted-foreground'
+                    location.pathname === item.path ? 'text-primary after:scale-x-100' : 'text-muted-foreground'
                   }`}
                 >
                   {item.title}
@@ -82,7 +79,6 @@ const Navbar = () => {
           </div>
         </nav>
 
-        {/* Mobile menu button */}
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="md:hidden p-2 rounded-md"
@@ -108,7 +104,6 @@ const Navbar = () => {
         </button>
       </div>
 
-      {/* Mobile menu */}
       {isMobile && (
         <div 
           className={`md:hidden absolute w-full backdrop-blur-md bg-background/90 border-b shadow-sm transition-all duration-300 ease-in-out ${
@@ -119,10 +114,10 @@ const Navbar = () => {
             <nav className="flex flex-col space-y-2">
               {navigationItems.map((item) => (
                 <Link 
-                  key={item.href}
-                  to={item.href}
+                  key={item.path}
+                  to={item.path}
                   className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location.pathname === item.href ? 'text-primary' : 'text-foreground'
+                    location.pathname === item.path ? 'text-primary' : 'text-foreground'
                   }`}
                 >
                   {item.title}

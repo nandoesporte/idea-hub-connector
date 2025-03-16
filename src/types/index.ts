@@ -1,4 +1,3 @@
-
 export interface Policy {
   id: string;
   user_id: string;
@@ -20,7 +19,7 @@ export interface Policy {
   updated_at: Date;
 }
 
-export type VoiceCommandEvent = {
+export interface VoiceCommandEvent {
   id: string;
   user_id: string;
   title: string;
@@ -33,6 +32,17 @@ export type VoiceCommandEvent = {
   status: 'pending' | 'completed' | 'cancelled';
   created_at: Date;
   updated_at: Date;
+}
+
+export interface VoiceCommandResult {
+  success: boolean;
+  title: string;
+  description?: string;
+  date: Date;
+  duration?: number;
+  type: 'meeting' | 'deadline' | 'task' | 'other' | 'appointment' | 'reminder';
+  contactPhone?: string;
+  error?: string;
 }
 
 export interface UserProfile {
@@ -130,16 +140,16 @@ export interface PortfolioItem {
   category_id?: string;
   image_url?: string;
   project_url?: string;
-  category: string;
-  client: string;
-  completed: Date;
-  technologies: string[];
-  featured: boolean;
-  featuredImage?: string;
-  images: string[];
-  link?: string;
   created_at: Date;
   updated_at: Date;
+  category?: string;
+  client?: string;
+  completed?: Date;
+  technologies?: string[];
+  featured?: boolean;
+  featuredImage?: string;
+  images?: string[];
+  link?: string;
 }
 
 export interface UserSettings {
@@ -194,11 +204,17 @@ export interface ProjectIdea {
   description: string;
   category: ProjectCategory;
   budget_range?: string;
+  budget?: string;
   timeline?: string;
   contact_preference?: 'email' | 'phone' | 'whatsapp';
-  status: 'submitted' | 'reviewing' | 'approved' | 'rejected' | 'in_progress' | 'completed';
+  status: 'submitted' | 'reviewing' | 'approved' | 'rejected' | 'in_progress' | 'completed' | 'pending' | 'under-review' | 'in-progress';
+  priority?: 'low' | 'medium' | 'high';
   created_at: Date;
   updated_at: Date;
+  clientName?: string;
+  userId?: string;
+  features?: string[];
+  urgency?: string;
 }
 
 export interface NavigationItem {
@@ -217,4 +233,5 @@ export interface CategoryItem {
   link: string;
   type: string;
   enabled: boolean;
+  order?: number;
 }

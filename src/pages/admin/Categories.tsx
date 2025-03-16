@@ -53,6 +53,18 @@ const AdminCategories = () => {
     order: 0
   });
 
+  const initialCategory: CategoryItem = {
+    id: '',
+    title: '',
+    description: '',
+    icon: 'sparkles',
+    iconColor: 'text-primary',
+    link: '',
+    type: 'tech',
+    enabled: true,
+    order: 0
+  };
+
   const queryClient = useQueryClient();
 
   const { data: categories = [], isLoading, error } = useQuery({

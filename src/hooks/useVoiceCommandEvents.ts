@@ -425,10 +425,10 @@ export function useVoiceCommandEvents() {
       
       const eventType = result.type;
       
-      if (!result.contact_phone) {
+      if (!result.contactPhone) {
         const defaultPhone = reminderSettings.defaultPhone || localStorage.getItem('default_whatsapp_number');
         if (defaultPhone) {
-          result.contact_phone = defaultPhone;
+          result.contactPhone = defaultPhone;
           console.log('Using default phone number:', defaultPhone);
         }
       }
@@ -438,6 +438,7 @@ export function useVoiceCommandEvents() {
       const saveResult = await saveVoiceCommandEvent({
         ...result,
         type: eventType,
+        contact_phone: result.contactPhone,
         reminderScheduledFor: reminderTime
       });
       
@@ -457,10 +458,10 @@ export function useVoiceCommandEvents() {
         date: result.date,
         duration: result.duration || 60,
         type: result.type,
-        contact_phone: result.contact_phone,
+        contact_phone: result.contactPhone,
         status: 'pending',
-        createdAt: new Date(),
-        updatedAt: new Date()
+        created_at: new Date(),
+        updated_at: new Date()
       };
 
       if (isWhatsAppConfigured()) {

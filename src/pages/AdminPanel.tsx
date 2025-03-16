@@ -42,7 +42,7 @@ const recentProjects: ProjectIdea[] = [
     features: ['Catálogo de produtos', 'Formulário de contato', 'Responsivo'],
     userId: 'user123',
     user_id: 'user123', // Adicionado para compatibilidade
-    status: 'pending',
+    status: 'submitted', // Updated to match type
     priority: 'medium', // Adicionado
     created_at: new Date('2023-10-15'),
     updated_at: new Date('2023-10-18'),
@@ -58,7 +58,7 @@ const recentProjects: ProjectIdea[] = [
     features: ['Pagamento online', 'Gestão de estoque', 'Painel administrativo'],
     userId: 'user456',
     user_id: 'user456', // Adicionado para compatibilidade
-    status: 'under-review',
+    status: 'reviewing', // Updated to match type
     priority: 'high', // Adicionado
     created_at: new Date('2023-11-05'),
     updated_at: new Date('2023-11-10'),
@@ -74,7 +74,7 @@ const recentProjects: ProjectIdea[] = [
     features: ['Login e perfil', 'Notificações', 'Sincronização em nuvem'],
     userId: 'user789',
     user_id: 'user789', // Adicionado para compatibilidade
-    status: 'in-progress',
+    status: 'in_progress', // Updated to match type
     priority: 'low', // Adicionado
     created_at: new Date('2023-09-20'),
     updated_at: new Date('2023-09-25'),
