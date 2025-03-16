@@ -17,7 +17,6 @@ export interface SiteSettings {
     enableContactForm: boolean;
     enableNewsletter: boolean;
     enableUserRegistration: boolean;
-    enableInsurancePolicies: boolean;
   };
   seo: {
     metaTitle: string;
@@ -34,7 +33,6 @@ export interface NotificationSettings {
     newProjects: boolean;
     newUsers: boolean;
     dailyReport: boolean;
-    policyRenewals: boolean;
   };
   channels: {
     email: boolean;
@@ -54,11 +52,5 @@ export interface NotificationSettings {
     sendOnDay: boolean;
     reminderTime: string;
     defaultPhone?: string;
-  };
-  policies: {
-    receiveViaWhatsApp: boolean;
-    processWithAI: boolean;
-    autoScheduleReminders: boolean;
-    reminderDaysBefore: number;
   };
 }

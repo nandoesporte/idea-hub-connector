@@ -12,7 +12,6 @@ interface FeatureSettingsProps {
     enableContactForm: boolean;
     enableNewsletter: boolean;
     enableUserRegistration: boolean;
-    enableInsurancePolicies: boolean;
   };
   onFeatureToggle: (feature: string) => void;
   onSave: () => void;
@@ -103,20 +102,6 @@ const FeatureSettings: React.FC<FeatureSettingsProps> = ({
             id="enableUserRegistration" 
             checked={features.enableUserRegistration}
             onCheckedChange={() => onFeatureToggle('enableUserRegistration')}
-          />
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="enableInsurancePolicies">Apólices de Seguro</Label>
-            <p className="text-sm text-muted-foreground">
-              Habilita o gerenciamento de apólices de seguro via WhatsApp.
-            </p>
-          </div>
-          <Switch 
-            id="enableInsurancePolicies" 
-            checked={features.enableInsurancePolicies}
-            onCheckedChange={() => onFeatureToggle('enableInsurancePolicies')}
           />
         </div>
         

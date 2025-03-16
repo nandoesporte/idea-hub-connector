@@ -1,3 +1,4 @@
+
 export interface CategoryItem {
   id: string;
   title: string;
@@ -58,27 +59,6 @@ export interface ProjectIdea {
     message: string;
   }>;
   attachments?: string[];
-}
-
-export interface InsurancePolicy {
-  id: string;
-  userId: string;
-  policyNumber: string;
-  customerName: string;
-  customerPhone?: string;
-  issueDate: Date;
-  expiryDate: Date;
-  insurer: string;
-  coverageAmount: number;
-  premium: number;
-  status: 'active' | 'expired' | 'pending-renewal';
-  type: string;
-  createdAt: Date;
-  updatedAt: Date;
-  attachmentUrl?: string;
-  notes?: string;
-  reminderSent?: boolean;
-  reminderDate?: Date;
 }
 
 export interface PortfolioItem {
