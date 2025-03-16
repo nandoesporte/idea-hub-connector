@@ -11,6 +11,7 @@ import {
   Shield, Calendar, FileSpreadsheet, FileLock
 } from 'lucide-react';
 import EventsList from '@/components/EventsList';
+import PolicyTab from '@/components/PolicyTab';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
 import { isWhatsAppConfigured } from '@/lib/whatsgwService';
 
@@ -111,7 +112,7 @@ export default function Dashboard() {
                       </TabsTrigger>
                     </div>
                     
-                    {/* Nova aba de Apólice */}
+                    {/* Aba de Apólice */}
                     <div className="flex items-center gap-2">
                       <TabsTrigger 
                         value="policy" 
@@ -163,23 +164,7 @@ export default function Dashboard() {
               
               {/* Conteúdo da aba Apólice */}
               <TabsContent value="policy" className="mt-0 pt-2 border-t">
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="bg-muted/30 rounded-full p-6 mb-4">
-                    <FileLock className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <h3 className="font-medium text-lg mb-2">Sem apólices registradas</h3>
-                  <p className="text-sm text-muted-foreground max-w-xs mb-6">
-                    Suas apólices de seguro aparecerão aqui quando forem adicionadas.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate('/policies')}
-                    className="gap-1.5"
-                  >
-                    <Plus className="h-4 w-4" /> Adicionar Apólice
-                  </Button>
-                </div>
+                <PolicyTab />
               </TabsContent>
               
               <TabsContent value="ideas" className="mt-0 pt-2 border-t">

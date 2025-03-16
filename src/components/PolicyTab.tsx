@@ -4,19 +4,20 @@ import { useUser } from '@/contexts/UserContext';
 import { Policy } from '@/types';
 import { 
   fetchPolicies, deletePolicy, 
-  uploadPolicyAttachment, analyzePolicyDocument 
+  uploadPolicyAttachment, checkPolicyReminders
 } from '@/lib/policyService';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   FileText, Upload, Trash2, AlertTriangle, CheckCircle, 
-  Calendar, Download, PlusCircle, Loader2
+  Calendar, Download, PlusCircle, Loader2, FileLock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import PolicyUploadForm from './PolicyUploadForm';
 import {
   Dialog,
   DialogContent,
@@ -42,10 +43,12 @@ const PolicyTab = () => {
   const { user } = useUser();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   
   useEffect(() => {
     if (user) {
       loadPolicies();
+      checkReminders();
     }
   }, [user]);
 
@@ -64,6 +67,26 @@ const PolicyTab = () => {
     }
   };
 
+  const checkReminders = async () => {
+    try {
+      if (user?.id) {
+        const reminderResult = await checkPolicyReminders(user.id);
+        
+        if (reminderResult.hasReminders) {
+          // Mostrar toast para cada apólice próxima do vencimento
+          reminderResult.policies.forEach(policy => {
+            toast.warning(
+              `A apólice ${policy.policy_number} vence em 30 dias (${format(new Date(policy.expiry_date), 'dd/MM/yyyy')})`,
+              { duration: 6000 }
+            );
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar lembretes:', error);
+    }
+  };
+
   const handleDeletePolicy = async (id: string) => {
     try {
       await deletePolicy(id);
@@ -75,6 +98,11 @@ const PolicyTab = () => {
     }
   };
 
+  const handleUploadSuccess = () => {
+    setShowUploadDialog(false);
+    loadPolicies();
+  };
+
   const formatDate = (date: Date) => {
     return format(date, 'dd/MM/yyyy', { locale: ptBR });
   };
@@ -84,6 +112,33 @@ const PolicyTab = () => {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  };
+
+  const getStatusBadge = (policy: Policy) => {
+    const today = new Date();
+    const expiry = new Date(policy.expiry_date);
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+    
+    if (expiry < today) {
+      return (
+        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+          Vencida
+        </Badge>
+      );
+    } else if (expiry <= thirtyDaysFromNow) {
+      return (
+        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+          Próxima do Vencimento
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          Ativa
+        </Badge>
+      );
+    }
   };
 
   if (loading) {
@@ -98,21 +153,36 @@ const PolicyTab = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Minhas Apólices</h2>
-        <Button>
-          <PlusCircle className="h-4 w-4 mr-2" />
-          Nova Apólice
-        </Button>
+        <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Nova Apólice
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Cadastrar Nova Apólice</DialogTitle>
+              <DialogDescription>
+                Faça upload do documento da apólice para análise automática com IA.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <PolicyUploadForm onSuccess={handleUploadSuccess} />
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {policies.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+            <FileLock className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">Nenhuma apólice encontrada</h3>
             <p className="text-muted-foreground text-center mb-6">
               Comece cadastrando sua primeira apólice de seguro para gerenciamento.
             </p>
-            <Button>
+            <Button onClick={() => setShowUploadDialog(true)}>
               <Upload className="h-4 w-4 mr-2" /> Upload de Apólice
             </Button>
           </CardContent>
@@ -121,93 +191,268 @@ const PolicyTab = () => {
         <Tabs defaultValue="active" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active">Ativas</TabsTrigger>
-            <TabsTrigger value="soon-to-expire">A Vencer</TabsTrigger>
+            <TabsTrigger value="expiring-soon">A Vencer</TabsTrigger>
             <TabsTrigger value="expired">Vencidas</TabsTrigger>
           </TabsList>
+          
           <TabsContent value="active" className="mt-4 space-y-4">
-            {policies.filter(p => p.status === 'active').map(policy => (
-              <Card key={policy.id} className="overflow-hidden">
-                <div className="h-1 bg-green-500 w-full" />
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle>{policy.insurer}</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        {policy.policy_number} | {policy.type.toUpperCase()}
-                      </p>
+            {policies
+              .filter(p => {
+                const today = new Date();
+                const expiry = new Date(p.expiry_date);
+                const thirtyDaysFromNow = new Date();
+                thirtyDaysFromNow.setDate(today.getDate() + 30);
+                
+                return expiry > thirtyDaysFromNow;
+              })
+              .map(policy => (
+                <Card key={policy.id} className="overflow-hidden">
+                  <div className="h-1 bg-green-500 w-full" />
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle>{policy.insurer}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          {policy.policy_number} | {policy.type.toUpperCase()}
+                        </p>
+                      </div>
+                      {getStatusBadge(policy)}
                     </div>
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      Ativa
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Cliente</p>
-                      <p className="font-medium">{policy.customer_name}</p>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Cliente</p>
+                        <p className="font-medium">{policy.customer_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Valor Segurado</p>
+                        <p className="font-medium">{formatCurrency(policy.coverage_amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Vigência</p>
+                        <p className="font-medium">
+                          {formatDate(policy.issue_date)} a {formatDate(policy.expiry_date)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Prêmio</p>
+                        <p className="font-medium">{formatCurrency(policy.premium)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Lembrete</p>
+                        <p className="font-medium">
+                          {policy.reminder_date ? formatDate(policy.reminder_date) : 'Não definido'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Valor Segurado</p>
-                      <p className="font-medium">{formatCurrency(policy.coverage_amount)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Vigência</p>
-                      <p className="font-medium">
-                        {formatDate(policy.issue_date)} a {formatDate(policy.expiry_date)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Prêmio</p>
-                      <p className="font-medium">{formatCurrency(policy.premium)}</p>
-                    </div>
-                  </div>
-                  <div className="flex justify-end mt-4 gap-2">
-                    {policy.attachment_url && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={policy.attachment_url} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4 mr-1" /> Visualizar PDF
-                        </a>
-                      </Button>
-                    )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                    <div className="flex justify-end mt-4 gap-2">
+                      {policy.attachment_url && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={policy.attachment_url} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4 mr-1" /> Visualizar PDF
+                          </a>
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isto irá remover permanentemente esta apólice do sistema.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => handleDeletePolicy(policy.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-destructive">
+                            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. Isto irá remover permanentemente esta apólice do sistema.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeletePolicy(policy.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
           </TabsContent>
 
-          <TabsContent value="soon-to-expire" className="mt-4 space-y-4">
-            {/* Código similar para apólices que estão prestes a vencer */}
-            <p>Apólices que vencem em breve</p>
+          <TabsContent value="expiring-soon" className="mt-4 space-y-4">
+            {policies
+              .filter(p => {
+                const today = new Date();
+                const expiry = new Date(p.expiry_date);
+                const thirtyDaysFromNow = new Date();
+                thirtyDaysFromNow.setDate(today.getDate() + 30);
+                
+                return expiry <= thirtyDaysFromNow && expiry > today;
+              })
+              .map(policy => (
+                <Card key={policy.id} className="overflow-hidden">
+                  <div className="h-1 bg-amber-500 w-full" />
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle>{policy.insurer}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          {policy.policy_number} | {policy.type.toUpperCase()}
+                        </p>
+                      </div>
+                      {getStatusBadge(policy)}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    {/* Conteúdo idêntico ao da aba ativa */}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Cliente</p>
+                        <p className="font-medium">{policy.customer_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Valor Segurado</p>
+                        <p className="font-medium">{formatCurrency(policy.coverage_amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Vigência</p>
+                        <p className="font-medium">
+                          {formatDate(policy.issue_date)} a {formatDate(policy.expiry_date)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Prêmio</p>
+                        <p className="font-medium">{formatCurrency(policy.premium)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Lembrete</p>
+                        <p className="font-medium">
+                          {policy.reminder_date ? formatDate(policy.reminder_date) : 'Não definido'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-4 gap-2">
+                      {policy.attachment_url && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={policy.attachment_url} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4 mr-1" /> Visualizar PDF
+                          </a>
+                        </Button>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-destructive">
+                            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. Isto irá remover permanentemente esta apólice do sistema.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeletePolicy(policy.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
           </TabsContent>
 
           <TabsContent value="expired" className="mt-4 space-y-4">
-            {/* Código similar para apólices vencidas */}
-            <p>Apólices vencidas</p>
+            {policies
+              .filter(p => {
+                const today = new Date();
+                const expiry = new Date(p.expiry_date);
+                return expiry < today;
+              })
+              .map(policy => (
+                <Card key={policy.id} className="overflow-hidden">
+                  <div className="h-1 bg-red-500 w-full" />
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle>{policy.insurer}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          {policy.policy_number} | {policy.type.toUpperCase()}
+                        </p>
+                      </div>
+                      {getStatusBadge(policy)}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    {/* Conteúdo idêntico ao da aba ativa */}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Cliente</p>
+                        <p className="font-medium">{policy.customer_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Valor Segurado</p>
+                        <p className="font-medium">{formatCurrency(policy.coverage_amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Vigência</p>
+                        <p className="font-medium">
+                          {formatDate(policy.issue_date)} a {formatDate(policy.expiry_date)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Prêmio</p>
+                        <p className="font-medium">{formatCurrency(policy.premium)}</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-4 gap-2">
+                      {policy.attachment_url && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={policy.attachment_url} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4 mr-1" /> Visualizar PDF
+                          </a>
+                        </Button>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-destructive">
+                            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. Isto irá remover permanentemente esta apólice do sistema.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeletePolicy(policy.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
           </TabsContent>
         </Tabs>
       )}

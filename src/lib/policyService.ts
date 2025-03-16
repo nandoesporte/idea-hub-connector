@@ -33,11 +33,17 @@ export const fetchPolicies = async (userId: string): Promise<Policy[]> => {
 
 export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'updated_at' | 'reminder_sent'>) => {
   try {
+    // Definir a data de lembrete 30 dias antes do vencimento
+    const expiryDate = new Date(policy.expiry_date);
+    const reminderDate = new Date(expiryDate);
+    reminderDate.setDate(reminderDate.getDate() - 30);
+
     const { data, error } = await supabase
       .from('insurance_policies')
       .insert([
         {
           ...policy,
+          reminder_date: reminderDate,
           reminder_sent: false
         }
       ])
@@ -58,10 +64,20 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
 
 export const updatePolicy = async (id: string, policy: Partial<Policy>) => {
   try {
+    // Se a data de expiração foi atualizada, atualize também a data de lembrete
+    let reminderDate = policy.reminder_date;
+    
+    if (policy.expiry_date) {
+      const expiryDate = new Date(policy.expiry_date);
+      reminderDate = new Date(expiryDate);
+      reminderDate.setDate(reminderDate.getDate() - 30);
+    }
+
     const { data, error } = await supabase
       .from('insurance_policies')
       .update({
         ...policy,
+        reminder_date: reminderDate,
         updated_at: new Date()
       })
       .eq('id', id)
@@ -97,10 +113,10 @@ export const deletePolicy = async (id: string) => {
   }
 };
 
-export const uploadPolicyAttachment = async (file: File, userId: string, policyId: string) => {
+export const uploadPolicyAttachment = async (file: File, userId: string, policyId?: string) => {
   try {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${policyId}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const fileName = `${userId}/${policyId || 'new'}_${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `policies/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -121,30 +137,100 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
   }
 };
 
-export const analyzePolicyDocument = async (file: File) => {
+// Função para analisar documento de apólice com GPT-4
+export const analyzePolicyDocument = async (fileUrl: string) => {
   try {
-    // Esta função seria implementada para integrar com alguma API de análise de documentos
-    // Por enquanto, retornamos um mock
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulando processamento
+    // Aqui enviamos o URL do arquivo para nossa API que usará GPT-4 para análise
+    const response = await fetch('/api/analyze-policy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ fileUrl })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to analyze policy: ${response.statusText}`);
+    }
+
+    const result = await response.json();
     
+    if (!result.success) {
+      throw new Error(result.error || 'Falha ao analisar o documento');
+    }
+
+    // Adicionar data de lembrete 30 dias antes do vencimento
+    const expiryDate = new Date(result.data.expiry_date);
+    const reminderDate = new Date(expiryDate);
+    reminderDate.setDate(reminderDate.getDate() - 30);
+
     return {
-      success: true,
-      data: {
-        policy_number: `POL-${Math.floor(Math.random() * 10000)}`,
-        issue_date: new Date(),
-        expiry_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), // 1 ano após
-        insurer: "Seguradora Exemplo",
-        customer_name: "Cliente Exemplo",
-        coverage_amount: 150000,
-        premium: 1200,
-        type: "auto"
-      }
+      ...result.data,
+      reminder_date: reminderDate
     };
   } catch (error) {
     console.error('Error in analyzePolicyDocument:', error);
+    throw error;
+  }
+};
+
+// Verificar lembretes de apólices que estão próximas do vencimento
+export const checkPolicyReminders = async (userId: string) => {
+  try {
+    const today = new Date();
+    
+    // Buscar políticas ativas com lembretes para hoje ou no passado que ainda não foram enviados
+    const { data, error } = await supabase
+      .from('insurance_policies')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .eq('reminder_sent', false)
+      .lte('reminder_date', today.toISOString())
+      .order('expiry_date', { ascending: true });
+
+    if (error) {
+      console.error('Error checking policy reminders:', error);
+      throw new Error(error.message);
+    }
+
+    // Processar apólices que precisam de lembretes
+    if (data && data.length > 0) {
+      for (const policy of data) {
+        // Marcar como lembrete enviado
+        await supabase
+          .from('insurance_policies')
+          .update({ reminder_sent: true })
+          .eq('id', policy.id);
+        
+        // Enviar notificação
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: userId,
+            title: 'Apólice próxima do vencimento',
+            message: `A apólice ${policy.policy_number} da ${policy.insurer} vence em 30 dias (${new Date(policy.expiry_date).toLocaleDateString()}).`,
+            type: 'warning',
+            is_read: false,
+            related_entity_type: 'policy',
+            related_entity_id: policy.id
+          });
+      }
+
+      return {
+        hasReminders: true,
+        count: data.length,
+        policies: data
+      };
+    }
+
     return {
-      success: false,
-      error: 'Falha ao analisar o documento'
+      hasReminders: false,
+      count: 0,
+      policies: []
     };
+  } catch (error) {
+    console.error('Error in checkPolicyReminders:', error);
+    throw error;
   }
 };
