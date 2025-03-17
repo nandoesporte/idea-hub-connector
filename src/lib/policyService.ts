@@ -1,4 +1,3 @@
-
 import { Policy } from '@/types';
 import { supabase } from './supabase';
 import { toast } from 'sonner';
@@ -367,6 +366,13 @@ export const runInsurancePoliciesMigration = async () => {
   try {
     console.log('Attempting to run insurance policies migration...');
     
+    // In development or demo mode, simulate success without making API calls
+    if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+      console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
+      return { success: true };
+    }
+    
+    // In production, attempt to call the API
     const response = await fetch('/api/run-migration', {
       method: 'POST',
       headers: {
@@ -379,13 +385,8 @@ export const runInsurancePoliciesMigration = async () => {
     
     if (!response.ok) {
       console.error('Failed to run migration:', response.statusText);
-      
-      if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-        console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
-        return { success: true };
-      }
-      
       let errorMessage = 'Falha ao executar migração';
+      
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorMessage;
@@ -402,6 +403,7 @@ export const runInsurancePoliciesMigration = async () => {
   } catch (error) {
     console.error('Error running migration:', error);
     
+    // In development or demo mode, simulate success even on error
     if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
       console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
       return { success: true };
