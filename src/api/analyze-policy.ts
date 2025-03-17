@@ -22,28 +22,12 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
       SEGURADO: João Silva
       TELEFONE: (11) 98765-4321
       SEGURADORA: Seguradora Brasil
-      VIGÊNCIA: 15/03/2025 a 15/03/2026
+      VIGÊNCIA: 14/03/2025 a 14/03/2026
       VALOR DE COBERTURA: R$ 100.000,00
       PRÊMIO TOTAL: R$ 1.200,00
       TIPO: AUTOMÓVEL`;
     }
 
-    // In a real implementation, we would load and parse the PDF
-    // For example using PDF.js:
-    /*
-    const loadingTask = pdfjsLib.getDocument(pdfUrl);
-    const pdf = await loadingTask.promise;
-    let textContent = '';
-
-    for(let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      textContent += content.items.map(item => item.str).join(' ');
-    }
-    
-    return textContent;
-    */
-    
     // Para PDFs reais, podemos usar o pacote pdfjs-dist que já está instalado
     try {
       const pdfjsLib = await import('pdfjs-dist');
@@ -101,7 +85,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       throw new Error('API key para Groq não configurada.');
     }
     
-    // Call the Groq API
+    // Call the Groq API with more specific instructions to match the exact format from the PDF
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -114,29 +98,33 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
           messages: [
             {
               role: 'system',
-              content: 'Você é um assistente especializado em extrair informações de apólices de seguro. Extraia as informações solicitadas com precisão, exatamente como aparecem no documento. Retorne apenas o JSON, sem explicações adicionais.'
+              content: 'Você é um assistente especializado em extrair informações de apólices de seguro brasileiras. Extraia as informações solicitadas com precisão, exatamente como aparecem no documento, respeitando o formato de datas brasileiro (DD/MM/AAAA). É crucial que as informações extraídas sejam idênticas ao documento original.'
             },
             {
               role: 'user',
               content: `Extraia as seguintes informações desta apólice de seguro e retorne como JSON:
-              policy_number (número da apólice), 
-              customer_name (nome do segurado), 
-              customer_phone (telefone do cliente), 
-              insurer (nome da seguradora), 
-              issue_date (data de emissão, em formato ISO), 
-              expiry_date (data de vencimento, em formato ISO), 
-              coverage_amount (valor de cobertura, como número), 
-              premium (valor do prêmio, como número), 
-              type (tipo do seguro: auto, vida, residencial, empresarial, etc).
+              policy_number (número da apólice, apenas os dígitos), 
+              customer_name (nome do segurado exatamente como consta no documento), 
+              customer_phone (telefone do cliente com o formato original),
+              insurer (nome da seguradora exatamente como consta),
+              issue_date (data de início da vigência no formato DD/MM/YYYY),
+              expiry_date (data final da vigência no formato DD/MM/YYYY),
+              coverage_amount (valor de cobertura como número, remova R$ e converta para número),
+              premium (valor do prêmio como número, remova R$ e converta para número),
+              type (tipo do seguro em maiúsculas como consta no documento: AUTOMÓVEL, VIDA, etc).
 
-              Para datas, converta o formato brasileiro (DD/MM/AAAA) para ISO (AAAA-MM-DD).
-              Para valores monetários, extraia apenas o número (exemplo: de "R$ 1.234,56" para 1234.56)
+              Mantenha o formato de data brasileiro DD/MM/YYYY conforme aparece no documento.
+              Para valores monetários, extraia apenas o número (exemplo: de "R$ 1.234,56" para 1234.56).
+              
+              IMPORTANTE: Se alguma informação não estiver presente no documento, deixe o campo vazio ("").
+              Não invente ou infira dados que não estejam claramente indicados no documento.
 
               Texto da apólice:
               ${pdfText}`
             }
           ],
-          temperature: 0.1
+          temperature: 0.1,
+          max_tokens: 1000
         })
       });
 
@@ -162,46 +150,43 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
         throw new Error('A resposta da Groq não está em formato JSON válido');
       }
       
-      // Process the data - ensure all fields are converted to the proper format
-      if (extractedData.issue_date) {
-        extractedData.issue_date = new Date(extractedData.issue_date);
-      }
+      // Convert date strings to Date objects, preserving the original Brazilian format
+      const formatBrazilianDate = (dateStr: string) => {
+        if (!dateStr) return new Date();
+        
+        // Check if date is in Brazilian format (DD/MM/YYYY)
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          // Convert DD/MM/YYYY to YYYY-MM-DD for ISO format
+          const day = parts[0].trim().padStart(2, '0');
+          const month = parts[1].trim().padStart(2, '0');
+          const year = parts[2].trim().padStart(4, '0');
+          return new Date(`${year}-${month}-${day}T00:00:00`);
+        }
+        
+        // If not in Brazilian format, try direct parsing
+        return new Date(dateStr);
+      };
       
-      if (extractedData.expiry_date) {
-        extractedData.expiry_date = new Date(extractedData.expiry_date);
-      }
-      
-      // Convert string numbers to actual numbers if needed
-      if (typeof extractedData.coverage_amount === 'string') {
-        extractedData.coverage_amount = parseFloat(
-          extractedData.coverage_amount
-            .replace(/[^\d.,]/g, '')  // Remove tudo exceto números, pontos e vírgulas
-            .replace(/\./g, '')       // Remove pontos de separação de milhares
-            .replace(',', '.')        // Troca vírgulas por pontos
-        );
-      }
-      
-      if (typeof extractedData.premium === 'string') {
-        extractedData.premium = parseFloat(
-          extractedData.premium
-            .replace(/[^\d.,]/g, '')  // Remove tudo exceto números, pontos e vírgulas
-            .replace(/\./g, '')       // Remove pontos de separação de milhares
-            .replace(',', '.')        // Troca vírgulas por pontos
-        );
-      }
-      
-      // Certifique-se de que todos os valores sejam do tipo correto
-      return {
+      // Process the extracted data
+      const processedData: Partial<Policy> = {
         policy_number: extractedData.policy_number || '',
         customer_name: extractedData.customer_name || '',
         customer_phone: extractedData.customer_phone || '',
         insurer: extractedData.insurer || '',
-        issue_date: extractedData.issue_date || new Date(),
-        expiry_date: extractedData.expiry_date || new Date(),
-        coverage_amount: isNaN(extractedData.coverage_amount) ? 0 : extractedData.coverage_amount,
-        premium: isNaN(extractedData.premium) ? 0 : extractedData.premium,
-        type: extractedData.type || 'outro'
+        issue_date: formatBrazilianDate(extractedData.issue_date),
+        expiry_date: formatBrazilianDate(extractedData.expiry_date),
+        coverage_amount: typeof extractedData.coverage_amount === 'string' 
+          ? parseFloat(extractedData.coverage_amount.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.'))
+          : (typeof extractedData.coverage_amount === 'number' ? extractedData.coverage_amount : 0),
+        premium: typeof extractedData.premium === 'string'
+          ? parseFloat(extractedData.premium.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.'))
+          : (typeof extractedData.premium === 'number' ? extractedData.premium : 0),
+        type: extractedData.type || ''
       };
+      
+      console.log('Dados processados:', processedData);
+      return processedData;
     } catch (error) {
       console.error('Erro ao chamar a API da Groq:', error);
       throw error;
