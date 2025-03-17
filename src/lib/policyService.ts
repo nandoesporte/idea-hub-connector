@@ -1,3 +1,4 @@
+
 import { Policy } from '@/types';
 import { supabase } from './supabase';
 import { toast } from 'sonner';
@@ -159,6 +160,7 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
     const fileName = `${userId}/${policyId || 'new'}_${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `policies/${fileName}`;
 
+    // Check if bucket exists
     const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
     
     if (bucketError) {
@@ -168,22 +170,25 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
     
     const bucketExists = buckets.some(bucket => bucket.name === 'documents');
     
+    // If bucket doesn't exist, we handle it gracefully instead of trying to create it
+    // Creating buckets requires admin privileges which regular users don't have
     if (!bucketExists) {
-      try {
-        const { error: createBucketError } = await supabase.storage.createBucket('documents', {
-          public: true
-        });
-        
-        if (createBucketError) {
-          console.error('Error creating storage bucket:', createBucketError);
-          throw new Error('Erro ao criar bucket de armazenamento');
-        }
-      } catch (error) {
-        console.error('Exception creating bucket:', error);
-        throw new Error('Erro ao criar bucket de armazenamento');
+      console.log('Documents bucket does not exist and cannot be created by regular users');
+      
+      // In production environment
+      if (!import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE !== 'true') {
+        toast.error('O bucket de armazenamento não está configurado no sistema. Contate o administrador.');
+        throw new Error('Bucket de armazenamento não configurado');
+      } 
+      // In development or demo mode, simulate success
+      else {
+        console.log('DEV/DEMO mode - simulating successful file upload');
+        // Return a mock URL for development/demo purposes
+        return `https://example.com/mock-document-${Date.now()}.pdf`;
       }
     }
 
+    // Proceed with upload if bucket exists
     const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filePath, file);

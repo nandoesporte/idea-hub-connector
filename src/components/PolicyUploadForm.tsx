@@ -32,22 +32,22 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const handleMigration = async () => {
     try {
       setProgress('migrating');
-      toast.info('Criando tabela de apólices...');
+      toast.info('Criando tabela de apólices e bucket de documentos...');
       
       const result = await runInsurancePoliciesMigration();
       
       if (result.success) {
-        toast.success('Tabela de apólices criada com sucesso!');
+        toast.success('Configuração realizada com sucesso!');
         setNeedsMigration(false);
         await handleUpload();
       } else {
         setProgress('error');
-        setErrorMessage('Não foi possível criar a tabela de apólices. Contate o administrador do sistema.');
+        setErrorMessage('Não foi possível criar as estruturas necessárias. Contate o administrador do sistema.');
       }
     } catch (error) {
-      console.error('Erro ao criar tabela:', error);
+      console.error('Erro ao criar estruturas:', error);
       setProgress('error');
-      setErrorMessage('Erro ao criar tabela de apólices. Tente novamente mais tarde.');
+      setErrorMessage('Erro ao configurar o sistema. Tente novamente mais tarde.');
     }
   };
 
@@ -73,10 +73,23 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         }
       } catch (error) {
         console.error('Error uploading file:', error);
-        setProgress('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Não foi possível fazer upload do arquivo.');
-        setUploading(false);
-        return;
+        
+        // Check if it's a bucket error
+        const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+        const isBucketError = errorMsg.includes('bucket') || errorMsg.includes('Bucket');
+        
+        if (isBucketError) {
+          setProgress('error');
+          setErrorMessage('O sistema de armazenamento não está configurado. É necessário executar a migração.');
+          setNeedsMigration(true);
+          setUploading(false);
+          return;
+        } else {
+          setProgress('error');
+          setErrorMessage(errorMsg);
+          setUploading(false);
+          return;
+        }
       }
       
       setUploading(false);

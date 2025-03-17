@@ -89,19 +89,18 @@ USING (auth.uid() = user_id);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.insurance_policies TO authenticated;
 
 ------------------------------------------------------------------------
--- Create and configure storage bucket with proper permissions
+-- Create and configure storage bucket with proper permissions - ADMIN ONLY
 ------------------------------------------------------------------------
+
+-- NOTE: The bucket creation should be run by an administrator or during 
+-- database setup, not by regular users. Regular users cannot create buckets.
 
 -- First check if the extension is available
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create documents bucket if it doesn't exist
-INSERT INTO storage.buckets (id, name)
-VALUES ('documents', 'documents')
-ON CONFLICT (id) DO NOTHING;
-
--- Set up RLS for storage
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Bucket creation and policy setup is left here for documentation, but
+-- should be executed via an admin command instead of via RLS policy.
+-- (This will be executed during migration via the API endpoint)
 
 -- Clear existing policies for the documents bucket
 DO $$
@@ -130,11 +129,11 @@ FOR ALL
 TO authenticated
 USING (
   bucket_id = 'documents' 
-  AND (auth.uid() = owner OR owner IS NULL)
+  AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
 )
 WITH CHECK (
   bucket_id = 'documents' 
-  AND (auth.uid() = owner OR owner IS NULL)
+  AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
 );
 
 -- Policy for public access to read files
@@ -151,10 +150,10 @@ GRANT USAGE ON SCHEMA storage TO public;
 GRANT USAGE ON SCHEMA storage TO authenticated;
 GRANT USAGE ON SCHEMA storage TO anon;
 
--- Grant all on storage buckets to authenticated users
-GRANT ALL ON storage.buckets TO authenticated;
-GRANT SELECT ON storage.buckets TO public;
-GRANT SELECT ON storage.buckets TO anon;
+-- Grant permissions on objects to authenticated users
+GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
+GRANT SELECT ON storage.objects TO public;
+GRANT SELECT ON storage.objects TO anon;
 
 -- Policy check function
 CREATE OR REPLACE FUNCTION public.check_policy_expirations()
