@@ -118,7 +118,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       setProgress('analyzing');
       toast.info('Analisando documento com IA...');
 
-      // 2. Analisar o documento com Groq LLM
+      // 2. Analisar o documento com a API do OpenAI
       let policyData;
       try {
         policyData = await analyzePolicyDocument(fileUrl);
@@ -143,7 +143,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           const reminderDate = new Date(expiryDate);
           reminderDate.setDate(reminderDate.getDate() - 30);
           
-          // Usar apenas os dados exatos extraídos pelo Groq
+          // Usar apenas os dados exatos extraídos pelo OpenAI
           const policyToCreate: Omit<Policy, "id" | "created_at" | "updated_at" | "reminder_sent"> = {
             user_id: user.id,
             policy_number: policyData.policy_number || '',
@@ -159,6 +159,8 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             attachment_url: fileUrl,
             notes: 'Dados extraídos exatamente como constam na apólice via IA'
           };
+          
+          console.log('Criando apólice com os dados:', policyToCreate);
           
           // Criar a apólice no banco de dados
           const result = await createPolicy(policyToCreate);

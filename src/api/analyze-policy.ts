@@ -108,19 +108,18 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     console.log('Texto extraído do PDF:', pdfText.substring(0, 500) + '...');
     
     // 2. Use OpenAI API to analyze the document
-    console.log('Enviando prompt para análise via GPT-4');
+    console.log('Enviando prompt para análise via OpenAI API');
     
     // Get the OpenAI API key from environment variables
-    // In production, this should come from server environment variables
-    // For development, we'll use a fallback
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY || "sk-demo-key-for-development";
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
     
-    if (!apiKey || apiKey === "sk-demo-key-for-development") {
-      console.warn('API key para OpenAI não encontrada ou é uma chave de demonstração.');
+    // Verificar se temos uma API key válida
+    if (!apiKey) {
+      console.warn('API key para OpenAI não encontrada.');
       
-      // If in development mode, return mock data
-      if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-        console.log('Ambiente de desenvolvimento detectado. Retornando dados simulados.');
+      // Se estamos em ambiente de desenvolvimento, retornar dados fictícios somente se o URL for de exemplo
+      if ((import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') && (fileUrl.includes('example.com') || fileUrl.includes('documento-simulado'))) {
+        console.log('Ambiente de desenvolvimento com URL de exemplo. Retornando dados simulados.');
         return {
           policy_number: "AP123456",
           customer_name: "João Silva",
@@ -146,7 +145,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini", // Using the recommended model
+          model: "gpt-4o-mini", // Modelo recomendado e mais acessível
           messages: [
             {
               role: 'system',
@@ -244,9 +243,9 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     } catch (error) {
       console.error('Erro ao chamar a API da OpenAI:', error);
       
-      // In development mode, return mock data even on error
-      if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-        console.log('Ambiente de desenvolvimento detectado. Retornando dados simulados mesmo com erro.');
+      // Em ambiente de desenvolvimento com URL de exemplo, retornar dados simulados mesmo em caso de erro
+      if ((import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') && (fileUrl.includes('example.com') || fileUrl.includes('documento-simulado'))) {
+        console.log('Ambiente de desenvolvimento com URL de exemplo. Retornando dados simulados mesmo com erro.');
         return {
           policy_number: "AP123456",
           customer_name: "João Silva",
