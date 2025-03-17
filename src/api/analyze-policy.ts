@@ -110,8 +110,8 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     // 2. Use OpenAI API to analyze the document
     console.log('Enviando prompt para análise via OpenAI API');
     
-    // Use a chave de API fornecida pelo usuário
-    const apiKey = "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";
+    // Use a chave de API do OpenAI - atualizada com a versão funcional
+    const apiKey = "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";
     
     // Verificar se temos uma API key válida
     if (!apiKey) {
@@ -225,8 +225,6 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       return processedData;
     } catch (error) {
       console.error('Erro ao chamar a API da OpenAI:', error);
-      
-      // Não retorna mais dados fictícios, propaga o erro para ser tratado na camada de UI
       throw error;
     }
   } catch (error) {

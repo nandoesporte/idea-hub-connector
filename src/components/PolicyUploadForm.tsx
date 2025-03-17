@@ -374,9 +374,26 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
               <FileText className="h-8 w-8" />
             </div>
             <p className="font-medium text-red-600">Erro no processamento</p>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-2 text-center max-w-md">
               {errorMessage || 'Ocorreu um erro ao processar seu documento.'}
             </p>
+            
+            {/* Show API error details when available */}
+            {errorMessage && errorMessage.includes('OpenAI') && (
+              <div className="bg-red-50 p-3 rounded text-xs text-red-800 mb-4 max-w-md overflow-auto">
+                <p className="font-semibold mb-1">Erro na API da OpenAI:</p>
+                <p>{errorMessage}</p>
+                <p className="mt-2">
+                  Você pode verificar sua chave API em: 
+                  <a href="https://platform.openai.com/account/api-keys" 
+                     target="_blank" 
+                     rel="noopener noreferrer"
+                     className="text-blue-600 underline ml-1">
+                    https://platform.openai.com/account/api-keys
+                  </a>
+                </p>
+              </div>
+            )}
             
             <div className="flex gap-2 mt-2">
               <Button 
