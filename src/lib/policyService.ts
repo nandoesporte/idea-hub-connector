@@ -1,3 +1,4 @@
+
 import { Policy } from '@/types';
 import { supabase } from './supabase';
 import { toast } from 'sonner';
@@ -167,7 +168,7 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
       console.error('Error checking storage buckets:', bucketError);
       
       // If this is a permission error, we need to run the migration
-      if (bucketError.message?.includes('permission denied')) {
+      if (bucketError.message && bucketError.message.includes('permission denied')) {
         console.log('Permission error accessing buckets. Attempting to run migration...');
         const migrationResult = await runInsurancePoliciesMigration();
         
@@ -248,7 +249,7 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
       console.error('Error uploading file:', uploadError);
       
       // If this is a permission error or bucket not found
-      if (uploadError.message?.includes('permission denied') || uploadError.message?.includes('not found')) {
+      if (uploadError.message && (uploadError.message.includes('permission denied') || uploadError.message.includes('not found'))) {
         toast.error('Problema de permissão no armazenamento. Tente novamente após executar a migração.');
         throw new Error('Erro de permissão ao fazer upload do arquivo');
       }

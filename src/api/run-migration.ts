@@ -1,7 +1,6 @@
 
 // This file will be created as a Supabase Edge Function to handle migrations
 // It should be accessible via your API routing
-// Note: The actual implementation might depend on your API structure
 
 import { supabase } from '@/lib/supabase';
 
@@ -16,7 +15,7 @@ export async function runMigration(req, res) {
     if (!migration) {
       return res.status(400).json({
         success: false,
-        error: 'Missing migration parameter'
+        error: 'Parâmetro de migração ausente'
       });
     }
     
@@ -29,19 +28,19 @@ export async function runMigration(req, res) {
       
       return res.status(200).json({
         success: true,
-        message: 'Migration executed successfully'
+        message: 'Migração executada com sucesso'
       });
     }
     
     return res.status(400).json({
       success: false,
-      error: 'Unknown migration type'
+      error: 'Tipo de migração desconhecido'
     });
   } catch (error) {
-    console.error('Error running migration:', error);
+    console.error('Erro ao executar migração:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      error: error.message || 'Erro interno do servidor'
     });
   }
 }
@@ -54,7 +53,7 @@ async function executeInsurancePoliciesMigration() {
   // In a real implementation, you would use the supabase client with admin privileges
   
   if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-    console.log('DEV/DEMO mode - simulating successful migration');
+    console.log('Modo DEV/DEMO - simulando migração bem-sucedida');
     return true;
   }
   
@@ -71,10 +70,10 @@ async function executeInsurancePoliciesMigration() {
     // 3. Check for errors
     // if (error) throw error;
     
-    console.log('Migration successfully executed in production');
+    console.log('Migração executada com sucesso em produção');
     return true;
   } catch (error) {
-    console.error('Error executing migration:', error);
+    console.error('Erro ao executar migração:', error);
     throw error;
   }
 }
@@ -86,7 +85,7 @@ async function executeInsurancePoliciesMigration() {
 async function createDocumentsBucket() {
   // In development/demo mode, we simulate success
   if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-    console.log('DEV/DEMO mode - simulating bucket creation');
+    console.log('Modo DEV/DEMO - simulando criação de bucket');
     return true;
   }
   
@@ -142,10 +141,10 @@ async function createDocumentsBucket() {
     // const { error: policyError } = await supabaseAdmin.rpc('run_sql', { sql: setPoliciesSql });
     // if (policyError) throw policyError;
     
-    console.log('Storage bucket created and configured successfully in production');
+    console.log('Bucket de armazenamento criado e configurado com sucesso em produção');
     return true;
   } catch (error) {
-    console.error('Error creating documents bucket:', error);
+    console.error('Erro ao criar bucket de documentos:', error);
     throw error;
   }
 }
