@@ -140,43 +140,23 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
         throw new Error('A resposta da Groq não está em formato JSON válido');
       }
       
-      // If the API didn't return the correct data, use our hardcoded values to ensure the UI matches requirements
-      if (!extractedData.policy_number || extractedData.policy_number !== 'AP123456') {
-        console.log('Usando dados específicos solicitados pelo usuário');
-        
-        // Specific dates from the screenshot
-        const issueDate = new Date('2025-03-15');
-        const expiryDate = new Date('2026-03-15');
-        
-        extractedData = {
-          policy_number: 'AP123456',
-          customer_name: 'João Silva',
-          customer_phone: '(11) 98765-4321',
-          insurer: 'Seguradora Brasil',
-          issue_date: issueDate.toISOString(),
-          expiry_date: expiryDate.toISOString(),
-          coverage_amount: 100000.00,
-          premium: 1200.00,
-          type: 'auto'
-        };
-      } else {
-        // Convert string dates to Date objects
-        if (extractedData.issue_date) {
-          extractedData.issue_date = new Date(extractedData.issue_date);
-        }
-        
-        if (extractedData.expiry_date) {
-          extractedData.expiry_date = new Date(extractedData.expiry_date);
-        }
-        
-        // Convert string numbers to actual numbers if needed
-        if (typeof extractedData.coverage_amount === 'string') {
-          extractedData.coverage_amount = parseFloat(extractedData.coverage_amount.replace(/[^\d.,]/g, '').replace(',', '.'));
-        }
-        
-        if (typeof extractedData.premium === 'string') {
-          extractedData.premium = parseFloat(extractedData.premium.replace(/[^\d.,]/g, '').replace(',', '.'));
-        }
+      // Sempre use os dados extraídos diretamente, sem substituir por dados fictícios
+      // Convert string dates to Date objects
+      if (extractedData.issue_date) {
+        extractedData.issue_date = new Date(extractedData.issue_date);
+      }
+      
+      if (extractedData.expiry_date) {
+        extractedData.expiry_date = new Date(extractedData.expiry_date);
+      }
+      
+      // Convert string numbers to actual numbers if needed
+      if (typeof extractedData.coverage_amount === 'string') {
+        extractedData.coverage_amount = parseFloat(extractedData.coverage_amount.replace(/[^\d.,]/g, '').replace(',', '.'));
+      }
+      
+      if (typeof extractedData.premium === 'string') {
+        extractedData.premium = parseFloat(extractedData.premium.replace(/[^\d.,]/g, '').replace(',', '.'));
       }
       
       return extractedData;

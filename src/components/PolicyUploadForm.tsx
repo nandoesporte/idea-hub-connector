@@ -117,21 +117,21 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       
       // 3. Criar a apólice com os dados extraídos
       if (policyData) {
-        // Ensure all required fields exist before creating the policy
+        // Use os dados exatos extraídos pelo Groq, fornecendo apenas valores padrão se absolutamente necessário
         const policyToCreate: Omit<Policy, "id" | "created_at" | "updated_at" | "reminder_sent"> = {
           user_id: user.id,
-          policy_number: policyData.policy_number || `AP${Math.floor(Math.random() * 1000000)}`,
-          customer_name: policyData.customer_name || 'Nome do Cliente',
+          policy_number: policyData.policy_number || '', // Campo obrigatório, mas preservamos vazio se não existir
+          customer_name: policyData.customer_name || '',
           customer_phone: policyData.customer_phone || '',
           issue_date: policyData.issue_date || new Date(),
           expiry_date: policyData.expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-          insurer: policyData.insurer || 'Seguradora',
+          insurer: policyData.insurer || '',
           coverage_amount: policyData.coverage_amount || 0,
           premium: policyData.premium || 0,
           status: 'active',
-          type: policyData.type || 'auto',
+          type: policyData.type || '',
           attachment_url: fileUrl,
-          notes: policyData.notes || 'Informações extraídas automaticamente via IA'
+          notes: 'Dados extraídos exatamente como constam na apólice via IA'
         };
         
         try {
