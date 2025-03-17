@@ -21,6 +21,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [progress, setProgress] = useState<'idle' | 'uploading' | 'analyzing' | 'complete' | 'error' | 'migrating'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [needsMigration, setNeedsMigration] = useState(false);
+  const [extractedData, setExtractedData] = useState<Partial<Policy> | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -28,6 +29,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       setErrorMessage(null);
       setProgress('idle');
       setNeedsMigration(false);
+      setExtractedData(null);
     }
   };
 
@@ -82,6 +84,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       setUploading(true);
       setProgress('uploading');
       setErrorMessage(null);
+      setExtractedData(null);
       toast.info('Enviando arquivo...');
 
       // 1. Fazer upload do arquivo
@@ -127,6 +130,10 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         if (!policyData || !policyData.policy_number) {
           throw new Error('Não foi possível extrair dados essenciais do documento');
         }
+        
+        // Salvar os dados extraídos para exibição
+        setExtractedData(policyData);
+        
       } catch (error) {
         console.error('Error analyzing policy:', error);
         setProgress('error');
@@ -226,10 +233,18 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     setProgress('idle');
     setErrorMessage(null);
     setNeedsMigration(false);
+    setExtractedData(null);
   };
 
   const formatDate = (date: Date) => {
     return format(date, 'dd/MM/yyyy', { locale: ptBR });
+  };
+  
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
   };
 
   return (
@@ -300,6 +315,48 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             </div>
             <p className="font-medium text-green-600">Apólice processada com sucesso!</p>
             <p className="text-sm text-muted-foreground mb-4">Os dados foram extraídos e cadastrados</p>
+            
+            {extractedData && (
+              <div className="bg-muted p-4 rounded-lg w-full max-w-md mb-6 text-sm">
+                <h3 className="font-semibold mb-2 text-center">Dados Extraídos</h3>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">Número:</p>
+                    <p className="font-medium">{extractedData.policy_number}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">Segurado:</p>
+                    <p className="font-medium">{extractedData.customer_name}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">Telefone:</p>
+                    <p className="font-medium">{extractedData.customer_phone}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">Seguradora:</p>
+                    <p className="font-medium">{extractedData.insurer}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">Vigência:</p>
+                    <p className="font-medium">
+                      {formatDate(extractedData.issue_date || new Date())} a {formatDate(extractedData.expiry_date || new Date())}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">Cobertura:</p>
+                    <p className="font-medium">{formatCurrency(extractedData.coverage_amount || 0)}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">Prêmio:</p>
+                    <p className="font-medium">{formatCurrency(extractedData.premium || 0)}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">Tipo:</p>
+                    <p className="font-medium">{extractedData.type}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <Button 
               variant="outline" 
