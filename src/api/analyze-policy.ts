@@ -117,22 +117,8 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     if (!apiKey) {
       console.warn('API key para OpenAI não encontrada.');
       
-      // Se estamos em ambiente de desenvolvimento, retornar dados fictícios somente se o URL for de exemplo
-      if ((import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') && (fileUrl.includes('example.com') || fileUrl.includes('documento-simulado'))) {
-        console.log('Ambiente de desenvolvimento com URL de exemplo. Retornando dados simulados.');
-        return {
-          policy_number: "AP123456",
-          customer_name: "João Silva",
-          customer_phone: "(11) 98765-4321",
-          insurer: "Seguradora Brasil",
-          issue_date: new Date("2025-03-14"),
-          expiry_date: new Date("2026-03-14"),
-          coverage_amount: 100000,
-          premium: 1200,
-          type: "AUTOMÓVEL"
-        };
-      }
-      
+      // Em ambiente de desenvolvimento, não devemos mais retornar dados fictícios
+      // mesmo que o URL seja de exemplo
       throw new Error('API key para OpenAI não configurada.');
     }
     
@@ -243,7 +229,9 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     } catch (error) {
       console.error('Erro ao chamar a API da OpenAI:', error);
       
-      // Em ambiente de desenvolvimento com URL de exemplo, retornar dados simulados mesmo em caso de erro
+      // Se estivermos em modo de desenvolvimento e for uma URL de exemplo,
+      // e tiver ocorrido um erro com a API do OpenAI, retornamos dados de teste 
+      // para não interromper o fluxo de desenvolvimento
       if ((import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') && (fileUrl.includes('example.com') || fileUrl.includes('documento-simulado'))) {
         console.log('Ambiente de desenvolvimento com URL de exemplo. Retornando dados simulados mesmo com erro.');
         return {
