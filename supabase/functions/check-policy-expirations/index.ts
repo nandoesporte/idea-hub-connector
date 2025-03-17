@@ -37,6 +37,17 @@ Deno.serve(async (req) => {
     const token = authHeader.split(' ')[1]
     const expectedToken = Deno.env.get('FUNCTION_SECRET')
     
+    if (!expectedToken) {
+      console.error('FUNCTION_SECRET não definido nas variáveis de ambiente')
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Configuração do servidor incompleta' 
+        }),
+        { status: 500, headers }
+      )
+    }
+    
     if (token !== expectedToken) {
       return new Response(
         JSON.stringify({ 

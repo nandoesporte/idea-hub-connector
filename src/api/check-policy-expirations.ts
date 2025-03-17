@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { format } from 'date-fns';
 
 export default async function handler(req, res) {
   try {
@@ -62,13 +63,18 @@ export default async function handler(req, res) {
         
         for (const policy of policies) {
           try {
+            // Calcular dias restantes até o vencimento
+            const expiryDate = new Date(policy.expiry_date);
+            const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const formattedDate = format(expiryDate, 'dd/MM/yyyy');
+            
             // Criar notificação
             const { data: notification, error: notifError } = await supabase
               .from('notifications')
               .insert({
                 user_id: userId,
                 title: 'Apólice próxima do vencimento',
-                message: `A apólice ${policy.policy_number} da ${policy.insurer} vence em breve (${new Date(policy.expiry_date).toLocaleDateString()}).`,
+                message: `A apólice ${policy.policy_number} da ${policy.insurer} vence em ${daysUntilExpiry} dias (${formattedDate}).`,
                 type: 'warning',
                 is_read: false,
                 related_entity_type: 'policy',
@@ -102,7 +108,7 @@ export default async function handler(req, res) {
     }
     
     // Em produção, chamar a função edge
-    const supabaseUrl = 'https://otzytxkynqcywtqgpgmn.supabase.co';
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://otzytxkynqcywtqgpgmn.supabase.co';
     if (!supabaseUrl) {
       throw new Error('URL do Supabase não configurada');
     }
@@ -111,6 +117,21 @@ export default async function handler(req, res) {
     const functionSecret = import.meta.env.VITE_FUNCTION_SECRET;
     
     if (!functionSecret) {
+      console.warn('Segredo da função edge não configurado. Defina VITE_FUNCTION_SECRET nas variáveis de ambiente.');
+      
+      // Em desenvolvimento, permitir continuar mesmo sem o segredo
+      if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+        return res.status(200).json({
+          success: true,
+          message: 'Verificação simulada - segredo não configurado',
+          data: {
+            processed: 0,
+            notifications: 0,
+            errors: 0
+          }
+        });
+      }
+      
       throw new Error('Segredo da função edge não configurado. Defina VITE_FUNCTION_SECRET nas variáveis de ambiente.');
     }
     
@@ -123,7 +144,16 @@ export default async function handler(req, res) {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorText = await response.text();
+      let errorData;
+      
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        console.error('Resposta da função edge não é JSON válido:', errorText);
+        throw new Error(`Erro ao chamar função edge: ${response.statusText} (${response.status})`);
+      }
+      
       throw new Error(`Erro ao chamar função edge: ${errorData.error || response.statusText}`);
     }
     

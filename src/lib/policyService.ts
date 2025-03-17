@@ -1,7 +1,7 @@
-
 import { Policy } from '@/types';
 import { supabase } from './supabase';
 import { toast } from 'sonner';
+import { addDays, subDays } from 'date-fns';
 
 export const fetchPolicies = async (userId: string): Promise<Policy[]> => {
   try {
@@ -41,8 +41,7 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
     
     // Calcular data 30 dias antes do vencimento para lembrete
     const expiryDate = new Date(policy.expiry_date);
-    const reminderDate = new Date(expiryDate);
-    reminderDate.setDate(reminderDate.getDate() - 30);
+    const reminderDate = subDays(expiryDate, 30);
     
     console.log('Data de vencimento:', expiryDate);
     console.log('Data de lembrete calculada:', reminderDate);
@@ -103,21 +102,27 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
 
 export const updatePolicy = async (id: string, policy: Partial<Policy>) => {
   try {
-    let reminderDate = policy.reminder_date;
+    let updates: any = { ...policy, updated_at: new Date() };
     
+    // Recalcular data de lembrete se a data de vencimento foi alterada
     if (policy.expiry_date) {
       const expiryDate = new Date(policy.expiry_date);
-      reminderDate = new Date(expiryDate);
-      reminderDate.setDate(reminderDate.getDate() - 30);
+      const reminderDate = subDays(expiryDate, 30);
+      updates.reminder_date = reminderDate.toISOString();
+      
+      // Se a data de lembrete já passou, não enviar novamente
+      const today = new Date();
+      if (reminderDate <= today) {
+        updates.reminder_sent = true;
+      } else {
+        // Caso contrário, resetar o status de lembrete
+        updates.reminder_sent = false;
+      }
     }
 
     const { data, error } = await supabase
       .from('insurance_policies')
-      .update({
-        ...policy,
-        reminder_date: reminderDate,
-        updated_at: new Date()
-      })
+      .update(updates)
       .eq('id', id)
       .select()
       .single();
@@ -340,39 +345,53 @@ export const checkPolicyReminders = async (userId: string) => {
     console.log(`Encontradas ${data?.length || 0} apólices precisando de lembretes`);
 
     if (data && data.length > 0) {
+      const updatedPolicies = [];
+      
       for (const policy of data) {
-        // Atualizar status de lembrete enviado
-        const { error: updateError } = await supabase
-          .from('insurance_policies')
-          .update({ reminder_sent: true })
-          .eq('id', policy.id);
+        try {
+          // Calcular dias restantes até o vencimento
+          const expiryDate = new Date(policy.expiry_date);
+          const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
-        if (updateError) {
-          console.error('Erro ao atualizar status de lembrete:', updateError);
-        }
-        
-        // Criar notificação para o usuário
-        const { error: notifError } = await supabase
-          .from('notifications')
-          .insert({
-            user_id: userId,
-            title: 'Apólice próxima do vencimento',
-            message: `A apólice ${policy.policy_number} da ${policy.insurer} vence em 30 dias (${new Date(policy.expiry_date).toLocaleDateString()}).`,
-            type: 'warning',
-            is_read: false,
-            related_entity_type: 'policy',
-            related_entity_id: policy.id
-          });
+          // Atualizar status de lembrete enviado
+          const { error: updateError } = await supabase
+            .from('insurance_policies')
+            .update({ reminder_sent: true })
+            .eq('id', policy.id);
+            
+          if (updateError) {
+            console.error('Erro ao atualizar status de lembrete:', updateError);
+            continue;
+          }
           
-        if (notifError) {
-          console.error('Erro ao criar notificação:', notifError);
+          // Criar notificação para o usuário
+          const { error: notifError } = await supabase
+            .from('notifications')
+            .insert({
+              user_id: userId,
+              title: 'Apólice próxima do vencimento',
+              message: `A apólice ${policy.policy_number} da ${policy.insurer} vence em ${daysUntilExpiry} dias (${new Date(policy.expiry_date).toLocaleDateString()}).`,
+              type: 'warning',
+              is_read: false,
+              related_entity_type: 'policy',
+              related_entity_id: policy.id
+            });
+            
+          if (notifError) {
+            console.error('Erro ao criar notificação:', notifError);
+            continue;
+          }
+          
+          updatedPolicies.push(policy);
+        } catch (err) {
+          console.error('Erro ao processar lembrete para apólice:', err);
         }
       }
 
       return {
-        hasReminders: true,
-        count: data.length,
-        policies: data
+        hasReminders: updatedPolicies.length > 0,
+        count: updatedPolicies.length,
+        policies: updatedPolicies
       };
     }
 
@@ -448,7 +467,7 @@ export const manualCheckPolicyExpirations = async () => {
     
     // Em ambiente de desenvolvimento, simular o sucesso
     if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-      console.log('Ambiente de desenvolvimento - verificação simulada com sucesso');
+      console.log('Ambiente de desenvolvimento - verificação simulada iniciada');
       
       // Mesmo em desenvolvimento, podemos verificar localmente
       const { data: { session } } = await supabase.auth.getSession();
@@ -485,7 +504,16 @@ export const manualCheckPolicyExpirations = async () => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const responseText = await response.text();
+      let errorData;
+      
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Resposta não é JSON válido:', responseText);
+        throw new Error(`Falha ao verificar apólices (${response.status}: ${response.statusText})`);
+      }
+      
       throw new Error(errorData.error || 'Falha ao verificar apólices');
     }
     
