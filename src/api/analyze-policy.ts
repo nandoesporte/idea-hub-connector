@@ -80,7 +80,16 @@ function extractJsonFromLLMResponse(responseText: string): any {
     }
     
     // If no code block, try to parse the entire text as JSON (it might just be a raw JSON)
-    return JSON.parse(responseText);
+    try {
+      return JSON.parse(responseText);
+    } catch (error) {
+      // If it fails, try to find anything that looks like JSON in the response
+      const possibleJson = responseText.match(/(\{[\s\S]*\})/);
+      if (possibleJson && possibleJson[1]) {
+        return JSON.parse(possibleJson[1]);
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Erro ao extrair JSON da resposta:', error);
     throw new Error('Falha ao extrair JSON válido da resposta do LLM');
@@ -88,7 +97,7 @@ function extractJsonFromLLMResponse(responseText: string): any {
 }
 
 /**
- * Analyzes a policy document to extract key information using Groq API
+ * Analyzes a policy document to extract key information using OpenAI API
  */
 export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Policy>> => {
   try {
@@ -98,35 +107,35 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     const pdfText = await extractTextFromPdf(fileUrl);
     console.log('Texto extraído do PDF:', pdfText.substring(0, 500) + '...');
     
-    // 2. Use Groq AI to analyze the document
-    console.log('Enviando prompt para análise via Groq');
+    // 2. Use OpenAI API to analyze the document
+    console.log('Enviando prompt para análise via GPT-4');
     
-    // Hardcoded API key as requested
-    const apiKey = "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";
+    // OpenAI API key
+    const apiKey = "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"; // Temporary key for demo
     
     if (!apiKey) {
-      console.warn('API key para Groq não encontrada.');
-      throw new Error('API key para Groq não configurada.');
+      console.warn('API key para OpenAI não encontrada.');
+      throw new Error('API key para OpenAI não configurada.');
     }
     
-    // Call the Groq API with more specific instructions to match the exact format from the PDF
+    // Call the OpenAI API with specific instructions
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'llama3-8b-8192',
+          model: "gpt-4o-mini",
           messages: [
             {
               role: 'system',
-              content: 'Você é um assistente especializado em extrair informações de apólices de seguro brasileiras. Extraia as informações solicitadas com precisão, exatamente como aparecem no documento, respeitando o formato de datas brasileiro (DD/MM/AAAA). Retorne APENAS o objeto JSON puro, sem texto introdutório ou explicativo.'
+              content: 'Você é um assistente especializado em extrair informações de apólices de seguro brasileiras. Extraia as informações exatamente como aparecem no documento, respeitando o formato de datas brasileiro (DD/MM/AAAA). Retorne APENAS um objeto JSON válido, sem texto adicional.'
             },
             {
               role: 'user',
-              content: `Extraia as seguintes informações desta apólice de seguro e retorne APENAS como JSON puro SEM EXPLICAÇÕES OU TEXTO ADICIONAL:
+              content: `Extraia as seguintes informações desta apólice de seguro e retorne APENAS UM OBJETO JSON VÁLIDO SEM TEXTO ADICIONAL:
               policy_number (número da apólice, apenas os dígitos), 
               customer_name (nome do segurado exatamente como consta no documento), 
               customer_phone (telefone do cliente com o formato original),
@@ -142,7 +151,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
               
               IMPORTANTE: Se alguma informação não estiver presente no documento, deixe o campo vazio ("").
               Não invente ou infira dados que não estejam claramente indicados no documento.
-              NÃO INCLUA TEXTO EXPLICATIVO, RETORNE APENAS O OBJETO JSON.
+              RETORNE APENAS UM OBJETO JSON VÁLIDO, SEM TEXTO ADICIONAL OU EXPLICATIVO.
 
               Texto da apólice:
               ${pdfText}`
@@ -155,12 +164,12 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Erro na API da Groq:', error);
-        throw new Error(`Erro na API da Groq: ${error.error?.message || 'Erro desconhecido'}`);
+        console.error('Erro na API da OpenAI:', error);
+        throw new Error(`Erro na API da OpenAI: ${error.error?.message || 'Erro desconhecido'}`);
       }
 
       const result = await response.json();
-      console.log('Resposta da Groq:', result);
+      console.log('Resposta da OpenAI:', result);
       
       // Parse the JSON from the API response
       const responseContent = result.choices[0].message.content;
@@ -168,12 +177,12 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       
       let extractedData;
       try {
-        // Use the helper function to extract JSON from the response that might include markdown or explanatory text
+        // Use the helper function to extract JSON from the response
         extractedData = extractJsonFromLLMResponse(responseContent);
         console.log('Dados extraídos:', extractedData);
       } catch (parseError) {
         console.error('Erro ao analisar resposta JSON:', parseError);
-        throw new Error('A resposta da Groq não está em formato JSON válido');
+        throw new Error('A resposta da OpenAI não está em formato JSON válido');
       }
       
       // Convert date strings to Date objects, preserving the original Brazilian format
@@ -214,7 +223,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       console.log('Dados processados:', processedData);
       return processedData;
     } catch (error) {
-      console.error('Erro ao chamar a API da Groq:', error);
+      console.error('Erro ao chamar a API da OpenAI:', error);
       throw error;
     }
   } catch (error) {
