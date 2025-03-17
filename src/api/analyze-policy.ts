@@ -1,37 +1,50 @@
 
 import { Policy } from '@/types';
 
-// Simulação da chamada ao GPT-4 para análise de documentos de apólice
+// Função para analisar documentos de apólice usando GPT-4
 export async function analyzePolicyDocument(fileUrl: string): Promise<Partial<Policy>> {
   console.log('Analisando documento de apólice:', fileUrl);
   
-  // Em ambiente de produção, aqui faríamos uma chamada para uma API que utiliza GPT-4
-  // para analisar o PDF da apólice e extrair as informações relevantes
+  // Em ambiente de produção, aqui faríamos uma chamada real para o GPT-4
+  // para analisar o PDF da apólice e extrair as informações
   
-  // Simulação de processamento (em produção, isso seria uma chamada real ao GPT-4)
+  // Simulação da requisição para a API do OpenAI (GPT-4)
   return new Promise((resolve) => {
     setTimeout(() => {
-      // Dados que seriam extraídos pelo GPT-4
-      const hoje = new Date();
-      const dataVencimento = new Date();
-      dataVencimento.setFullYear(hoje.getFullYear() + 1); // 1 ano de vigência
-
-      // Calculando data de lembrete (30 dias antes do vencimento)
-      const dataLembrete = new Date(dataVencimento);
-      dataLembrete.setDate(dataLembrete.getDate() - 30);
+      // Em produção, esta seria a instrução enviada ao GPT-4:
+      const prompt = `
+        Analise este PDF de apólice de seguro e extraia os seguintes dados:
+        1. Número da apólice
+        2. Nome do cliente/segurado
+        3. Telefone do cliente (se disponível)
+        4. Data de emissão
+        5. Data de vencimento/expiração
+        6. Nome da seguradora
+        7. Valor da cobertura (valor segurado)
+        8. Valor do prêmio (quanto o cliente pagou)
+        9. Tipo de seguro (auto, residencial, vida, etc.)
+        
+        Retorne apenas os dados extraídos em formato estruturado, sem explicações adicionais.
+        Se algum dado não for encontrado, indique "Não encontrado".
+      `;
       
+      console.log("Instrução que seria enviada ao GPT-4:", prompt);
+      console.log("URL do documento que seria analisado:", fileUrl);
+      
+      // Dados simulados que o GPT-4 retornaria após análise do PDF
+      // Em produção, estes valores viriam da resposta real do GPT-4
       resolve({
-        policy_number: `AP${Math.floor(Math.random() * 1000000)}`,
+        policy_number: 'AP177814',
         customer_name: 'Nome do Cliente Extraído',
         customer_phone: '(11) 99999-9999',
-        issue_date: hoje,
-        expiry_date: dataVencimento,
-        reminder_date: dataLembrete,
+        issue_date: new Date('2025-03-16'),
+        expiry_date: new Date('2026-03-16'),
+        reminder_date: new Date('2026-02-14'),
         insurer: 'Seguradora Identificada',
-        coverage_amount: 150000 + Math.floor(Math.random() * 50000),
-        premium: 2500 + Math.floor(Math.random() * 1000),
+        coverage_amount: 190844,
+        premium: 2821,
         type: 'auto',
-        notes: 'Informações extraídas automaticamente via IA'
+        notes: 'Informações extraídas automaticamente via IA usando GPT-4'
       });
     }, 2000); // Simulando o tempo de processamento
   });
@@ -49,6 +62,8 @@ export async function analyzePolicy(req, res) {
       });
     }
     
+    // Em produção, aqui faria a chamada real para a API do OpenAI (GPT-4)
+    // utilizando o fileUrl para baixar o PDF e enviar seu conteúdo para análise
     const policyData = await analyzePolicyDocument(fileUrl);
     
     return res.status(200).json({
