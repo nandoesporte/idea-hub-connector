@@ -163,8 +163,7 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
     
     if (bucketError) {
       console.error('Error checking storage buckets:', bucketError);
-      toast.warning('Sistema em modo de demonstração: simulando upload de arquivo');
-      return `https://example.com/demo-policy-${Math.random().toString(36).substring(2)}.pdf`;
+      throw new Error('Erro ao verificar buckets de armazenamento');
     }
     
     const bucketExists = buckets.some(bucket => bucket.name === 'documents');
@@ -177,24 +176,11 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
         
         if (createBucketError) {
           console.error('Error creating storage bucket:', createBucketError);
-          
-          const migrationResult = await runInsurancePoliciesMigration();
-          
-          if (!migrationResult.success) {
-            toast.warning('Sistema em modo de demonstração: simulando upload de arquivo');
-            return `https://example.com/demo-policy-${Math.random().toString(36).substring(2)}.pdf`;
-          }
-          
-          const { data: checkBuckets } = await supabase.storage.listBuckets();
-          if (!checkBuckets.some(bucket => bucket.name === 'documents')) {
-            toast.warning('Sistema em modo de demonstração: simulando upload de arquivo');
-            return `https://example.com/demo-policy-${Math.random().toString(36).substring(2)}.pdf`;
-          }
+          throw new Error('Erro ao criar bucket de armazenamento');
         }
       } catch (error) {
         console.error('Exception creating bucket:', error);
-        toast.warning('Sistema em modo de demonstração: simulando upload de arquivo');
-        return `https://example.com/demo-policy-${Math.random().toString(36).substring(2)}.pdf`;
+        throw new Error('Erro ao criar bucket de armazenamento');
       }
     }
 
@@ -204,12 +190,6 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
 
     if (uploadError) {
       console.error('Error uploading file:', uploadError);
-      
-      if (uploadError.message && (uploadError.message.includes('Bucket not found') || uploadError.message.includes('Access denied'))) {
-        toast.warning('Sistema em modo de demonstração: simulando upload de arquivo');
-        return `https://example.com/demo-policy-${Math.random().toString(36).substring(2)}.pdf`;
-      }
-      
       throw new Error(uploadError.message);
     }
 
@@ -218,12 +198,6 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
     return data.publicUrl;
   } catch (error) {
     console.error('Error in uploadPolicyAttachment:', error);
-    
-    if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-      toast.warning('Sistema em modo de demonstração: simulando upload de arquivo');
-      return `https://example.com/demo-policy-${Math.random().toString(36).substring(2)}.pdf`;
-    }
-    
     toast.error('Não foi possível fazer upload do arquivo.');
     throw error;
   }

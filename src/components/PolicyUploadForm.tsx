@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { uploadPolicyAttachment, createPolicy, runInsurancePoliciesMigration } from '@/lib/policyService';
@@ -40,7 +39,6 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       if (result.success) {
         toast.success('Tabela de apólices criada com sucesso!');
         setNeedsMigration(false);
-        // Retomar o upload depois da migração bem-sucedida
         await handleUpload();
       } else {
         setProgress('error');
@@ -69,17 +67,14 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       let fileUrl;
       try {
         fileUrl = await uploadPolicyAttachment(file, user.id);
+        
+        if (!fileUrl) {
+          throw new Error('Falha ao obter URL do arquivo');
+        }
       } catch (error) {
         console.error('Error uploading file:', error);
         setProgress('error');
-        setErrorMessage('Não foi possível fazer upload do arquivo. Verifique se o armazenamento está configurado.');
-        setUploading(false);
-        return;
-      }
-      
-      if (!fileUrl) {
-        setProgress('error');
-        setErrorMessage('Falha ao obter URL do arquivo.');
+        setErrorMessage(error instanceof Error ? error.message : 'Não foi possível fazer upload do arquivo.');
         setUploading(false);
         return;
       }
@@ -94,10 +89,14 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       try {
         policyData = await analyzePolicyDocument(fileUrl);
         console.log('Dados da apólice extraídos:', policyData);
+        
+        if (!policyData || !policyData.policy_number) {
+          throw new Error('Não foi possível extrair dados essenciais do documento');
+        }
       } catch (error) {
         console.error('Error analyzing policy:', error);
         setProgress('error');
-        setErrorMessage('Falha ao analisar o documento. Serviço de IA pode estar indisponível.');
+        setErrorMessage(error instanceof Error ? error.message : 'Falha ao analisar o documento com IA.');
         setAnalyzing(false);
         return;
       }
@@ -141,7 +140,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         } catch (error) {
           console.error('Error creating policy:', error);
           setProgress('error');
-          setErrorMessage('Falha ao cadastrar a apólice. A tabela pode não existir no banco de dados.');
+          setErrorMessage(error instanceof Error ? error.message : 'Falha ao cadastrar a apólice.');
           setAnalyzing(false);
           return;
         }
@@ -154,7 +153,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       console.error('Erro ao processar documento:', error);
       toast.error('Falha ao processar o documento');
       setProgress('error');
-      setErrorMessage('Ocorreu um erro inesperado ao processar o documento.');
+      setErrorMessage(error instanceof Error ? error.message : 'Ocorreu um erro inesperado ao processar o documento.');
     } finally {
       setUploading(false);
       setAnalyzing(false);

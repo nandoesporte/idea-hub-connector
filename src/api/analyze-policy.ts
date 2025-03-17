@@ -14,7 +14,7 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
   try {
     console.log('Extraindo texto do PDF:', pdfUrl);
     
-    // Para URLs de exemplo, retornamos um texto simulado
+    // Para URLs de exemplo, retornamos um texto simulado (mantido apenas para casos de teste)
     if (pdfUrl.includes('example.com')) {
       console.log('URL de exemplo detectada, retornando texto simulado');
       return `
@@ -42,7 +42,7 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
       `;
     }
     
-    // Para URLs reais, fazemos o download e processamento do PDF
+    // Download e processamento do PDF
     const response = await axios.get(pdfUrl, { responseType: 'arraybuffer' });
     const pdfData = new Uint8Array(response.data);
     
@@ -81,7 +81,7 @@ export async function analyzePolicyDocument(fileUrl: string): Promise<Partial<Po
     // Instrução para o GPT-4
     const prompt = `
       Analise este texto extraído de um PDF de apólice de seguro e extraia os seguintes dados:
-      1. Número da apólice
+      1. Número da apólice (identificador único da apólice)
       2. Nome do cliente/segurado
       3. Telefone do cliente (se disponível)
       4. Data de emissão (se disponível, senão use a data inicial de vigência)
@@ -90,6 +90,11 @@ export async function analyzePolicyDocument(fileUrl: string): Promise<Partial<Po
       7. Valor da cobertura (valor segurado)
       8. Valor do prêmio (quanto o cliente pagou)
       9. Tipo de seguro (auto, residencial, vida, etc.)
+      
+      É importante identificar corretamente:
+      - O NOME COMPLETO do cliente/segurado
+      - As DATAS DE VIGÊNCIA (início e fim)
+      - O VALOR DA COBERTURA e o VALOR DO PRÊMIO com precisão
       
       Retorne apenas os dados extraídos em formato JSON, com as seguintes chaves:
       policy_number, customer_name, customer_phone, issue_date, expiry_date, insurer, coverage_amount, premium, type.
@@ -102,102 +107,64 @@ export async function analyzePolicyDocument(fileUrl: string): Promise<Partial<Po
       ${pdfText}
     `;
     
-    console.log('Enviando prompt para análise:', prompt.substring(0, 200) + '...');
+    console.log('Enviando prompt para análise via OpenAI');
     
-    // Em ambiente de produção, fazer a chamada real à API do OpenAI
-    // Em ambiente de desenvolvimento ou demonstração, simular a resposta
-    let gptResponse;
+    // Obter a chave da API do OpenAI via variável de ambiente ou Supabase
+    const openaiApiKey = process.env.OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
     
-    if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-      console.log('Modo de desenvolvimento/demonstração: simulando resposta do GPT-4');
-      
-      // Simulação da resposta do GPT-4 baseada no texto do PDF
-      const isPdfFromExample = fileUrl.includes('example.com');
-      
-      // Análise simulada baseada no texto extraído
-      if (isPdfFromExample || pdfText.includes('AP177814')) {
-        gptResponse = {
-          policy_number: "AP177814",
-          customer_name: pdfText.includes('João Silva') ? "João Silva Santos" : "Nome do Cliente Extraído",
-          customer_phone: pdfText.includes('98765-4321') ? "(11) 98765-4321" : "(11) 99999-9999",
-          issue_date: "2025-03-15",
-          expiry_date: "2026-03-15",
-          insurer: pdfText.includes('Confiança') ? "Seguradora Confiança" : "Seguradora Identificada",
-          coverage_amount: pdfText.includes('187.950') ? 187950 : 190844,
-          premium: pdfText.includes('2.876') ? 2876.42 : 2821,
-          type: "auto"
-        };
-      } else {
-        // Tenta extrair informações básicas do texto do PDF
-        const policyNumberMatch = pdfText.match(/(?:apólice|policy|número)[:\s]+([A-Z0-9-]+)/i);
-        const nameMatch = pdfText.match(/(?:segurado|insured|nome)[:\s]+([A-Za-zÀ-ÖØ-öø-ÿ\s]+?)(?:\n|,|\.|telefone)/i);
-        const phoneMatch = pdfText.match(/(?:telefone|phone|contato)[:\s]+([0-9() -]+)/i);
-        const dateMatch = pdfText.match(/(?:vigência|validity|período)[:\s]+(\d{2}\/\d{2}\/\d{4})[^\n]*(\d{2}\/\d{2}\/\d{4})/i);
-        const insurerMatch = pdfText.match(/(?:seguradora|insurer|empresa)[:\s]+([A-Za-zÀ-ÖØ-öø-ÿ\s]+?)(?:\n|,|\.)/i);
-        const coverageMatch = pdfText.match(/(?:valor segurado|insured value|cobertura)[:\s]*R?\$?\s*([0-9.,]+)/i);
-        const premiumMatch = pdfText.match(/(?:prêmio|premium|valor do seguro)[:\s]*R?\$?\s*([0-9.,]+)/i);
-        const typeMatch = pdfText.match(/(?:tipo de seguro|insurance type|modalidade)[:\s]+([A-Za-zÀ-ÖØ-öø-ÿ]+)/i);
-        
-        gptResponse = {
-          policy_number: policyNumberMatch ? policyNumberMatch[1].trim() : `AP${Math.floor(Math.random() * 1000000)}`,
-          customer_name: nameMatch ? nameMatch[1].trim() : "Nome do Cliente Extraído",
-          customer_phone: phoneMatch ? phoneMatch[1].trim() : null,
-          issue_date: dateMatch ? dateMatch[1].split('/').reverse().join('-') : new Date().toISOString().split('T')[0],
-          expiry_date: dateMatch ? dateMatch[2].split('/').reverse().join('-') : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-          insurer: insurerMatch ? insurerMatch[1].trim() : "Seguradora Identificada",
-          coverage_amount: coverageMatch ? parseFloat(coverageMatch[1].replace(/\./g, '').replace(',', '.')) : 150000 + Math.floor(Math.random() * 50000),
-          premium: premiumMatch ? parseFloat(premiumMatch[1].replace(/\./g, '').replace(',', '.')) : 2500 + Math.floor(Math.random() * 1000),
-          type: typeMatch ? typeMatch[1].toLowerCase().trim() : "auto"
-        };
+    if (!openaiApiKey) {
+      throw new Error('Chave de API do OpenAI não encontrada');
+    }
+    
+    // Chamada real à API do OpenAI (GPT-4)
+    const openaiResponse = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um assistente especializado em extrair informações de documentos de apólices de seguro.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json'
+        }
       }
-    } else {
-      // Chamada real à API do OpenAI (GPT-4)
-      const openaiResponse = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: 'Você é um assistente especializado em extrair informações de documentos de apólices de seguro.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.3,
-          max_tokens: 500
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+    );
+    
+    console.log('Resposta recebida do OpenAI');
+    
+    // Extrair a resposta do GPT-4
+    const content = openaiResponse.data.choices[0].message.content;
+    
+    let gptResponse;
+    try {
+      // Tentar fazer parse do JSON da resposta
+      gptResponse = JSON.parse(content);
+    } catch (error) {
+      console.error('Erro ao parsear resposta do GPT-4:', error);
       
-      // Extrair a resposta do GPT-4
-      const content = openaiResponse.data.choices[0].message.content;
-      
-      try {
-        // Tentar fazer parse do JSON da resposta
-        gptResponse = JSON.parse(content);
-      } catch (error) {
-        console.error('Erro ao parsear resposta do GPT-4:', error);
-        
-        // Tentar extrair JSON de dentro do texto
-        const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            gptResponse = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-          } catch (innerError) {
-            console.error('Erro ao parsear JSON extraído:', innerError);
-            throw new Error('Falha ao processar resposta da IA');
-          }
-        } else {
-          throw new Error('Formato de resposta da IA inválido');
+      // Tentar extrair JSON de dentro do texto
+      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          gptResponse = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        } catch (innerError) {
+          console.error('Erro ao parsear JSON extraído:', innerError);
+          throw new Error('Falha ao processar resposta da IA');
         }
+      } else {
+        throw new Error('Formato de resposta da IA inválido');
       }
     }
     
@@ -226,28 +193,7 @@ export async function analyzePolicyDocument(fileUrl: string): Promise<Partial<Po
     };
   } catch (error) {
     console.error('Erro na análise do documento:', error);
-    
-    // Em caso de erro, retornar dados padrão
-    const today = new Date();
-    const expiryDate = new Date(today);
-    expiryDate.setFullYear(today.getFullYear() + 1);
-    
-    const reminderDate = new Date(expiryDate);
-    reminderDate.setDate(reminderDate.getDate() - 30);
-    
-    return {
-      policy_number: `AP${Math.floor(Math.random() * 1000000)}`,
-      customer_name: 'Nome não identificado',
-      customer_phone: '',
-      issue_date: today,
-      expiry_date: expiryDate,
-      reminder_date: reminderDate,
-      insurer: 'Seguradora não identificada',
-      coverage_amount: 150000,
-      premium: 2500,
-      type: 'auto',
-      notes: 'Falha ao extrair informações. Dados padrão gerados pelo sistema.'
-    };
+    throw error;
   }
 }
 
@@ -274,7 +220,7 @@ export async function analyzePolicy(req, res) {
     console.error('Erro ao analisar documento:', error);
     return res.status(500).json({
       success: false,
-      error: 'Falha ao analisar o documento'
+      error: 'Falha ao analisar o documento: ' + (error.message || 'Erro desconhecido')
     });
   }
 }
