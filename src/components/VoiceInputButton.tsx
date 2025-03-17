@@ -24,6 +24,9 @@ const VoiceInputButton = () => {
   const lastTranscriptTimeRef = useRef<number>(0);
   const lastTranscriptValueRef = useRef<string>('');
   const debounceTimeoutRef = useRef<number | null>(null);
+  
+  // New ref to store all received transcripts for better mobile processing
+  const allTranscriptsRef = useRef<string[]>([]);
 
   useEffect(() => {
     // Cleanup on unmount
@@ -42,25 +45,54 @@ const VoiceInputButton = () => {
     };
   }, []);
 
-  // Function to prevent duplicate transcriptions
-  const shouldUpdateTranscript = (newText: string): boolean => {
+  // Enhanced function to prevent duplicate transcriptions and clean up text
+  const processTranscriptText = (newText: string): string => {
     const currentTime = Date.now();
     
     // If the same text was received within the timeframe, ignore it
     // Mobile needs a longer timeframe due to slower processing
-    const timeThreshold = isMobile ? 1000 : 500;
+    const timeThreshold = isMobile ? 1500 : 500;
     
     if (
       newText === lastTranscriptValueRef.current && 
       currentTime - lastTranscriptTimeRef.current < timeThreshold
     ) {
-      return false;
+      return transcript; // Return the existing transcript instead of the duplicate
     }
     
     // Update tracking refs
     lastTranscriptValueRef.current = newText;
     lastTranscriptTimeRef.current = currentTime;
-    return true;
+    
+    // Clean up the text - more aggressive cleaning for mobile
+    if (isMobile) {
+      // For mobile, collect all transcripts and process them together
+      allTranscriptsRef.current.push(newText);
+      
+      // Take the longest transcript as it's likely the most complete
+      const bestTranscript = [...allTranscriptsRef.current].sort((a, b) => b.length - a.length)[0];
+      
+      // Remove common duplicate words/phrases that occur in mobile transcription
+      let cleaned = bestTranscript;
+      
+      // Replace repeated words that are common in mobile speech recognition
+      cleaned = cleaned.replace(/\b(\w+)\b\s+\1\b/g, '$1');
+      
+      // Remove filler words that are often misrecognized
+      const fillerWords = ['é', 'eh', 'uh', 'estou', 'esto', 'estava', 'tipo', 'assim'];
+      fillerWords.forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b\\s*`, 'gi');
+        cleaned = cleaned.replace(regex, '');
+      });
+      
+      // Remove extra spaces
+      cleaned = cleaned.replace(/\s+/g, ' ').trim();
+      
+      return cleaned;
+    }
+    
+    // For desktop, just do basic duplicate word removal
+    return newText.replace(/(\b\w+\b)(\s+\1\b)+/g, '$1').trim();
   };
 
   const startListening = () => {
@@ -84,6 +116,7 @@ const VoiceInputButton = () => {
       setEditMode(false);
       lastTranscriptValueRef.current = '';
       lastTranscriptTimeRef.current = 0;
+      allTranscriptsRef.current = []; // Reset the collection of transcripts
       
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
@@ -97,7 +130,7 @@ const VoiceInputButton = () => {
         }
         
         // Adjust debounce timing for mobile devices
-        const debounceTime = isMobile ? 300 : 100;
+        const debounceTime = isMobile ? 500 : 100;
         
         debounceTimeoutRef.current = window.setTimeout(() => {
           let interimTranscript = '';
@@ -106,25 +139,19 @@ const VoiceInputButton = () => {
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             
-            // Ajustado para ser mais tolerante em dispositivos móveis
             if (event.results[i].isFinal) {
-              if (isMobile || shouldUpdateTranscript(transcript)) {
-                finalTranscript += transcript;
-                finalTranscriptRef.current += transcript;
-              }
+              finalTranscript += transcript;
+              finalTranscriptRef.current += transcript;
             } else {
-              // Para dispositivos móveis, vamos ser mais liberais com resultados intermediários
               interimTranscript += transcript;
             }
           }
 
           // Only update UI if there's something meaningful to display
           if (finalTranscriptRef.current || interimTranscript) {
-            const displayText = finalTranscriptRef.current + interimTranscript;
-            // Remove common duplicate patterns - relaxed for mobile
-            const cleanedText = isMobile 
-              ? displayText 
-              : displayText.replace(/(\b\w+\b)(\s+\1\b)+/g, '$1');
+            const rawText = finalTranscriptRef.current + interimTranscript;
+            // Process the transcript to clean it up
+            const cleanedText = processTranscriptText(rawText);
             setTranscript(cleanedText);
             console.log('Speech recognition result:', cleanedText);
           }
@@ -143,14 +170,8 @@ const VoiceInputButton = () => {
         
         // If we have a transcript, enter edit mode
         if (finalTranscriptRef.current && finalTranscriptRef.current.trim() !== '') {
-          // Clean up any duplicates in the final transcript
-          let cleanedFinalTranscript = finalTranscriptRef.current;
-          
-          // Don't apply aggressive cleaning on mobile
-          if (!isMobile) {
-            cleanedFinalTranscript = finalTranscriptRef.current.replace(/(\b\w+\b)(\s+\1\b)+/g, '$1');
-          }
-          
+          // Process the final transcript one more time to ensure it's clean
+          const cleanedFinalTranscript = processTranscriptText(finalTranscriptRef.current);
           finalTranscriptRef.current = cleanedFinalTranscript;
           
           setEditMode(true);
