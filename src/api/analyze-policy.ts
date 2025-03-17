@@ -44,16 +44,30 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
     return textContent;
     */
     
-    // For now, just return mock data that matches the real data requested
-    return `APÓLICE DE SEGURO
-      NÚMERO: AP123456
-      SEGURADO: João Silva
-      TELEFONE: (11) 98765-4321
-      SEGURADORA: Seguradora Brasil
-      VIGÊNCIA: 15/03/2025 a 15/03/2026
-      VALOR DE COBERTURA: R$ 100.000,00
-      PRÊMIO TOTAL: R$ 1.200,00
-      TIPO: AUTOMÓVEL`;
+    // Para PDFs reais, podemos usar o pacote pdfjs-dist que já está instalado
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
+      
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+      
+      // Em produção, precisamos carregar o PDF a partir da URL
+      const loadingTask = pdfjsLib.getDocument(pdfUrl);
+      const pdf = await loadingTask.promise;
+      let textContent = '';
+
+      for(let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        textContent += content.items.map(item => item.str).join(' ');
+      }
+      
+      console.log('Texto extraído do PDF real:', textContent.substring(0, 200) + '...');
+      return textContent;
+    } catch (pdfError) {
+      console.error('Erro ao processar PDF com pdfjs:', pdfError);
+      throw new Error('Falha ao processar PDF: ' + pdfError.message);
+    }
   } catch (error) {
     console.error('Erro na extração de texto do PDF:', error);
     throw new Error('Falha ao extrair texto do PDF');
@@ -69,7 +83,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     
     // 1. Extract text from PDF
     const pdfText = await extractTextFromPdf(fileUrl);
-    console.log('Texto extraído do PDF:', pdfText);
+    console.log('Texto extraído do PDF:', pdfText.substring(0, 500) + '...');
     
     // 2. Use Groq AI to analyze the document
     console.log('Enviando prompt para análise via Groq');
@@ -110,6 +124,9 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
               premium (valor do prêmio, como número), 
               type (tipo do seguro: auto, vida, residencial, empresarial, etc).
 
+              Para datas, converta o formato brasileiro (DD/MM/AAAA) para ISO (AAAA-MM-DD).
+              Para valores monetários, extraia apenas o número (exemplo: de "R$ 1.234,56" para 1234.56)
+
               Texto da apólice:
               ${pdfText}`
             }
@@ -140,7 +157,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
         throw new Error('A resposta da Groq não está em formato JSON válido');
       }
       
-      // Process the data, but don't overwrite with hardcoded values
+      // Process the data - ensure all fields are converted to the proper format
       if (extractedData.issue_date) {
         extractedData.issue_date = new Date(extractedData.issue_date);
       }
@@ -151,14 +168,35 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       
       // Convert string numbers to actual numbers if needed
       if (typeof extractedData.coverage_amount === 'string') {
-        extractedData.coverage_amount = parseFloat(extractedData.coverage_amount.replace(/[^\d.,]/g, '').replace(',', '.'));
+        extractedData.coverage_amount = parseFloat(
+          extractedData.coverage_amount
+            .replace(/[^\d.,]/g, '')  // Remove tudo exceto números, pontos e vírgulas
+            .replace(/\./g, '')       // Remove pontos de separação de milhares
+            .replace(',', '.')        // Troca vírgulas por pontos
+        );
       }
       
       if (typeof extractedData.premium === 'string') {
-        extractedData.premium = parseFloat(extractedData.premium.replace(/[^\d.,]/g, '').replace(',', '.'));
+        extractedData.premium = parseFloat(
+          extractedData.premium
+            .replace(/[^\d.,]/g, '')  // Remove tudo exceto números, pontos e vírgulas
+            .replace(/\./g, '')       // Remove pontos de separação de milhares
+            .replace(',', '.')        // Troca vírgulas por pontos
+        );
       }
       
-      return extractedData;
+      // Certifique-se de que todos os valores sejam do tipo correto
+      return {
+        policy_number: extractedData.policy_number || '',
+        customer_name: extractedData.customer_name || '',
+        customer_phone: extractedData.customer_phone || '',
+        insurer: extractedData.insurer || '',
+        issue_date: extractedData.issue_date || new Date(),
+        expiry_date: extractedData.expiry_date || new Date(),
+        coverage_amount: isNaN(extractedData.coverage_amount) ? 0 : extractedData.coverage_amount,
+        premium: isNaN(extractedData.premium) ? 0 : extractedData.premium,
+        type: extractedData.type || 'outro'
+      };
     } catch (error) {
       console.error('Erro ao chamar a API da Groq:', error);
       throw error;
