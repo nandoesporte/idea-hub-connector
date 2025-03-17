@@ -148,17 +148,21 @@ $$ LANGUAGE plpgsql;
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'daily-policy-check') THEN
-        SELECT cron.unschedule('daily-policy-check');
+        PERFORM cron.unschedule('daily-policy-check');
     END IF;
 END
 $$;
 
 -- Create a cron job to run the expiration check daily
-SELECT cron.schedule(
-    'daily-policy-check',
-    '0 9 * * *',  -- Run at 9 AM every day
-    $$SELECT public.check_policy_expirations()$$
-);
+DO $$
+BEGIN
+    PERFORM cron.schedule(
+        'daily-policy-check',
+        '0 9 * * *',  -- Run at 9 AM every day
+        $$SELECT public.check_policy_expirations()$$
+    );
+END
+$$;
 
 -- Add statements to create or check for 'documents' bucket explicitly
 DO $$
@@ -226,4 +230,3 @@ GRANT USAGE ON SCHEMA storage TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
 GRANT SELECT ON storage.objects TO public;
 GRANT SELECT ON storage.objects TO anon;
-
