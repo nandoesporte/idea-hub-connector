@@ -140,8 +140,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
         throw new Error('A resposta da Groq não está em formato JSON válido');
       }
       
-      // Sempre use os dados extraídos diretamente, sem substituir por dados fictícios
-      // Convert string dates to Date objects
+      // Process the data, but don't overwrite with hardcoded values
       if (extractedData.issue_date) {
         extractedData.issue_date = new Date(extractedData.issue_date);
       }

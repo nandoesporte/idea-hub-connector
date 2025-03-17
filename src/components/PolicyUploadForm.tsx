@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { uploadPolicyAttachment, createPolicy, runInsurancePoliciesMigration } from '@/lib/policyService';
 import { analyzePolicyDocument } from '@/api/analyze-policy';
+import { createNotification } from '@/lib/notificationService';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,24 +118,30 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       
       // 3. Criar a apólice com os dados extraídos
       if (policyData) {
-        // Use os dados exatos extraídos pelo Groq, fornecendo apenas valores padrão se absolutamente necessário
-        const policyToCreate: Omit<Policy, "id" | "created_at" | "updated_at" | "reminder_sent"> = {
-          user_id: user.id,
-          policy_number: policyData.policy_number || '', // Campo obrigatório, mas preservamos vazio se não existir
-          customer_name: policyData.customer_name || '',
-          customer_phone: policyData.customer_phone || '',
-          issue_date: policyData.issue_date || new Date(),
-          expiry_date: policyData.expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-          insurer: policyData.insurer || '',
-          coverage_amount: policyData.coverage_amount || 0,
-          premium: policyData.premium || 0,
-          status: 'active',
-          type: policyData.type || '',
-          attachment_url: fileUrl,
-          notes: 'Dados extraídos exatamente como constam na apólice via IA'
-        };
-        
         try {
+          // Calcular data de lembrete (30 dias antes do vencimento)
+          const expiryDate = policyData.expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1));
+          const reminderDate = new Date(expiryDate);
+          reminderDate.setDate(reminderDate.getDate() - 30);
+          
+          // Usar apenas os dados exatos extraídos pelo Groq
+          const policyToCreate: Omit<Policy, "id" | "created_at" | "updated_at" | "reminder_sent"> = {
+            user_id: user.id,
+            policy_number: policyData.policy_number || '',
+            customer_name: policyData.customer_name || '',
+            customer_phone: policyData.customer_phone || '',
+            issue_date: policyData.issue_date || new Date(),
+            expiry_date: expiryDate,
+            insurer: policyData.insurer || '',
+            coverage_amount: policyData.coverage_amount || 0,
+            premium: policyData.premium || 0,
+            status: 'active',
+            type: policyData.type || '',
+            attachment_url: fileUrl,
+            notes: 'Dados extraídos exatamente como constam na apólice via IA'
+          };
+          
+          // Criar a apólice no banco de dados
           const result = await createPolicy(policyToCreate);
           
           if (result === null) {
@@ -144,6 +151,25 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             setErrorMessage('A tabela de apólices não existe no banco de dados. Clique no botão abaixo para criar a tabela.');
             setAnalyzing(false);
             return;
+          }
+          
+          // 4. Criar notificação de lembrete
+          if (result.id) {
+            try {
+              await createNotification({
+                user_id: user.id,
+                title: 'Nova apólice cadastrada',
+                message: `A apólice ${policyData.policy_number} da ${policyData.insurer} foi cadastrada com sucesso. Um lembrete será enviado 30 dias antes do vencimento.`,
+                type: 'success',
+                related_entity_type: 'policy',
+                related_entity_id: result.id
+              });
+              
+              console.log('Notificação de nova apólice criada com sucesso');
+            } catch (notifError) {
+              console.error('Erro ao criar notificação de nova apólice:', notifError);
+              // Não interrompe o fluxo se a notificação falhar
+            }
           }
           
           setProgress('complete');
