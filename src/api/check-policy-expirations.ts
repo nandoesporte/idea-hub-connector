@@ -3,10 +3,13 @@
  * API endpoint para verificar apólices próximas do vencimento e enviar notificações
  */
 
+import { supabase } from '@/lib/supabase';
+
 export default async function handler(req, res) {
   try {
     // Verificar se o usuário está autenticado
-    if (!req.user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
       return res.status(401).json({
         success: false,
         error: 'Usuário não autenticado'
@@ -28,7 +31,7 @@ export default async function handler(req, res) {
     }
     
     // Em produção, chamar a função edge
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseUrl = 'https://otzytxkynqcywtqgpgmn.supabase.co';
     if (!supabaseUrl) {
       throw new Error('URL do Supabase não configurada');
     }
@@ -37,7 +40,7 @@ export default async function handler(req, res) {
     const functionSecret = import.meta.env.VITE_FUNCTION_SECRET;
     
     if (!functionSecret) {
-      throw new Error('Segredo da função edge não configurado');
+      throw new Error('Segredo da função edge não configurado. Defina VITE_FUNCTION_SECRET nas variáveis de ambiente.');
     }
     
     const response = await fetch(functionUrl, {
