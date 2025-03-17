@@ -1,4 +1,3 @@
-
 import { Policy } from '@/types';
 import { supabase } from './supabase';
 import { toast } from 'sonner';
@@ -168,7 +167,7 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
       console.error('Error checking storage buckets:', bucketError);
       
       // If this is a permission error, we need to run the migration
-      if (bucketError.code === 'PGRST301' || bucketError.message?.includes('permission denied')) {
+      if (bucketError.message?.includes('permission denied')) {
         console.log('Permission error accessing buckets. Attempting to run migration...');
         const migrationResult = await runInsurancePoliciesMigration();
         
