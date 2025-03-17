@@ -59,7 +59,12 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
       for(let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        textContent += content.items.map(item => item.str).join(' ');
+        
+        // Corrigindo o código para lidar com diferentes tipos de itens TextItem e TextMarkedContent
+        textContent += content.items.map(item => {
+          // Verificar se o item é do tipo TextItem que possui a propriedade 'str'
+          return 'str' in item ? item.str : '';
+        }).join(' ');
       }
       
       console.log('Texto extraído do PDF real:', textContent.substring(0, 200) + '...');
