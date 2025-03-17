@@ -17,6 +17,11 @@ const VoiceInputButton = () => {
   const recognitionRef = useRef<InstanceType<SpeechRecognitionType> | null>(null);
   const finalTranscriptRef = useRef('');
   const { createEventFromVoiceCommand, processingCommand } = useVoiceCommandEvents();
+  
+  // New refs to track last transcript and prevent duplicates
+  const lastTranscriptTimeRef = useRef<number>(0);
+  const lastTranscriptValueRef = useRef<string>('');
+  const debounceTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Cleanup on unmount
@@ -27,8 +32,31 @@ const VoiceInputButton = () => {
         recognitionRef.current.onerror = null;
         recognitionRef.current.stop();
       }
+      
+      // Clear any pending timeouts
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
     };
   }, []);
+
+  // Function to prevent duplicate transcriptions
+  const shouldUpdateTranscript = (newText: string): boolean => {
+    const currentTime = Date.now();
+    
+    // If the same text was received within 500ms, ignore it
+    if (
+      newText === lastTranscriptValueRef.current && 
+      currentTime - lastTranscriptTimeRef.current < 500
+    ) {
+      return false;
+    }
+    
+    // Update tracking refs
+    lastTranscriptValueRef.current = newText;
+    lastTranscriptTimeRef.current = currentTime;
+    return true;
+  };
 
   const startListening = () => {
     try {
@@ -44,29 +72,54 @@ const VoiceInputButton = () => {
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = 'pt-BR';
 
-      // Reset transcript
+      // Reset transcript and tracking refs
       setTranscript('');
       finalTranscriptRef.current = '';
       setEditedTranscript('');
       setEditMode(false);
+      lastTranscriptValueRef.current = '';
+      lastTranscriptTimeRef.current = 0;
+      
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+      }
       
       recognitionRef.current.onresult = (event) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-            finalTranscriptRef.current += transcript;
-          } else {
-            interimTranscript += transcript;
-          }
+        // Debounce the transcript update to prevent rapidly changing values
+        if (debounceTimeoutRef.current) {
+          clearTimeout(debounceTimeoutRef.current);
         }
+        
+        debounceTimeoutRef.current = window.setTimeout(() => {
+          let interimTranscript = '';
+          let finalTranscript = '';
 
-        const displayText = finalTranscriptRef.current + interimTranscript;
-        setTranscript(displayText);
-        console.log('Speech recognition result:', displayText);
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            
+            // Check if this is a duplicate result
+            if (event.results[i].isFinal) {
+              // For final results, we want to be more careful about duplicates
+              if (shouldUpdateTranscript(transcript)) {
+                finalTranscript += transcript;
+                finalTranscriptRef.current += transcript;
+              }
+            } else {
+              // For interim results, just append them
+              interimTranscript += transcript;
+            }
+          }
+
+          // Only update UI if there's something meaningful to display
+          if (finalTranscriptRef.current || interimTranscript) {
+            const displayText = finalTranscriptRef.current + interimTranscript;
+            // Remove common duplicate patterns
+            const cleanedText = displayText.replace(/(\b\w+\b)(\s+\1\b)+/g, '$1');
+            setTranscript(cleanedText);
+            console.log('Speech recognition result:', cleanedText);
+          }
+        }, 100); // Short delay to consolidate rapid updates
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -81,8 +134,12 @@ const VoiceInputButton = () => {
         
         // If we have a transcript, enter edit mode
         if (finalTranscriptRef.current && finalTranscriptRef.current.trim() !== '') {
+          // Clean up any duplicates in the final transcript
+          const cleanedFinalTranscript = finalTranscriptRef.current.replace(/(\b\w+\b)(\s+\1\b)+/g, '$1');
+          finalTranscriptRef.current = cleanedFinalTranscript;
+          
           setEditMode(true);
-          setEditedTranscript(finalTranscriptRef.current);
+          setEditedTranscript(cleanedFinalTranscript);
         } else {
           toast.warning('Nenhum comando de voz detectado');
         }
