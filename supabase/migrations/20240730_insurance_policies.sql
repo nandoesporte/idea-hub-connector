@@ -88,72 +88,8 @@ USING (auth.uid() = user_id);
 -- Grant access to authenticated users
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.insurance_policies TO authenticated;
 
-------------------------------------------------------------------------
--- Create and configure storage bucket with proper permissions - ADMIN ONLY
-------------------------------------------------------------------------
-
--- NOTE: The bucket creation should be run by an administrator or during 
--- database setup, not by regular users. Regular users cannot create buckets.
-
--- First check if the extension is available
+-- First check if the UUID extension is available
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Bucket creation and policy setup is left here for documentation, but
--- should be executed via an admin command instead of via RLS policy.
--- (This will be executed during migration via the API endpoint)
-
--- Clear existing policies for the documents bucket
-DO $$
-BEGIN
-    -- Delete policies for documents bucket if they exist
-    IF EXISTS (
-        SELECT 1 FROM pg_policies 
-        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents User Access'
-    ) THEN
-        DROP POLICY "Documents User Access" ON storage.objects;
-    END IF;
-    
-    IF EXISTS (
-        SELECT 1 FROM pg_policies 
-        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents Public Access'
-    ) THEN
-        DROP POLICY "Documents Public Access" ON storage.objects;
-    END IF;
-END
-$$;
-
--- Policy for authenticated users to manage their own files
-CREATE POLICY "Documents User Access"
-ON storage.objects
-FOR ALL
-TO authenticated
-USING (
-  bucket_id = 'documents' 
-  AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
-)
-WITH CHECK (
-  bucket_id = 'documents' 
-  AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
-);
-
--- Policy for public access to read files
-CREATE POLICY "Documents Public Access"
-ON storage.objects
-FOR SELECT
-TO public
-USING (
-  bucket_id = 'documents'
-);
-
--- Grant usage on storage schema
-GRANT USAGE ON SCHEMA storage TO public;
-GRANT USAGE ON SCHEMA storage TO authenticated;
-GRANT USAGE ON SCHEMA storage TO anon;
-
--- Grant permissions on objects to authenticated users
-GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
-GRANT SELECT ON storage.objects TO public;
-GRANT SELECT ON storage.objects TO anon;
 
 -- Policy check function
 CREATE OR REPLACE FUNCTION public.check_policy_expirations()
@@ -223,3 +159,71 @@ SELECT cron.schedule(
     '0 9 * * *',  -- Run at 9 AM every day
     $$SELECT public.check_policy_expirations()$$
 );
+
+-- Add statements to create or check for 'documents' bucket explicitly
+DO $$
+BEGIN
+    -- Check if the bucket exists
+    IF NOT EXISTS (
+        SELECT 1 FROM storage.buckets WHERE name = 'documents'
+    ) THEN
+        -- Insert the bucket if it doesn't exist
+        INSERT INTO storage.buckets (id, name, public, avif_autodetection, file_size_limit, allowed_mime_types)
+        VALUES ('documents', 'documents', TRUE, FALSE, 10485760, '{image/png,image/jpeg,image/jpg,application/pdf}');
+    END IF;
+END
+$$;
+
+-- Clear existing policies for the documents bucket
+DO $$
+BEGIN
+    -- Delete policies for documents bucket if they exist
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents User Access'
+    ) THEN
+        DROP POLICY "Documents User Access" ON storage.objects;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents Public Access'
+    ) THEN
+        DROP POLICY "Documents Public Access" ON storage.objects;
+    END IF;
+END
+$$;
+
+-- Policy for authenticated users to manage their own files
+CREATE POLICY "Documents User Access"
+ON storage.objects
+FOR ALL
+TO authenticated
+USING (
+  bucket_id = 'documents' 
+  AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
+)
+WITH CHECK (
+  bucket_id = 'documents' 
+  AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
+);
+
+-- Policy for public access to read files
+CREATE POLICY "Documents Public Access"
+ON storage.objects
+FOR SELECT
+TO public
+USING (
+  bucket_id = 'documents'
+);
+
+-- Grant usage on storage schema
+GRANT USAGE ON SCHEMA storage TO public;
+GRANT USAGE ON SCHEMA storage TO authenticated;
+GRANT USAGE ON SCHEMA storage TO anon;
+
+-- Grant permissions on objects to authenticated users
+GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
+GRANT SELECT ON storage.objects TO public;
+GRANT SELECT ON storage.objects TO anon;
+

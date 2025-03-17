@@ -60,6 +60,7 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
       toast.success('Tabela de apólices criada com sucesso!');
     }
 
+    // Try again after migration
     const { data, error } = await supabase
       .from('insurance_policies')
       .insert([
@@ -165,36 +166,94 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
     
     if (bucketError) {
       console.error('Error checking storage buckets:', bucketError);
-      throw new Error('Erro ao verificar buckets de armazenamento');
+      
+      // If this is a permission error, we need to run the migration
+      if (bucketError.code === 'PGRST301' || bucketError.message?.includes('permission denied')) {
+        console.log('Permission error accessing buckets. Attempting to run migration...');
+        const migrationResult = await runInsurancePoliciesMigration();
+        
+        if (!migrationResult.success) {
+          toast.error('Não foi possível acessar o armazenamento. Necessário executar migrações no banco de dados.');
+          throw new Error('Erro de permissão ao acessar buckets de armazenamento');
+        }
+        
+        // Try checking buckets again after migration
+        const { data: bucketsAfterMigration, error: bucketErrorAfterMigration } = await supabase.storage.listBuckets();
+        
+        if (bucketErrorAfterMigration) {
+          console.error('Still having error checking storage buckets after migration:', bucketErrorAfterMigration);
+          throw new Error('Erro ao verificar buckets de armazenamento após migração');
+        }
+        
+        if (!bucketsAfterMigration.some(bucket => bucket.name === 'documents')) {
+          console.error('Documents bucket still does not exist after migration');
+          toast.error('Bucket de documentos não encontrado mesmo após migração. Contate o administrador.');
+          throw new Error('Bucket de documentos não encontrado após migração');
+        }
+      } else {
+        throw new Error('Erro ao verificar buckets de armazenamento');
+      }
     }
     
-    const bucketExists = buckets.some(bucket => bucket.name === 'documents');
+    const bucketExists = buckets && buckets.some(bucket => bucket.name === 'documents');
     
-    // If bucket doesn't exist, we handle it gracefully instead of trying to create it
-    // Creating buckets requires admin privileges which regular users don't have
     if (!bucketExists) {
-      console.log('Documents bucket does not exist and cannot be created by regular users');
+      console.log('Documents bucket does not exist. Attempting to run migration...');
+      const migrationResult = await runInsurancePoliciesMigration();
       
-      // In production environment
-      if (!import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE !== 'true') {
-        toast.error('O bucket de armazenamento não está configurado no sistema. Contate o administrador.');
-        throw new Error('Bucket de armazenamento não configurado');
-      } 
-      // In development or demo mode, simulate success
-      else {
-        console.log('DEV/DEMO mode - simulating successful file upload');
-        // Return a mock URL for development/demo purposes
-        return `https://example.com/mock-document-${Date.now()}.pdf`;
+      if (!migrationResult.success) {
+        // In production environment
+        if (!import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE !== 'true') {
+          toast.error('O bucket de armazenamento não está configurado no sistema. Contate o administrador.');
+          throw new Error('Bucket de armazenamento não configurado');
+        } 
+        // In development or demo mode, simulate success
+        else {
+          console.log('DEV/DEMO mode - simulating successful file upload');
+          // Return a mock URL for development/demo purposes
+          return `https://example.com/mock-document-${Date.now()}.pdf`;
+        }
+      }
+      
+      // Check again if bucket exists after migration
+      const { data: bucketsAfterMigration, error: bucketErrorAfterMigration } = await supabase.storage.listBuckets();
+      
+      if (bucketErrorAfterMigration) {
+        console.error('Error checking storage buckets after migration:', bucketErrorAfterMigration);
+        throw new Error('Erro ao verificar buckets de armazenamento após migração');
+      }
+      
+      if (!bucketsAfterMigration.some(bucket => bucket.name === 'documents')) {
+        console.error('Documents bucket still does not exist after migration');
+        
+        // In production environment
+        if (!import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE !== 'true') {
+          toast.error('O bucket de armazenamento não está configurado no sistema. Contate o administrador.');
+          throw new Error('Bucket de armazenamento não configurado');
+        } 
+        // In development or demo mode, simulate success
+        else {
+          console.log('DEV/DEMO mode - simulating successful file upload');
+          // Return a mock URL for development/demo purposes
+          return `https://example.com/mock-document-${Date.now()}.pdf`;
+        }
       }
     }
 
-    // Proceed with upload if bucket exists
+    // Proceed with upload now that we've verified the bucket exists
     const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filePath, file);
 
     if (uploadError) {
       console.error('Error uploading file:', uploadError);
+      
+      // If this is a permission error or bucket not found
+      if (uploadError.message?.includes('permission denied') || uploadError.message?.includes('not found')) {
+        toast.error('Problema de permissão no armazenamento. Tente novamente após executar a migração.');
+        throw new Error('Erro de permissão ao fazer upload do arquivo');
+      }
+      
       throw new Error(uploadError.message);
     }
 
@@ -306,6 +365,8 @@ export const checkPolicyReminders = async (userId: string) => {
 
 export const runInsurancePoliciesMigration = async () => {
   try {
+    console.log('Attempting to run insurance policies migration...');
+    
     const response = await fetch('/api/run-migration', {
       method: 'POST',
       headers: {
@@ -324,10 +385,19 @@ export const runInsurancePoliciesMigration = async () => {
         return { success: true };
       }
       
-      return { success: false, error: 'Falha ao executar migração' };
+      let errorMessage = 'Falha ao executar migração';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        console.error('Error parsing error response:', e);
+      }
+      
+      return { success: false, error: errorMessage };
     }
     
     const result = await response.json();
+    console.log('Migration result:', result);
     return result;
   } catch (error) {
     console.error('Error running migration:', error);
@@ -337,6 +407,6 @@ export const runInsurancePoliciesMigration = async () => {
       return { success: true };
     }
     
-    return { success: false, error: 'Erro ao executar migração' };
+    return { success: false, error: 'Erro ao executar migração: ' + (error.message || error) };
   }
 };
