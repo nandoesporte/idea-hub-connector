@@ -412,3 +412,52 @@ export const runInsurancePoliciesMigration = async () => {
     return { success: false, error: 'Erro ao executar migração: ' + (error.message || error) };
   }
 };
+
+/**
+ * Verifica manualmente as apólices próximas do vencimento
+ * Isso pode ser útil para fins de teste ou para forçar a verificação fora do cronograma
+ */
+export const manualCheckPolicyExpirations = async () => {
+  try {
+    console.log('Verificando manualmente apólices próximas do vencimento...');
+    
+    // Em ambiente de desenvolvimento, simular o sucesso
+    if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+      console.log('Ambiente de desenvolvimento - verificação simulada com sucesso');
+      toast.success('Verificação de apólices realizada com sucesso');
+      return { success: true };
+    }
+    
+    // Em produção, chamar a API
+    const response = await fetch('/api/check-policy-expirations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Falha ao verificar apólices');
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      const { processed, notifications } = result.data;
+      const message = notifications > 0 
+        ? `${notifications} notificações enviadas para ${processed} apólices`
+        : 'Nenhuma apólice precisando de notificação foi encontrada';
+      
+      toast.success(message);
+      return { success: true, data: result.data };
+    } else {
+      throw new Error(result.error || 'Falha ao verificar apólices');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar apólices:', error);
+    toast.error('Não foi possível verificar as apólices');
+    
+    return { success: false, error: error.message };
+  }
+};

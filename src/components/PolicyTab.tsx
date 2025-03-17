@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { Policy } from '@/types';
 import { 
   fetchPolicies, deletePolicy, 
   uploadPolicyAttachment, checkPolicyReminders,
-  runInsurancePoliciesMigration
+  runInsurancePoliciesMigration, manualCheckPolicyExpirations
 } from '@/lib/policyService';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -13,7 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { 
   FileText, Upload, Trash2, AlertTriangle, CheckCircle, 
   Calendar, Download, PlusCircle, Loader2, FileLock,
-  AlertTriangle as AlertIcon, DatabaseZap
+  AlertTriangle as AlertIcon, DatabaseZap, Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,6 +47,7 @@ const PolicyTab = () => {
   const [error, setError] = useState<string | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
+  const [checkingExpirations, setCheckingExpirations] = useState(false);
   
   useEffect(() => {
     if (user) {
@@ -113,6 +113,24 @@ const PolicyTab = () => {
       toast.error('Erro ao criar tabela de apólices');
     } finally {
       setIsMigrating(false);
+    }
+  };
+
+  const handleCheckExpirations = async () => {
+    try {
+      setCheckingExpirations(true);
+      toast.info('Verificando apólices próximas do vencimento...');
+      
+      const result = await manualCheckPolicyExpirations();
+      
+      if (!result.success) {
+        toast.error('Erro ao verificar apólices');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar vencimentos:', error);
+      toast.error('Erro ao verificar vencimentos');
+    } finally {
+      setCheckingExpirations(false);
     }
   };
 
@@ -211,25 +229,40 @@ const PolicyTab = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Minhas Apólices</h2>
-        <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Nova Apólice
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Cadastrar Nova Apólice</DialogTitle>
-              <DialogDescription>
-                Faça upload do documento da apólice para análise automática com IA.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <PolicyUploadForm onSuccess={handleUploadSuccess} />
-            </div>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline"
+            onClick={handleCheckExpirations}
+            disabled={checkingExpirations}
+            className="gap-2"
+          >
+            {checkingExpirations ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
+            Verificar Vencimentos
+          </Button>
+          <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Nova Apólice
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Cadastrar Nova Apólice</DialogTitle>
+                <DialogDescription>
+                  Faça upload do documento da apólice para análise automática com IA.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <PolicyUploadForm onSuccess={handleUploadSuccess} />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {policies.length === 0 ? (
