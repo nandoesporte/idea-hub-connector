@@ -53,7 +53,7 @@ async function executeInsurancePoliciesMigration() {
   // In a real implementation, you would use the supabase client with admin privileges
   
   if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-    console.log('Modo DEV/DEMO - simulando migração bem-sucedida');
+    console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
     return true;
   }
   
@@ -85,7 +85,7 @@ async function executeInsurancePoliciesMigration() {
 async function createDocumentsBucket() {
   // In development/demo mode, we simulate success
   if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-    console.log('Modo DEV/DEMO - simulando criação de bucket');
+    console.log('Ambiente de desenvolvimento - criação de bucket simulada');
     return true;
   }
   

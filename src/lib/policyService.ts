@@ -209,9 +209,9 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
         } 
         // In development or demo mode, simulate success
         else {
-          console.log('DEV/DEMO mode - simulating successful file upload');
-          // Return a mock URL for development/demo purposes
-          return `https://example.com/mock-document-${Date.now()}.pdf`;
+          console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
+          // Return a mock URL for development purposes
+          return `https://example.com/documento-simulado-${Date.now()}.pdf`;
         }
       }
       
@@ -233,9 +233,9 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
         } 
         // In development or demo mode, simulate success
         else {
-          console.log('DEV/DEMO mode - simulating successful file upload');
-          // Return a mock URL for development/demo purposes
-          return `https://example.com/mock-document-${Date.now()}.pdf`;
+          console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
+          // Return a mock URL for development purposes
+          return `https://example.com/documento-simulado-${Date.now()}.pdf`;
         }
       }
     }
@@ -381,7 +381,7 @@ export const runInsurancePoliciesMigration = async () => {
       console.error('Failed to run migration:', response.statusText);
       
       if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-        console.log('DEV mode - simulating successful migration');
+        console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
         return { success: true };
       }
       
@@ -403,7 +403,7 @@ export const runInsurancePoliciesMigration = async () => {
     console.error('Error running migration:', error);
     
     if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-      console.log('DEV mode - simulating successful migration');
+      console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
       return { success: true };
     }
     
