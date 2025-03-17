@@ -110,11 +110,30 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     // 2. Use OpenAI API to analyze the document
     console.log('Enviando prompt para análise via GPT-4');
     
-    // OpenAI API key
-    const apiKey = "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"; // Temporary key for demo
+    // Get the OpenAI API key from environment variables
+    // In production, this should come from server environment variables
+    // For development, we'll use a fallback
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY || "sk-demo-key-for-development";
     
-    if (!apiKey) {
-      console.warn('API key para OpenAI não encontrada.');
+    if (!apiKey || apiKey === "sk-demo-key-for-development") {
+      console.warn('API key para OpenAI não encontrada ou é uma chave de demonstração.');
+      
+      // If in development mode, return mock data
+      if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+        console.log('Ambiente de desenvolvimento detectado. Retornando dados simulados.');
+        return {
+          policy_number: "AP123456",
+          customer_name: "João Silva",
+          customer_phone: "(11) 98765-4321",
+          insurer: "Seguradora Brasil",
+          issue_date: new Date("2025-03-14"),
+          expiry_date: new Date("2026-03-14"),
+          coverage_amount: 100000,
+          premium: 1200,
+          type: "AUTOMÓVEL"
+        };
+      }
+      
       throw new Error('API key para OpenAI não configurada.');
     }
     
@@ -127,7 +146,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "gpt-4o-mini", // Using the recommended model
           messages: [
             {
               role: 'system',
@@ -224,6 +243,23 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       return processedData;
     } catch (error) {
       console.error('Erro ao chamar a API da OpenAI:', error);
+      
+      // In development mode, return mock data even on error
+      if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+        console.log('Ambiente de desenvolvimento detectado. Retornando dados simulados mesmo com erro.');
+        return {
+          policy_number: "AP123456",
+          customer_name: "João Silva",
+          customer_phone: "(11) 98765-4321",
+          insurer: "Seguradora Brasil",
+          issue_date: new Date("2025-03-14"),
+          expiry_date: new Date("2026-03-14"),
+          coverage_amount: 100000,
+          premium: 1200,
+          type: "AUTOMÓVEL"
+        };
+      }
+      
       throw error;
     }
   } catch (error) {
