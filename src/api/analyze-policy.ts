@@ -14,7 +14,7 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
   try {
     console.log('Extraindo texto do PDF:', pdfUrl);
     
-    // If it's a mock URL in demo/dev mode, return simulated text
+    // If it's a mock URL in dev mode, return simulated text
     if (pdfUrl.includes('example.com') || pdfUrl.includes('documento-simulado')) {
       console.log('URL de exemplo detectada, retornando texto simulado');
       return `APÓLICE DE SEGURO
@@ -61,7 +61,7 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
 }
 
 /**
- * Analyzes a policy document to extract key information
+ * Analyzes a policy document to extract key information using Groq API
  */
 export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Policy>> => {
   try {
@@ -71,27 +71,27 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     const pdfText = await extractTextFromPdf(fileUrl);
     console.log('Texto extraído do PDF:', pdfText);
     
-    // 2. Use AI to analyze the document
-    console.log('Enviando prompt para análise via OpenAI');
+    // 2. Use Groq AI to analyze the document
+    console.log('Enviando prompt para análise via Groq');
     
-    // Get API key from environment variables
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    // Hardcoded API key as requested
+    const apiKey = "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";
     
     if (!apiKey) {
-      console.warn('API key para OpenAI não encontrada. Configure VITE_OPENAI_API_KEY no ambiente');
-      throw new Error('API key para OpenAI não configurada. Configure VITE_OPENAI_API_KEY nas variáveis de ambiente.');
+      console.warn('API key para Groq não encontrada.');
+      throw new Error('API key para Groq não configurada.');
     }
     
-    // Call the OpenAI API
+    // Call the Groq API
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'llama3-8b-8192',
           messages: [
             {
               role: 'system',
@@ -120,12 +120,12 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Erro na API da OpenAI:', error);
-        throw new Error(`Erro na API da OpenAI: ${error.error?.message || 'Erro desconhecido'}`);
+        console.error('Erro na API da Groq:', error);
+        throw new Error(`Erro na API da Groq: ${error.error?.message || 'Erro desconhecido'}`);
       }
 
       const result = await response.json();
-      console.log('Resposta da OpenAI:', result);
+      console.log('Resposta da Groq:', result);
       
       // Parse the JSON from the API response
       const responseContent = result.choices[0].message.content;
@@ -137,7 +137,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
         console.log('Dados extraídos:', extractedData);
       } catch (parseError) {
         console.error('Erro ao analisar resposta JSON:', parseError);
-        throw new Error('A resposta da OpenAI não está em formato JSON válido');
+        throw new Error('A resposta da Groq não está em formato JSON válido');
       }
       
       // Convert string dates to Date objects
@@ -160,7 +160,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       
       return extractedData;
     } catch (error) {
-      console.error('Erro ao chamar a API da OpenAI:', error);
+      console.error('Erro ao chamar a API da Groq:', error);
       throw error;
     }
   } catch (error) {

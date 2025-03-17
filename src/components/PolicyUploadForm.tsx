@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { uploadPolicyAttachment, createPolicy, runInsurancePoliciesMigration } from '@/lib/policyService';
@@ -97,7 +98,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       setProgress('analyzing');
       toast.info('Analisando documento com IA...');
 
-      // 2. Analisar o documento com GPT-4
+      // 2. Analisar o documento com Groq LLM
       let policyData;
       try {
         policyData = await analyzePolicyDocument(fileUrl);
