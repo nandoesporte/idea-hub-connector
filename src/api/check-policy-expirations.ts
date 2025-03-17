@@ -17,11 +17,10 @@ export default async function handler(req, res) {
       });
     }
     
-    // No ambiente de desenvolvimento, simular o sucesso
-    if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE ===  'true') {
-      console.log('Ambiente de desenvolvimento - simulando verificação de apólices');
+    // No ambiente de desenvolvimento, simular o sucesso localmente
+    if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+      console.log('Ambiente de desenvolvimento - verificando apólices localmente');
       
-      // Mesmo em desenvolvimento, vamos verificar as apólices localmente
       const userId = session.user.id;
       const today = new Date();
       const todayISO = today.toISOString();
@@ -38,7 +37,6 @@ export default async function handler(req, res) {
       if (policiesError) {
         console.error('Erro ao verificar apólices:', policiesError);
         if (policiesError.code === '42P01') {
-          // Tabela não existe
           return res.status(200).json({
             success: true,
             message: 'Verificação simulada - tabela não existe ainda',
@@ -49,17 +47,18 @@ export default async function handler(req, res) {
             }
           });
         }
+        throw new Error(policiesError.message);
       }
       
       const results = {
-        processed: 0,
+        processed: policies?.length || 0,
         notifications: 0,
         errors: 0
       };
       
       // Se encontrou apólices, criar notificações
       if (policies && policies.length > 0) {
-        results.processed = policies.length;
+        console.log(`Encontradas ${policies.length} apólices para notificação`);
         
         for (const policy of policies) {
           try {
@@ -88,10 +87,15 @@ export default async function handler(req, res) {
               results.notifications++;
               
               // Marcar apólice como notificada
-              await supabase
+              const { error: updateError } = await supabase
                 .from('insurance_policies')
                 .update({ reminder_sent: true })
                 .eq('id', policy.id);
+                
+              if (updateError) {
+                console.error('Erro ao atualizar apólice:', updateError);
+                results.errors++;
+              }
             }
           } catch (err) {
             console.error('Erro ao processar apólice:', err);
@@ -102,7 +106,7 @@ export default async function handler(req, res) {
       
       return res.status(200).json({
         success: true,
-        message: `Verificação de apólices simulada com sucesso: ${results.notifications} notificações enviadas`,
+        message: `Verificação de apólices concluída: ${results.notifications} notificações enviadas`,
         data: results
       });
     }

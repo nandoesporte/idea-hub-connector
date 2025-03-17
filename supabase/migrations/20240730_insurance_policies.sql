@@ -150,31 +150,48 @@ BEGIN
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'daily-policy-check') THEN
         PERFORM cron.unschedule('daily-policy-check');
     END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- If cron schema does not exist, ignore the error
+        NULL;
 END
 $$;
 
--- Create a cron job to run the expiration check daily
+-- Try to create cron job if cron extension is available
 DO $$
 BEGIN
-    PERFORM cron.schedule(
-        'daily-policy-check',
-        '0 9 * * *',  -- Run at 9 AM every day
-        $$SELECT public.check_policy_expirations()$$
-    );
-END
-$$;
-
--- Add statements to create or check for 'documents' bucket explicitly
-DO $$
-BEGIN
-    -- Check if the bucket exists
-    IF NOT EXISTS (
-        SELECT 1 FROM storage.buckets WHERE name = 'documents'
+    -- Check if cron extension exists before trying to schedule
+    IF EXISTS (
+        SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'
     ) THEN
-        -- Insert the bucket if it doesn't exist
-        INSERT INTO storage.buckets (id, name, public, avif_autodetection, file_size_limit, allowed_mime_types)
-        VALUES ('documents', 'documents', TRUE, FALSE, 10485760, '{image/png,image/jpeg,image/jpg,application/pdf}');
+        PERFORM cron.schedule(
+            'daily-policy-check',
+            '0 9 * * *',  -- Run at 9 AM every day
+            $$SELECT public.check_policy_expirations()$$
+        );
     END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- If cron extension is not available, ignore the error
+        RAISE NOTICE 'Cron extension not available, skipping cron job creation';
+END
+$$;
+
+-- Create storage schema if it doesn't exist
+CREATE SCHEMA IF NOT EXISTS storage;
+
+-- Create documents bucket
+DO $$
+BEGIN
+    -- Create documents bucket with proper settings
+    INSERT INTO storage.buckets (id, name, public, file_size_limit)
+    VALUES ('documents', 'documents', true, 10485760)
+    ON CONFLICT (id) DO UPDATE
+    SET public = true,
+        file_size_limit = 10485760;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error creating bucket: %', SQLERRM;
 END
 $$;
 
@@ -182,51 +199,72 @@ $$;
 DO $$
 BEGIN
     -- Delete policies for documents bucket if they exist
-    IF EXISTS (
-        SELECT 1 FROM pg_policies 
-        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents User Access'
-    ) THEN
-        DROP POLICY "Documents User Access" ON storage.objects;
-    END IF;
-    
-    IF EXISTS (
-        SELECT 1 FROM pg_policies 
-        WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Documents Public Access'
-    ) THEN
-        DROP POLICY "Documents Public Access" ON storage.objects;
-    END IF;
+    DROP POLICY IF EXISTS "Documents User Access" ON storage.objects;
+    DROP POLICY IF EXISTS "Documents Public Access" ON storage.objects;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error dropping storage policies: %', SQLERRM;
 END
 $$;
 
--- Policy for authenticated users to manage their own files
-CREATE POLICY "Documents User Access"
-ON storage.objects
-FOR ALL
-TO authenticated
-USING (
-  bucket_id = 'documents' 
-  AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
-)
-WITH CHECK (
-  bucket_id = 'documents' 
-  AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
-);
+-- Create new policies with proper error handling
+DO $$
+BEGIN
+    -- Policy for authenticated users to manage their own files
+    CREATE POLICY "Documents User Access"
+    ON storage.objects
+    FOR ALL
+    TO authenticated
+    USING (
+        bucket_id = 'documents' 
+        AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
+    )
+    WITH CHECK (
+        bucket_id = 'documents' 
+        AND (auth.uid()::text = (storage.foldername(name))[1] OR owner = auth.uid())
+    );
 
--- Policy for public access to read files
-CREATE POLICY "Documents Public Access"
-ON storage.objects
-FOR SELECT
-TO public
-USING (
-  bucket_id = 'documents'
-);
+    -- Policy for public access to read files
+    CREATE POLICY "Documents Public Access"
+    ON storage.objects
+    FOR SELECT
+    TO public
+    USING (
+        bucket_id = 'documents'
+    );
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error creating storage policies: %', SQLERRM;
+END
+$$;
 
--- Grant usage on storage schema
-GRANT USAGE ON SCHEMA storage TO public;
-GRANT USAGE ON SCHEMA storage TO authenticated;
-GRANT USAGE ON SCHEMA storage TO anon;
+-- Grant permissions with proper error handling
+DO $$
+BEGIN
+    -- Grant usage on storage schema
+    GRANT USAGE ON SCHEMA storage TO public;
+    GRANT USAGE ON SCHEMA storage TO authenticated;
+    GRANT USAGE ON SCHEMA storage TO anon;
 
--- Grant permissions on objects to authenticated users
-GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
-GRANT SELECT ON storage.objects TO public;
-GRANT SELECT ON storage.objects TO anon;
+    -- Grant permissions on objects to authenticated users
+    GRANT ALL ON storage.objects TO authenticated;
+    GRANT SELECT ON storage.objects TO public;
+    GRANT SELECT ON storage.objects TO anon;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error granting permissions: %', SQLERRM;
+END
+$$;
+
+-- Ensure the buckets table exists and has proper permissions
+DO $$
+BEGIN
+    -- Grant permissions on buckets table
+    GRANT SELECT ON storage.buckets TO authenticated;
+    GRANT SELECT ON storage.buckets TO public;
+    GRANT SELECT ON storage.buckets TO anon;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error granting bucket permissions: %', SQLERRM;
+END
+$$;
