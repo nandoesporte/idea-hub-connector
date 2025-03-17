@@ -1,3 +1,4 @@
+
 import { Policy } from '@/types';
 import { supabase } from './supabase';
 import { toast } from 'sonner';
@@ -38,10 +39,15 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
   try {
     console.log('Criando apólice com os dados:', policy);
     
+    // Calcular data 30 dias antes do vencimento para lembrete
     const expiryDate = new Date(policy.expiry_date);
     const reminderDate = new Date(expiryDate);
     reminderDate.setDate(reminderDate.getDate() - 30);
+    
+    console.log('Data de vencimento:', expiryDate);
+    console.log('Data de lembrete calculada:', reminderDate);
 
+    // Verificar se a tabela existe
     const { error: checkError } = await supabase
       .from('insurance_policies')
       .select('id')
@@ -59,13 +65,13 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
       toast.success('Tabela de apólices criada com sucesso!');
     }
 
-    // Try again after migration
+    // Tentar novamente após migração
     const { data, error } = await supabase
       .from('insurance_policies')
       .insert([
         {
           ...policy,
-          reminder_date: reminderDate,
+          reminder_date: reminderDate.toISOString(),
           reminder_sent: false
         }
       ])
@@ -83,6 +89,10 @@ export const createPolicy = async (policy: Omit<Policy, 'id' | 'created_at' | 'u
       throw new Error(error.message);
     }
 
+    // Verificar data de lembrete registrada
+    console.log('Apólice criada com sucesso:', data);
+    console.log('Data de lembrete registrada:', data.reminder_date);
+    
     return data;
   } catch (error) {
     console.error('Error in createPolicy:', error);
@@ -304,6 +314,9 @@ export const analyzePolicyDocument = async (fileUrl: string) => {
 export const checkPolicyReminders = async (userId: string) => {
   try {
     const today = new Date();
+    const todayISO = today.toISOString();
+    
+    console.log('Verificando lembretes de apólices para a data:', todayISO);
     
     const { data, error } = await supabase
       .from('insurance_policies')
@@ -311,7 +324,7 @@ export const checkPolicyReminders = async (userId: string) => {
       .eq('user_id', userId)
       .eq('status', 'active')
       .eq('reminder_sent', false)
-      .lte('reminder_date', today.toISOString())
+      .lte('reminder_date', todayISO)
       .order('expiry_date', { ascending: true });
 
     if (error) {
@@ -324,14 +337,22 @@ export const checkPolicyReminders = async (userId: string) => {
       throw new Error(error.message);
     }
 
+    console.log(`Encontradas ${data?.length || 0} apólices precisando de lembretes`);
+
     if (data && data.length > 0) {
       for (const policy of data) {
-        await supabase
+        // Atualizar status de lembrete enviado
+        const { error: updateError } = await supabase
           .from('insurance_policies')
           .update({ reminder_sent: true })
           .eq('id', policy.id);
+          
+        if (updateError) {
+          console.error('Erro ao atualizar status de lembrete:', updateError);
+        }
         
-        await supabase
+        // Criar notificação para o usuário
+        const { error: notifError } = await supabase
           .from('notifications')
           .insert({
             user_id: userId,
@@ -342,6 +363,10 @@ export const checkPolicyReminders = async (userId: string) => {
             related_entity_type: 'policy',
             related_entity_id: policy.id
           });
+          
+        if (notifError) {
+          console.error('Erro ao criar notificação:', notifError);
+        }
       }
 
       return {
@@ -424,6 +449,29 @@ export const manualCheckPolicyExpirations = async () => {
     // Em ambiente de desenvolvimento, simular o sucesso
     if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
       console.log('Ambiente de desenvolvimento - verificação simulada com sucesso');
+      
+      // Mesmo em desenvolvimento, podemos verificar localmente
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session && session.user.id) {
+        const reminderResults = await checkPolicyReminders(session.user.id);
+        
+        if (reminderResults.hasReminders) {
+          toast.success(`${reminderResults.count} notificações de apólices enviadas`);
+        } else {
+          toast.success('Nenhuma apólice precisando de notificação foi encontrada');
+        }
+        
+        return { 
+          success: true, 
+          data: {
+            processed: reminderResults.count,
+            notifications: reminderResults.count,
+            errors: 0
+          }
+        };
+      }
+      
       toast.success('Verificação de apólices realizada com sucesso');
       return { success: true };
     }
