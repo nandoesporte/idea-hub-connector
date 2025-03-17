@@ -5,6 +5,7 @@ import { Mic, Square, Send, Edit, Loader2 } from 'lucide-react';
 import { useVoiceCommandEvents } from '@/hooks/useVoiceCommandEvents';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Properly define the SpeechRecognition type to fix the error
 type SpeechRecognitionType = typeof window.SpeechRecognition | typeof window.webkitSpeechRecognition;
@@ -17,6 +18,7 @@ const VoiceInputButton = () => {
   const recognitionRef = useRef<InstanceType<SpeechRecognitionType> | null>(null);
   const finalTranscriptRef = useRef('');
   const { createEventFromVoiceCommand, processingCommand } = useVoiceCommandEvents();
+  const isMobile = useIsMobile();
   
   // New refs to track last transcript and prevent duplicates
   const lastTranscriptTimeRef = useRef<number>(0);
@@ -44,10 +46,13 @@ const VoiceInputButton = () => {
   const shouldUpdateTranscript = (newText: string): boolean => {
     const currentTime = Date.now();
     
-    // If the same text was received within 500ms, ignore it
+    // If the same text was received within the timeframe, ignore it
+    // Mobile needs a longer timeframe due to slower processing
+    const timeThreshold = isMobile ? 1000 : 500;
+    
     if (
       newText === lastTranscriptValueRef.current && 
-      currentTime - lastTranscriptTimeRef.current < 500
+      currentTime - lastTranscriptTimeRef.current < timeThreshold
     ) {
       return false;
     }
@@ -91,6 +96,9 @@ const VoiceInputButton = () => {
           clearTimeout(debounceTimeoutRef.current);
         }
         
+        // Adjust debounce timing for mobile devices
+        const debounceTime = isMobile ? 300 : 100;
+        
         debounceTimeoutRef.current = window.setTimeout(() => {
           let interimTranscript = '';
           let finalTranscript = '';
@@ -98,15 +106,14 @@ const VoiceInputButton = () => {
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             
-            // Check if this is a duplicate result
+            // Ajustado para ser mais tolerante em dispositivos móveis
             if (event.results[i].isFinal) {
-              // For final results, we want to be more careful about duplicates
-              if (shouldUpdateTranscript(transcript)) {
+              if (isMobile || shouldUpdateTranscript(transcript)) {
                 finalTranscript += transcript;
                 finalTranscriptRef.current += transcript;
               }
             } else {
-              // For interim results, just append them
+              // Para dispositivos móveis, vamos ser mais liberais com resultados intermediários
               interimTranscript += transcript;
             }
           }
@@ -114,12 +121,14 @@ const VoiceInputButton = () => {
           // Only update UI if there's something meaningful to display
           if (finalTranscriptRef.current || interimTranscript) {
             const displayText = finalTranscriptRef.current + interimTranscript;
-            // Remove common duplicate patterns
-            const cleanedText = displayText.replace(/(\b\w+\b)(\s+\1\b)+/g, '$1');
+            // Remove common duplicate patterns - relaxed for mobile
+            const cleanedText = isMobile 
+              ? displayText 
+              : displayText.replace(/(\b\w+\b)(\s+\1\b)+/g, '$1');
             setTranscript(cleanedText);
             console.log('Speech recognition result:', cleanedText);
           }
-        }, 100); // Short delay to consolidate rapid updates
+        }, debounceTime);
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -135,7 +144,13 @@ const VoiceInputButton = () => {
         // If we have a transcript, enter edit mode
         if (finalTranscriptRef.current && finalTranscriptRef.current.trim() !== '') {
           // Clean up any duplicates in the final transcript
-          const cleanedFinalTranscript = finalTranscriptRef.current.replace(/(\b\w+\b)(\s+\1\b)+/g, '$1');
+          let cleanedFinalTranscript = finalTranscriptRef.current;
+          
+          // Don't apply aggressive cleaning on mobile
+          if (!isMobile) {
+            cleanedFinalTranscript = finalTranscriptRef.current.replace(/(\b\w+\b)(\s+\1\b)+/g, '$1');
+          }
+          
           finalTranscriptRef.current = cleanedFinalTranscript;
           
           setEditMode(true);
