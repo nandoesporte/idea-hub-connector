@@ -96,8 +96,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.insurance_policies TO authenticat
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create documents bucket if it doesn't exist
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('documents', 'documents', false)
+INSERT INTO storage.buckets (id, name)
+VALUES ('documents', 'documents')
 ON CONFLICT (id) DO NOTHING;
 
 -- Set up RLS for storage
@@ -143,8 +143,7 @@ ON storage.objects
 FOR SELECT
 TO public
 USING (
-  bucket_id = 'documents' 
-  AND public = true
+  bucket_id = 'documents'
 );
 
 -- Grant usage on storage schema
