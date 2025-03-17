@@ -64,6 +64,30 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
 }
 
 /**
+ * Extracts JSON from the LLM response text, which might be formatted with markdown code blocks
+ */
+function extractJsonFromLLMResponse(responseText: string): any {
+  try {
+    console.log('Extraindo JSON da resposta LLM:', responseText.substring(0, 100) + '...');
+    
+    // Try to extract JSON from a code block that might be in the response
+    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch && jsonMatch[1]) {
+      // Found a code block, try to parse its content
+      const jsonContent = jsonMatch[1].trim();
+      console.log('JSON extraído do bloco de código:', jsonContent.substring(0, 100) + '...');
+      return JSON.parse(jsonContent);
+    }
+    
+    // If no code block, try to parse the entire text as JSON (it might just be a raw JSON)
+    return JSON.parse(responseText);
+  } catch (error) {
+    console.error('Erro ao extrair JSON da resposta:', error);
+    throw new Error('Falha ao extrair JSON válido da resposta do LLM');
+  }
+}
+
+/**
  * Analyzes a policy document to extract key information using Groq API
  */
 export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Policy>> => {
@@ -98,11 +122,11 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
           messages: [
             {
               role: 'system',
-              content: 'Você é um assistente especializado em extrair informações de apólices de seguro brasileiras. Extraia as informações solicitadas com precisão, exatamente como aparecem no documento, respeitando o formato de datas brasileiro (DD/MM/AAAA). É crucial que as informações extraídas sejam idênticas ao documento original.'
+              content: 'Você é um assistente especializado em extrair informações de apólices de seguro brasileiras. Extraia as informações solicitadas com precisão, exatamente como aparecem no documento, respeitando o formato de datas brasileiro (DD/MM/AAAA). Retorne APENAS o objeto JSON puro, sem texto introdutório ou explicativo.'
             },
             {
               role: 'user',
-              content: `Extraia as seguintes informações desta apólice de seguro e retorne como JSON:
+              content: `Extraia as seguintes informações desta apólice de seguro e retorne APENAS como JSON puro SEM EXPLICAÇÕES OU TEXTO ADICIONAL:
               policy_number (número da apólice, apenas os dígitos), 
               customer_name (nome do segurado exatamente como consta no documento), 
               customer_phone (telefone do cliente com o formato original),
@@ -118,6 +142,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
               
               IMPORTANTE: Se alguma informação não estiver presente no documento, deixe o campo vazio ("").
               Não invente ou infira dados que não estejam claramente indicados no documento.
+              NÃO INCLUA TEXTO EXPLICATIVO, RETORNE APENAS O OBJETO JSON.
 
               Texto da apólice:
               ${pdfText}`
@@ -143,7 +168,8 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       
       let extractedData;
       try {
-        extractedData = JSON.parse(responseContent);
+        // Use the helper function to extract JSON from the response that might include markdown or explanatory text
+        extractedData = extractJsonFromLLMResponse(responseContent);
         console.log('Dados extraídos:', extractedData);
       } catch (parseError) {
         console.error('Erro ao analisar resposta JSON:', parseError);
