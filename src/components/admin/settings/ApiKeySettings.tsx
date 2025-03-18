@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Key, Save, Eye, EyeOff, RefreshCw, Check, X } from 'lucide-react';
+import { Key, Save, Eye, EyeOff, RefreshCw, Check, X, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ApiKeySettingsProps {
   openAiApiKey: string;
@@ -25,6 +26,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
   const [showApiKey, setShowApiKey] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Load API key from localStorage on component mount
   useEffect(() => {
@@ -49,10 +51,19 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
       }
       
       toast.success('Chave API do OpenAI salva com sucesso');
+      setConnectionStatus('idle');
+      setErrorMessage(null);
     } catch (error) {
       toast.error('Erro ao salvar a chave API');
       console.error('Error saving API key:', error);
     }
+  };
+
+  const validateApiKey = (apiKey: string): boolean => {
+    // Basic validation for OpenAI API key format (should start with "sk-" but not "sk-proj-")
+    const isProjectKey = apiKey.startsWith('sk-proj-');
+    const isValidFormat = apiKey.startsWith('sk-') && apiKey.length > 20 && !isProjectKey;
+    return isValidFormat;
   };
 
   const testConnection = async () => {
@@ -61,8 +72,18 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
       return;
     }
     
+    if (!validateApiKey(openAiApiKey)) {
+      setConnectionStatus('error');
+      setErrorMessage(
+        'Formato de chave API inválido. A chave deve começar com "sk-" (e não com "sk-proj-") e ter pelo menos 20 caracteres. Verifique se você está utilizando uma chave de API pessoal e não uma chave de projeto.'
+      );
+      toast.error('Formato de chave API inválido');
+      return;
+    }
+    
     setTestingConnection(true);
     setConnectionStatus('idle');
+    setErrorMessage(null);
     
     try {
       console.log('Testing API connection');
@@ -87,12 +108,14 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
         console.log('API key automatically saved after successful connection test');
       } else {
         setConnectionStatus('error');
+        setErrorMessage(data.error?.message || 'Erro desconhecido');
         toast.error(`Erro na conexão: ${data.error?.message || 'Erro desconhecido'}`);
         console.error('API connection error', data);
       }
     } catch (error) {
       console.error('Error testing OpenAI connection:', error);
       setConnectionStatus('error');
+      setErrorMessage('Erro ao testar conexão com a API do OpenAI');
       toast.error('Erro ao testar conexão com a API do OpenAI');
     } finally {
       setTestingConnection(false);
@@ -115,6 +138,15 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {connectionStatus === 'error' && errorMessage && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {errorMessage}
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="space-y-2">
           <Label htmlFor="openAiApiKey" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
@@ -141,6 +173,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
           </div>
           <p className="text-xs text-muted-foreground">
             Esta chave é necessária para análise de documentos com OpenAI. 
+            A chave deve começar com "sk-" (não use chaves de projeto que começam com "sk-proj-").
             Obtenha sua chave em <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">platform.openai.com/api-keys</a>
           </p>
           
@@ -148,13 +181,6 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
             <div className="mt-2 text-sm text-green-600 flex items-center gap-1">
               <Check className="h-4 w-4" />
               Conexão estabelecida com sucesso
-            </div>
-          )}
-          
-          {connectionStatus === 'error' && (
-            <div className="mt-2 text-sm text-red-600 flex items-center gap-1">
-              <X className="h-4 w-4" />
-              Falha ao conectar com a API do OpenAI
             </div>
           )}
         </div>
