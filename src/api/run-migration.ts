@@ -109,7 +109,7 @@ async function createDocumentsBucket() {
       // Try to create the bucket
       console.log('Tentando criar bucket documents em ambiente de desenvolvimento');
       const { error } = await supabase.storage.createBucket('documents', {
-        public: false, // More secure default
+        public: true, // Set bucket to public directly when creating it
         fileSizeLimit: 10485760, // 10MB
       });
       
@@ -129,14 +129,9 @@ async function createDocumentsBucket() {
       
       console.log('Bucket documents criado com sucesso em desenvolvimento');
       
-      // Try to add a public access policy
-      try {
-        // Set bucket to public
-        await supabase.storage.from('documents').setPublic();
-      } catch (policyError) {
-        console.error('Erro ao configurar política de acesso público em desenvolvimento:', policyError);
-        // Ignore policy errors in development
-      }
+      // Instead of using the non-existent setPublic method, we'll add a comment
+      // explaining that the bucket is already created with public access
+      console.log('Bucket criado com acesso público (definido na criação)');
       
       return true;
     } catch (err) {
