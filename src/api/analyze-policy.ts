@@ -97,6 +97,26 @@ function extractJsonFromLLMResponse(responseText: string): any {
 }
 
 /**
+ * Validates an OpenAI API key format
+ */
+function validateApiKey(apiKey: string): boolean {
+  if (!apiKey) return false;
+  
+  // Clean up the key
+  const trimmedKey = apiKey.trim();
+  
+  // Basic validation
+  const isProjectKey = trimmedKey.startsWith('sk-proj-');
+  const hasInvalidChars = /[^a-zA-Z0-9-_]/.test(trimmedKey);
+  const isValidFormat = trimmedKey.startsWith('sk-') && 
+                       !isProjectKey && 
+                       !hasInvalidChars && 
+                       trimmedKey.length >= 20;
+  
+  return isValidFormat;
+}
+
+/**
  * Analyzes a policy document to extract key information using OpenAI API
  */
 export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Policy>> => {
@@ -111,12 +131,23 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     console.log('Enviando prompt para análise via OpenAI API');
     
     // Get the API key from localStorage
-    const apiKey = localStorage.getItem('openai_api_key');
+    let apiKey = localStorage.getItem('openai_api_key');
+    
+    // Clean the API key (remove any spaces or invisible characters)
+    if (apiKey) {
+      apiKey = apiKey.trim();
+    }
     
     // Verify if we have a valid API key
     if (!apiKey) {
       console.warn('API key para OpenAI não encontrada ou vazia');
       throw new Error('API key para OpenAI não configurada. Por favor, configure a chave API nas configurações de administração.');
+    }
+    
+    // Validate API key format
+    if (!validateApiKey(apiKey)) {
+      console.error('Formato de API key do OpenAI inválido');
+      throw new Error('A chave API do OpenAI está em um formato inválido. A chave deve começar com "sk-" (não "sk-proj-") e ter pelo menos 20 caracteres. Por favor, verifique a chave nas configurações de administração.');
     }
     
     console.log('Usando API key do localStorage para OpenAI');

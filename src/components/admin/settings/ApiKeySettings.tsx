@@ -43,7 +43,9 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
       
       // Save API key to localStorage for use in analyze-policy.ts
       if (openAiApiKey) {
-        localStorage.setItem('openai_api_key', openAiApiKey);
+        // Clean the API key before saving (remove any extra spaces or non-visible characters)
+        const cleanedApiKey = openAiApiKey.trim();
+        localStorage.setItem('openai_api_key', cleanedApiKey);
         console.log('API key saved to localStorage');
       } else {
         localStorage.removeItem('openai_api_key');
@@ -60,9 +62,21 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
   };
 
   const validateApiKey = (apiKey: string): boolean => {
-    // Basic validation for OpenAI API key format (should start with "sk-" but not "sk-proj-")
-    const isProjectKey = apiKey.startsWith('sk-proj-');
-    const isValidFormat = apiKey.startsWith('sk-') && apiKey.length > 20 && !isProjectKey;
+    // Trim the API key to remove any spaces
+    const trimmedKey = apiKey.trim();
+    
+    // Basic validation for OpenAI API key format
+    // - Should start with "sk-" 
+    // - Should not start with "sk-proj-" (project keys not allowed)
+    // - Should not contain spaces or special characters
+    // - Should be at least 20 characters long 
+    const isProjectKey = trimmedKey.startsWith('sk-proj-');
+    const hasInvalidChars = /[^a-zA-Z0-9-_]/.test(trimmedKey);
+    const isValidFormat = trimmedKey.startsWith('sk-') && 
+                         !isProjectKey && 
+                         !hasInvalidChars && 
+                         trimmedKey.length >= 20;
+    
     return isValidFormat;
   };
 
@@ -72,10 +86,15 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
       return;
     }
     
-    if (!validateApiKey(openAiApiKey)) {
+    // Clean up the API key by trimming any whitespace
+    const cleanedApiKey = openAiApiKey.trim();
+    
+    if (!validateApiKey(cleanedApiKey)) {
       setConnectionStatus('error');
       setErrorMessage(
-        'Formato de chave API inválido. A chave deve começar com "sk-" (e não com "sk-proj-") e ter pelo menos 20 caracteres. Verifique se você está utilizando uma chave de API pessoal e não uma chave de projeto.'
+        'Formato de chave API inválido. A chave deve começar com "sk-" (e não com "sk-proj-"), ' +
+        'não deve conter espaços ou caracteres especiais, e deve ter pelo menos 20 caracteres. ' +
+        'Verifique se você está utilizando uma chave de API pessoal e não uma chave de projeto.'
       );
       toast.error('Formato de chave API inválido');
       return;
@@ -91,7 +110,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
       const response = await fetch('https://api.openai.com/v1/models', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${openAiApiKey}`,
+          'Authorization': `Bearer ${cleanedApiKey}`,
           'Content-Type': 'application/json'
         }
       });
@@ -103,8 +122,9 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
         toast.success('Conexão com a API do OpenAI estabelecida com sucesso!');
         console.log('API connection successful', data);
         
-        // Since the connection test was successful, save the API key immediately
-        localStorage.setItem('openai_api_key', openAiApiKey);
+        // Since the connection test was successful, save the cleaned API key immediately
+        localStorage.setItem('openai_api_key', cleanedApiKey);
+        onApiKeyChange(cleanedApiKey); // Update the state with cleaned key
         console.log('API key automatically saved after successful connection test');
       } else {
         setConnectionStatus('error');
