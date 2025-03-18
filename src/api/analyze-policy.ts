@@ -97,23 +97,32 @@ function extractJsonFromLLMResponse(responseText: string): any {
 }
 
 /**
+ * Clean API key by removing whitespace and invalid characters
+ */
+function cleanApiKey(apiKey: string): string {
+  if (!apiKey) return '';
+  
+  // Remove all whitespace, including invisible Unicode whitespace characters
+  const cleanedKey = apiKey.replace(/\s+/g, '');
+  
+  // Remove any non-alphanumeric characters except for hyphens and underscores
+  // which are valid in OpenAI API keys
+  return cleanedKey.replace(/[^a-zA-Z0-9\-_]/g, '');
+}
+
+/**
  * Validates an OpenAI API key format
  */
 function validateApiKey(apiKey: string): boolean {
   if (!apiKey) return false;
   
-  // Clean up the key
-  const trimmedKey = apiKey.trim();
-  
   // Basic validation
-  const isProjectKey = trimmedKey.startsWith('sk-proj-');
-  const hasInvalidChars = /[^a-zA-Z0-9-_]/.test(trimmedKey);
-  const isValidFormat = trimmedKey.startsWith('sk-') && 
-                       !isProjectKey && 
-                       !hasInvalidChars && 
-                       trimmedKey.length >= 20;
+  const isStartingWithSk = apiKey.startsWith('sk-');
+  const isProjectKey = apiKey.startsWith('sk-proj-');
+  const hasInvalidChars = /[^a-zA-Z0-9\-_]/.test(apiKey);
+  const isLongEnough = apiKey.length >= 20;
   
-  return isValidFormat;
+  return isStartingWithSk && !isProjectKey && !hasInvalidChars && isLongEnough;
 }
 
 /**
@@ -133,24 +142,26 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     // Get the API key from localStorage
     let apiKey = localStorage.getItem('openai_api_key');
     
-    // Clean the API key (remove any spaces or invisible characters)
-    if (apiKey) {
-      apiKey = apiKey.trim();
-    }
-    
-    // Verify if we have a valid API key
+    // Verify if we have an API key
     if (!apiKey) {
       console.warn('API key para OpenAI não encontrada ou vazia');
       throw new Error('API key para OpenAI não configurada. Por favor, configure a chave API nas configurações de administração.');
     }
     
+    // Clean and validate the API key
+    apiKey = cleanApiKey(apiKey);
+    
     // Validate API key format
     if (!validateApiKey(apiKey)) {
       console.error('Formato de API key do OpenAI inválido');
-      throw new Error('A chave API do OpenAI está em um formato inválido. A chave deve começar com "sk-" (não "sk-proj-") e ter pelo menos 20 caracteres. Por favor, verifique a chave nas configurações de administração.');
+      throw new Error(
+        'A chave API do OpenAI está em um formato inválido. A chave deve começar com "sk-" ' +
+        '(não "sk-proj-") e ter pelo menos 20 caracteres sem espaços ou caracteres especiais. ' +
+        'Por favor, verifique a chave nas configurações de administração.'
+      );
     }
     
-    console.log('Usando API key do localStorage para OpenAI');
+    console.log('Usando API key do localStorage para OpenAI (validada e limpa)');
     
     // Call the OpenAI API with specific instructions
     try {
