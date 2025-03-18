@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Key, Save, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Key, Save, Eye, EyeOff, RefreshCw, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ApiKeySettingsProps {
@@ -81,6 +81,10 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
         setConnectionStatus('success');
         toast.success('Conexão com a API do OpenAI estabelecida com sucesso!');
         console.log('API connection successful', data);
+        
+        // Since the connection test was successful, save the API key immediately
+        localStorage.setItem('openai_api_key', openAiApiKey);
+        console.log('API key automatically saved after successful connection test');
       } else {
         setConnectionStatus('error');
         toast.error(`Erro na conexão: ${data.error?.message || 'Erro desconhecido'}`);
@@ -142,14 +146,14 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
           
           {connectionStatus === 'success' && (
             <div className="mt-2 text-sm text-green-600 flex items-center gap-1">
-              <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+              <Check className="h-4 w-4" />
               Conexão estabelecida com sucesso
             </div>
           )}
           
           {connectionStatus === 'error' && (
             <div className="mt-2 text-sm text-red-600 flex items-center gap-1">
-              <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+              <X className="h-4 w-4" />
               Falha ao conectar com a API do OpenAI
             </div>
           )}

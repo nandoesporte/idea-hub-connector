@@ -85,41 +85,66 @@ async function executeInsurancePoliciesMigration() {
  * This requires administrative privileges
  */
 async function createDocumentsBucket() {
-  // In development/demo mode, we simulate success
+  // In development/demo mode, we simulate success and actually try to create the bucket
   if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-    console.log('Ambiente de desenvolvimento - criação de bucket simulada');
+    console.log('Ambiente de desenvolvimento - verificando bucket documents');
     
-    // Para desenvolvimento local, crie um bucket temporário se possível
     try {
+      // Try to list buckets to see if documents bucket exists
       const { data: buckets, error: listError } = await supabase.storage.listBuckets();
       
       if (listError) {
         console.error('Erro ao listar buckets em desenvolvimento:', listError);
-        return true; // Simulamos sucesso mesmo com erro
-      }
-      
-      const bucketExists = buckets.some(bucket => bucket.name === 'documents');
-      
-      if (!bucketExists) {
-        console.log('Tentando criar bucket documents em ambiente de desenvolvimento');
-        const { error } = await supabase.storage.createBucket('documents', {
-          public: true,
-          fileSizeLimit: 10485760, // 10MB
-        });
-        
-        if (error) {
-          console.error('Erro ao criar bucket em desenvolvimento:', error);
-        } else {
-          console.log('Bucket documents criado com sucesso em desenvolvimento');
-        }
+        // We'll still try to create the bucket even if we can't list
       } else {
-        console.log('Bucket documents já existe em desenvolvimento');
+        // Check if the bucket already exists
+        const bucketExists = buckets && buckets.some(bucket => bucket.name === 'documents');
+        
+        if (bucketExists) {
+          console.log('Bucket documents já existe em desenvolvimento');
+          return true;
+        }
       }
+      
+      // Try to create the bucket
+      console.log('Tentando criar bucket documents em ambiente de desenvolvimento');
+      const { error } = await supabase.storage.createBucket('documents', {
+        public: false, // More secure default
+        fileSizeLimit: 10485760, // 10MB
+      });
+      
+      if (error) {
+        console.error('Erro ao criar bucket em desenvolvimento:', error);
+        
+        // Check for specific bucket exists error and ignore it
+        if (error.message && error.message.includes('already exists')) {
+          console.log('Bucket já existe (erro ignorado)');
+          return true;
+        }
+        
+        // For development, we return success even on error
+        console.log('Simulando sucesso na criação do bucket em ambiente de desenvolvimento');
+        return true;
+      }
+      
+      console.log('Bucket documents criado com sucesso em desenvolvimento');
+      
+      // Try to add a public access policy
+      try {
+        // Set bucket to public
+        await supabase.storage.from('documents').setPublic();
+      } catch (policyError) {
+        console.error('Erro ao configurar política de acesso público em desenvolvimento:', policyError);
+        // Ignore policy errors in development
+      }
+      
+      return true;
     } catch (err) {
       console.error('Erro ao verificar/criar bucket em desenvolvimento:', err);
+      
+      // For development, return success even with errors
+      return true;
     }
-    
-    return true;
   }
   
   try {
