@@ -15,6 +15,7 @@ import NotificationSettings from '@/components/admin/settings/NotificationSettin
 import SystemNotificationSettings from '@/components/admin/settings/SystemNotificationSettings';
 import DefaultReminderSettings from '@/components/admin/settings/DefaultReminderSettings';
 import SeoSettings from '@/components/admin/settings/SeoSettings';
+import ApiKeySettings from '@/components/admin/settings/ApiKeySettings';
 
 // Import types
 import { SiteSettings, NotificationSettings as NotificationSettingsType } from '@/components/admin/settings/types';
@@ -136,6 +137,8 @@ const AdminSettings = () => {
   const [isReminderSettingsFormDirty, setIsReminderSettingsFormDirty] = useState(false);
   const [isSystemNotificationsFormDirty, setIsSystemNotificationsFormDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [openAiApiKey, setOpenAiApiKey] = useState<string>('');
+  const [isApiKeyFormDirty, setIsApiKeyFormDirty] = useState(false);
 
   useEffect(() => {
     const savedApiKey = localStorage.getItem('whatsapp_api_key') || '';
@@ -154,6 +157,9 @@ const AdminSettings = () => {
         setNotificationNumbers(['', '', '']);
       }
     }
+    
+    const savedOpenAiApiKey = localStorage.getItem('openai_api_key') || '';
+    setOpenAiApiKey(savedOpenAiApiKey);
   }, []);
 
   const handleGeneralChange = (name: string, value: string) => {
@@ -197,6 +203,11 @@ const AdminSettings = () => {
   const handleApiKeyChange = (value: string) => {
     setWhatsAppApiKey(value);
     setIsNotificationsFormDirty(true);
+  };
+
+  const handleOpenAiApiKeyChange = (value: string) => {
+    setOpenAiApiKey(value);
+    setIsApiKeyFormDirty(true);
   };
 
   const handleNotificationNumberChange = (index: number, value: string) => {
@@ -350,6 +361,20 @@ const AdminSettings = () => {
     }, 500);
   };
 
+  const saveOpenAiApiSettings = async () => {
+    setIsSaving(true);
+    
+    try {
+      setIsApiKeyFormDirty(false);
+      setIsSaving(false);
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error saving OpenAI settings:', error);
+      setIsSaving(false);
+      return Promise.reject(error);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -361,7 +386,7 @@ const AdminSettings = () => {
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="social">Redes Sociais</TabsTrigger>
             <TabsTrigger value="features">Funcionalidades</TabsTrigger>
@@ -369,6 +394,7 @@ const AdminSettings = () => {
             <TabsTrigger value="system-notifications">Notificações Sistema</TabsTrigger>
             <TabsTrigger value="reminders">Lembretes</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
+            <TabsTrigger value="api-keys">API Keys</TabsTrigger>
           </TabsList>
           
           <TabsContent value="general" className="space-y-4 mt-6">
@@ -444,6 +470,16 @@ const AdminSettings = () => {
               onSeoChange={handleSeoChange}
               onSave={saveSeoSettings}
               isDirty={isSeoFormDirty}
+              isSaving={isSaving}
+            />
+          </TabsContent>
+          
+          <TabsContent value="api-keys" className="space-y-4 mt-6">
+            <ApiKeySettings
+              openAiApiKey={openAiApiKey}
+              onApiKeyChange={handleOpenAiApiKeyChange}
+              onSave={saveOpenAiApiSettings}
+              isDirty={isApiKeyFormDirty}
               isSaving={isSaving}
             />
           </TabsContent>
