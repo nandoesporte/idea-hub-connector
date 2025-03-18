@@ -103,11 +103,7 @@ function cleanApiKey(apiKey: string): string {
   if (!apiKey) return '';
   
   // Remove all whitespace, including invisible Unicode whitespace characters
-  const cleanedKey = apiKey.replace(/\s+/g, '');
-  
-  // Remove any non-alphanumeric characters except for hyphens and underscores
-  // which are valid in OpenAI API keys
-  return cleanedKey.replace(/[^a-zA-Z0-9\-_]/g, '');
+  return apiKey.trim().replace(/\s+/g, '');
 }
 
 /**
@@ -116,13 +112,17 @@ function cleanApiKey(apiKey: string): string {
 function validateApiKey(apiKey: string): boolean {
   if (!apiKey) return false;
   
-  // Basic validation
-  const isStartingWithSk = apiKey.startsWith('sk-');
-  const isProjectKey = apiKey.startsWith('sk-proj-');
-  const hasInvalidChars = /[^a-zA-Z0-9\-_]/.test(apiKey);
+  // Updated validation for OpenAI API key format
+  // - Should start with "sk-" followed directly by alphanumeric characters
+  // - Should not start with "sk-_" or "sk-proj-" (project keys or invalid formats)
+  // - Should only contain alphanumeric characters, hyphens after the "sk-" prefix
+  // - Should be at least 20 characters long 
+  const hasValidPrefix = /^sk-[a-zA-Z0-9]/.test(apiKey);
+  const doesNotHaveInvalidPrefix = !apiKey.startsWith('sk-_') && !apiKey.startsWith('sk-proj-');
+  const hasValidFormat = /^sk-[a-zA-Z0-9][a-zA-Z0-9\-]*$/.test(apiKey);
   const isLongEnough = apiKey.length >= 20;
   
-  return isStartingWithSk && !isProjectKey && !hasInvalidChars && isLongEnough;
+  return hasValidPrefix && doesNotHaveInvalidPrefix && hasValidFormat && isLongEnough;
 }
 
 /**
@@ -156,7 +156,8 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       console.error('Formato de API key do OpenAI inválido');
       throw new Error(
         'A chave API do OpenAI está em um formato inválido. A chave deve começar com "sk-" ' +
-        '(não "sk-proj-") e ter pelo menos 20 caracteres sem espaços ou caracteres especiais. ' +
+        'seguido diretamente por caracteres alfanuméricos (não deve começar com "sk-_" ou "sk-proj-") ' +
+        'e ter pelo menos 20 caracteres sem espaços ou caracteres especiais. ' +
         'Por favor, verifique a chave nas configurações de administração.'
       );
     }

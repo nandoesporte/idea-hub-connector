@@ -49,7 +49,8 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
         toast.error('Formato de chave API inválido');
         setConnectionStatus('error');
         setErrorMessage(
-          'Formato de chave API inválido. A chave deve começar com "sk-" (e não com "sk-proj-"), ' +
+          'Formato de chave API inválido. A chave deve começar com "sk-" seguido diretamente por caracteres alfanuméricos ' +
+          '(não deve começar com "sk-_" ou "sk-proj-"), ' +
           'não deve conter espaços ou caracteres especiais, e deve ter pelo menos 20 caracteres. ' +
           'Verifique se você está utilizando uma chave de API pessoal e não uma chave de projeto.'
         );
@@ -79,27 +80,23 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
     if (!apiKey) return '';
     
     // Remove all whitespace, including invisible Unicode whitespace characters
-    const cleanedKey = apiKey.replace(/\s+/g, '');
-    
-    // Remove any non-alphanumeric characters except for hyphens and underscores
-    // which are valid in OpenAI API keys
-    return cleanedKey.replace(/[^a-zA-Z0-9\-_]/g, '');
+    return apiKey.trim().replace(/\s+/g, '');
   };
 
   const validateApiKey = (apiKey: string): boolean => {
     if (!apiKey) return false;
     
-    // Basic validation for OpenAI API key format
-    // - Should start with "sk-" 
-    // - Should not start with "sk-proj-" (project keys not allowed)
-    // - Should not contain spaces or special characters
+    // Updated validation for OpenAI API key format
+    // - Should start with "sk-" followed directly by alphanumeric characters
+    // - Should not start with "sk-_" or "sk-proj-" (project keys or invalid formats)
+    // - Should only contain alphanumeric characters, hyphens after the "sk-" prefix
     // - Should be at least 20 characters long 
-    const isStartingWithSk = apiKey.startsWith('sk-');
-    const isProjectKey = apiKey.startsWith('sk-proj-');
-    const hasInvalidChars = /[^a-zA-Z0-9\-_]/.test(apiKey);
+    const hasValidPrefix = /^sk-[a-zA-Z0-9]/.test(apiKey);
+    const doesNotHaveInvalidPrefix = !apiKey.startsWith('sk-_') && !apiKey.startsWith('sk-proj-');
+    const hasValidFormat = /^sk-[a-zA-Z0-9][a-zA-Z0-9\-]*$/.test(apiKey);
     const isLongEnough = apiKey.length >= 20;
     
-    return isStartingWithSk && !isProjectKey && !hasInvalidChars && isLongEnough;
+    return hasValidPrefix && doesNotHaveInvalidPrefix && hasValidFormat && isLongEnough;
   };
 
   const testConnection = async () => {
@@ -114,7 +111,8 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
     if (!validateApiKey(cleanedApiKey)) {
       setConnectionStatus('error');
       setErrorMessage(
-        'Formato de chave API inválido. A chave deve começar com "sk-" (e não com "sk-proj-"), ' +
+        'Formato de chave API inválido. A chave deve começar com "sk-" seguido diretamente por caracteres alfanuméricos ' +
+        '(não deve começar com "sk-_" ou "sk-proj-"), ' +
         'não deve conter espaços ou caracteres especiais, e deve ter pelo menos 20 caracteres. ' +
         'Verifique se você está utilizando uma chave de API pessoal e não uma chave de projeto.'
       );
@@ -269,7 +267,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
           <div className="flex flex-col space-y-2">
             <p className="text-xs text-muted-foreground">
               Esta chave é necessária para análise de documentos com OpenAI. 
-              A chave deve começar com "sk-" (não use chaves de projeto que começam com "sk-proj-").
+              A chave deve começar com "sk-" seguido por caracteres alfanuméricos (não use chaves de projeto que começam com "sk-proj-").
               Obtenha sua chave em <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">platform.openai.com/api-keys</a>
             </p>
             
