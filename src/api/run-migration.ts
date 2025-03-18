@@ -20,6 +20,8 @@ export async function runMigration(req, res) {
     }
     
     if (migration === 'insurance_policies') {
+      console.log('Executando migração insurance_policies');
+      
       // Execute the insurance policies migration
       await executeInsurancePoliciesMigration();
       
@@ -86,6 +88,37 @@ async function createDocumentsBucket() {
   // In development/demo mode, we simulate success
   if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
     console.log('Ambiente de desenvolvimento - criação de bucket simulada');
+    
+    // Para desenvolvimento local, crie um bucket temporário se possível
+    try {
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      
+      if (listError) {
+        console.error('Erro ao listar buckets em desenvolvimento:', listError);
+        return true; // Simulamos sucesso mesmo com erro
+      }
+      
+      const bucketExists = buckets.some(bucket => bucket.name === 'documents');
+      
+      if (!bucketExists) {
+        console.log('Tentando criar bucket documents em ambiente de desenvolvimento');
+        const { error } = await supabase.storage.createBucket('documents', {
+          public: true,
+          fileSizeLimit: 10485760, // 10MB
+        });
+        
+        if (error) {
+          console.error('Erro ao criar bucket em desenvolvimento:', error);
+        } else {
+          console.log('Bucket documents criado com sucesso em desenvolvimento');
+        }
+      } else {
+        console.log('Bucket documents já existe em desenvolvimento');
+      }
+    } catch (err) {
+      console.error('Erro ao verificar/criar bucket em desenvolvimento:', err);
+    }
+    
     return true;
   }
   

@@ -110,8 +110,16 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     // 2. Use OpenAI API to analyze the document
     console.log('Enviando prompt para análise via OpenAI API');
     
-    // Use a chave de API do OpenAI - atualizada com a versão funcional
-    const apiKey = "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";
+    // Get the API key from localStorage if available
+    let apiKey = localStorage.getItem('openai_api_key');
+    
+    // If not available in localStorage, use a default key
+    if (!apiKey) {
+      apiKey = "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";
+      console.log('Usando API key padrão para OpenAI');
+    } else {
+      console.log('Usando API key do localStorage para OpenAI');
+    }
     
     // Verificar se temos uma API key válida
     if (!apiKey) {
