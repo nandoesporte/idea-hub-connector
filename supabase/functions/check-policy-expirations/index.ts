@@ -140,12 +140,14 @@ Deno.serve(async (req) => {
           }
           
           // Criar notificação para o usuário com detalhes mais precisos da apólice
+          const notificationMessage = `A apólice ${policy.policy_number} da ${policy.insurer} vence em ${daysUntilExpiry} dias (${formattedDate}). Valor: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(policy.premium || 0)}.`
+          
           const { data: notification, error: notificationError } = await supabase
             .from('notifications')
             .insert({
               user_id: policy.user_id,
               title: 'Apólice próxima do vencimento',
-              message: `A apólice ${policy.policy_number} da ${policy.insurer} vence em ${daysUntilExpiry} dias (${formattedDate}).`,
+              message: notificationMessage,
               type: 'warning',
               is_read: false,
               related_entity_type: 'policy',
@@ -168,7 +170,8 @@ Deno.serve(async (req) => {
             policy_number: policy.policy_number,
             customer_name: policy.customer_name,
             days_until_expiry: daysUntilExpiry,
-            expiry_date: formattedDate
+            expiry_date: formattedDate,
+            message: notificationMessage
           })
           
           // Marcar a apólice como notificada para evitar notificações duplicadas

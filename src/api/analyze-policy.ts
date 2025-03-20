@@ -175,29 +175,37 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
           messages: [
             {
               role: 'system',
-              content: 'Você é um assistente especializado em extrair informações de apólices de seguro brasileiras com extrema precisão. Extraia as informações exatamente como aparecem no documento, respeitando o formato de datas brasileiro (DD/MM/AAAA). Retorne APENAS um objeto JSON válido, sem texto adicional. Se uma informação estiver ausente, deixe o campo vazio.'
+              content: `Você é um assistente especializado em extrair informações de apólices de seguro brasileiras com extrema precisão. 
+              Sua tarefa é analisar documentos de apólices e extrair dados estruturados exatamente como aparecem.
+              Quando encontrar datas, mantenha sempre no formato brasileiro DD/MM/AAAA.
+              Ao encontrar valores monetários, extraia apenas os números, convertendo para formato decimal.
+              É FUNDAMENTAL que você retorne dados reais encontrados no documento, sem inventar informações.
+              Retorne APENAS um objeto JSON válido, sem texto adicional ou explicativo.`
             },
             {
               role: 'user',
-              content: `Extraia COM PRECISÃO as seguintes informações desta apólice de seguro e retorne APENAS UM OBJETO JSON VÁLIDO SEM TEXTO ADICIONAL:
-              policy_number (número da apólice, apenas os dígitos e letras sem espaços), 
-              customer_name (nome do segurado exatamente como consta no documento), 
-              customer_phone (telefone do cliente com o formato original),
-              insurer (nome da seguradora exatamente como consta),
-              issue_date (data de início da vigência no formato DD/MM/YYYY),
-              expiry_date (data final da vigência no formato DD/MM/YYYY),
-              coverage_amount (valor de cobertura como número, remova R$ e converta para número),
-              premium (valor do prêmio como número, remova R$ e converta para número),
-              type (tipo do seguro em maiúsculas como consta no documento: AUTOMÓVEL, VIDA, etc).
+              content: `Analise cuidadosamente este documento de apólice de seguro e extraia as seguintes informações COM MÁXIMA PRECISÃO:
 
-              IMPORTANTE:
-              1. Mantenha EXATAMENTE o formato de data brasileiro DD/MM/YYYY conforme aparece no documento.
-              2. Para valores monetários, extraia apenas o número (exemplo: de "R$ 1.234,56" para 1234.56).
-              3. Se alguma informação não estiver presente no documento, deixe o campo vazio ("").
-              4. Não infira ou invente dados. Se não tiver certeza, deixe em branco.
-              5. RETORNE APENAS UM OBJETO JSON VÁLIDO, SEM TEXTO ADICIONAL OU EXPLICATIVO.
+              - policy_number: o número da apólice, exatamente como aparece, remova apenas espaços extras
+              - customer_name: nome completo do segurado/cliente
+              - customer_phone: telefone do cliente no formato original
+              - insurer: nome da seguradora exatamente como aparece
+              - issue_date: data de início da vigência no formato DD/MM/YYYY
+              - expiry_date: data final da vigência no formato DD/MM/YYYY
+              - coverage_amount: valor de cobertura (apenas o número, sem R$ ou outros símbolos)
+              - premium: valor do prêmio (apenas o número, sem R$ ou outros símbolos)
+              - type: tipo do seguro (AUTOMÓVEL, VIDA, RESIDENCIAL, etc)
 
-              Texto da apólice:
+              INSTRUÇÕES IMPORTANTES:
+              1. Busque atentamente por cada informação no documento. Olhe em todas as seções.
+              2. Para datas, mantenha EXATAMENTE o formato brasileiro DD/MM/YYYY.
+              3. Para valores monetários, converta valores como "R$ 1.234,56" para o número 1234.56
+              4. Se não encontrar alguma informação com certeza, deixe o campo como string vazia.
+              5. NUNCA invente dados que não estão claramente presentes no documento.
+              6. Retorne APENAS um objeto JSON válido sem texto adicional.
+              7. Se encontrar padrões como "vigência de XX/XX/XXXX a YY/YY/YYYY", extraia corretamente as datas de início e fim.
+
+              Documento da apólice para análise:
               ${pdfText}`
             }
           ],
@@ -264,17 +272,39 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
         type: extractedData.type || ''
       };
       
-      // Validate the processed data
+      // Validate the processed data and log warnings for missing fields
+      const missingFields = [];
+      
       if (!processedData.policy_number) {
         console.warn('Número da apólice não encontrado no documento');
+        missingFields.push('número da apólice');
       }
       
       if (!processedData.customer_name) {
         console.warn('Nome do cliente não encontrado no documento');
+        missingFields.push('nome do cliente');
       }
       
       if (!processedData.insurer) {
         console.warn('Seguradora não encontrada no documento');
+        missingFields.push('nome da seguradora');
+      }
+      
+      if (isNaN(new Date(processedData.issue_date).getTime())) {
+        console.warn('Data de início inválida');
+        missingFields.push('data de início');
+        processedData.issue_date = new Date();
+      }
+      
+      if (isNaN(new Date(processedData.expiry_date).getTime())) {
+        console.warn('Data de vencimento inválida');
+        missingFields.push('data de vencimento');
+        processedData.expiry_date = new Date(new Date().setFullYear(new Date().getFullYear() + 1));
+      }
+      
+      // Se tiver muitos campos faltando, gerar um aviso apropriado
+      if (missingFields.length > 2) {
+        console.warn(`Múltiplos campos não encontrados: ${missingFields.join(', ')}`);
       }
       
       console.log('Dados processados e validados:', processedData);
