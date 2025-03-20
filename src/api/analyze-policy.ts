@@ -1,3 +1,4 @@
+
 import { Policy } from "@/types";
 
 interface AnalyzeResponse {

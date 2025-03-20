@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Upload, FileText, DatabaseZap } from 'lucide-react';
+import { Loader2, Upload, FileText, DatabaseZap, Check, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Policy } from '@/types';
@@ -339,49 +339,73 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         {progress === 'complete' && (
           <div className="flex flex-col items-center justify-center py-8">
             <div className="bg-green-500 text-white p-3 rounded-full mb-4">
-              <FileText className="h-8 w-8" />
+              <Check className="h-8 w-8" />
             </div>
             <p className="font-medium text-green-600">Apólice processada com sucesso!</p>
             <p className="text-sm text-muted-foreground mb-4">Os dados foram extraídos e cadastrados</p>
             
             {extractedData && (
-              <div className="bg-muted p-4 rounded-lg w-full max-w-md mb-6 text-sm">
-                <h3 className="font-semibold mb-2 text-center">Dados Extraídos</h3>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-muted-foreground">Número:</p>
-                    <p className="font-medium">{extractedData.policy_number}</p>
+              <div className="bg-muted p-4 rounded-lg w-full max-w-md mb-6">
+                <h3 className="font-semibold mb-3 text-center text-base">Dados Extraídos da Apólice</h3>
+                
+                <div className="space-y-3">
+                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Número:</p>
+                    <p className="text-sm font-bold">{extractedData.policy_number || 'Não identificado'}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-muted-foreground">Segurado:</p>
-                    <p className="font-medium">{extractedData.customer_name}</p>
+                  
+                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Cliente:</p>
+                    <p className="text-sm font-bold">{extractedData.customer_name || 'Não identificado'}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-muted-foreground">Telefone:</p>
-                    <p className="font-medium">{extractedData.customer_phone}</p>
+                  
+                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Telefone:</p>
+                    <p className="text-sm font-bold">{extractedData.customer_phone || 'Não informado'}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-muted-foreground">Seguradora:</p>
-                    <p className="font-medium">{extractedData.insurer}</p>
+                  
+                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Seguradora:</p>
+                    <p className="text-sm font-bold">{extractedData.insurer || 'Não identificada'}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-muted-foreground">Vigência:</p>
-                    <p className="font-medium">
-                      {formatDate(extractedData.issue_date || new Date())} a {formatDate(extractedData.expiry_date || new Date())}
+                  
+                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Tipo:</p>
+                    <p className="text-sm font-bold">{extractedData.type || 'Não identificado'}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Vigência:</p>
+                    <div className="text-sm">
+                      <span className="font-bold">
+                        {formatDate(extractedData.issue_date || new Date())}
+                      </span>
+                      <span className="mx-1">a</span>
+                      <span className="font-bold">
+                        {formatDate(extractedData.expiry_date || new Date())}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                    <p className="text-sm font-medium text-muted-foreground">Cobertura:</p>
+                    <p className="text-sm font-bold text-green-600 dark:text-green-500">
+                      {formatCurrency(extractedData.coverage_amount || 0)}
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-muted-foreground">Cobertura:</p>
-                    <p className="font-medium">{formatCurrency(extractedData.coverage_amount || 0)}</p>
+                  
+                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center">
+                    <p className="text-sm font-medium text-muted-foreground">Prêmio:</p>
+                    <p className="text-sm font-bold text-blue-600 dark:text-blue-500">
+                      {formatCurrency(extractedData.premium || 0)}
+                    </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-muted-foreground">Prêmio:</p>
-                    <p className="font-medium">{formatCurrency(extractedData.premium || 0)}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-muted-foreground">Tipo:</p>
-                    <p className="font-medium">{extractedData.type}</p>
-                  </div>
+                </div>
+                
+                <div className="mt-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-xs text-center text-muted-foreground">
+                    Estes dados foram extraídos automaticamente do documento PDF
+                  </p>
                 </div>
               </div>
             )}
@@ -399,7 +423,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         {progress === 'error' && (
           <div className="flex flex-col items-center justify-center py-8">
             <div className="bg-red-500 text-white p-3 rounded-full mb-4">
-              <FileText className="h-8 w-8" />
+              <AlertTriangle className="h-8 w-8" />
             </div>
             <p className="font-medium text-red-600">Erro no processamento</p>
             <p className="text-sm text-muted-foreground mb-2 text-center max-w-md">

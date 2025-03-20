@@ -152,7 +152,11 @@ Deno.serve(async (req) => {
           results.details.push({
             policy_id: policy.id,
             notification_id: notification.id,
-            status: 'success'
+            status: 'success',
+            policy_number: policy.policy_number,
+            customer_name: policy.customer_name,
+            days_until_expiry: daysUntilExpiry,
+            expiry_date: formattedDate
           })
           
           // Marcar a apólice como notificada para evitar notificações duplicadas
@@ -177,7 +181,8 @@ Deno.serve(async (req) => {
           results.details.push({
             policy_id: policy.id,
             status: 'error',
-            error: err.message
+            error: err.message,
+            policy_number: policy.policy_number || 'Desconhecido'
           })
         }
       }
