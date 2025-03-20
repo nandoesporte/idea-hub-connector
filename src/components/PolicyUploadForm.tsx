@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { uploadPolicyAttachment, createPolicy, runInsurancePoliciesMigration } from '@/lib/policyService';
@@ -8,7 +7,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Upload, FileText, DatabaseZap, Check, AlertTriangle } from 'lucide-react';
+import { Loader2, Upload, FileText, DatabaseZap, Check, AlertTriangle, Calendar, DollarSign, User, Phone, Building, FileType } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Policy } from '@/types';
@@ -45,7 +44,6 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         setNeedsMigration(false);
         await handleUpload();
       } else {
-        // In development mode, we can proceed even if the API fails
         if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
           console.log('Ambiente de desenvolvimento - continuando mesmo com erro na API');
           toast.success('Configuração simulada com sucesso no ambiente de desenvolvimento!');
@@ -60,7 +58,6 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     } catch (error) {
       console.error('Erro ao criar estruturas:', error);
       
-      // Even on error, proceed in development mode
       if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
         toast.success('Configuração simulada com sucesso no ambiente de desenvolvimento!');
         setNeedsMigration(false);
@@ -86,7 +83,6 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       setExtractedData(null);
       toast.info('Enviando arquivo...');
 
-      // 1. Fazer upload do arquivo
       let fileUrl;
       try {
         fileUrl = await uploadPolicyAttachment(file, user.id);
@@ -97,12 +93,10 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       } catch (error) {
         console.error('Error uploading file:', error);
         
-        // In development mode, proceed with a simulated URL even on error
         if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
           console.log('Ambiente de desenvolvimento - usando URL simulada após erro');
           fileUrl = `https://example.com/documento-simulado-${Date.now()}.pdf`;
         } else {
-          // Check if it's a bucket error
           const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
           const isBucketError = errorMsg.includes('bucket') || errorMsg.includes('Bucket');
           
@@ -126,19 +120,24 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       setProgress('analyzing');
       toast.info('Analisando documento com IA...');
 
-      // 2. Analisar o documento com a API do OpenAI
       let policyData;
       try {
         policyData = await analyzePolicyDocument(fileUrl);
         console.log('Dados da apólice extraídos:', policyData);
         
-        if (!policyData || !policyData.policy_number) {
-          throw new Error('Não foi possível extrair dados essenciais do documento');
+        if (!policyData || Object.keys(policyData).length === 0) {
+          throw new Error('Não foi possível extrair dados do documento');
         }
         
-        // Salvar os dados extraídos para exibição
-        setExtractedData(policyData);
+        if (!policyData.policy_number) {
+          throw new Error('Não foi possível identificar o número da apólice no documento');
+        }
         
+        if (!policyData.insurer) {
+          throw new Error('Não foi possível identificar a seguradora no documento');
+        }
+        
+        setExtractedData(policyData);
       } catch (error) {
         console.error('Error analyzing policy:', error);
         setProgress('error');
@@ -147,49 +146,42 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         return;
       }
       
-      // 3. Criar a apólice com os dados extraídos
       if (policyData) {
         try {
-          // Calcular data de lembrete (30 dias antes do vencimento)
           const expiryDate = policyData.expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1));
           const reminderDate = new Date(expiryDate);
           reminderDate.setDate(reminderDate.getDate() - 30);
           
-          // Usar apenas os dados exatos extraídos pelo OpenAI
           const policyToCreate: Omit<Policy, "id" | "created_at" | "updated_at" | "reminder_sent"> = {
             user_id: user.id,
-            policy_number: policyData.policy_number || '',
-            customer_name: policyData.customer_name || '',
+            policy_number: policyData.policy_number || `AP-${Date.now().toString().slice(-6)}`,
+            customer_name: policyData.customer_name || 'Cliente não identificado',
             customer_phone: policyData.customer_phone || '',
             issue_date: policyData.issue_date || new Date(),
             expiry_date: expiryDate,
-            insurer: policyData.insurer || '',
+            insurer: policyData.insurer || 'Seguradora não identificada',
             coverage_amount: policyData.coverage_amount || 0,
             premium: policyData.premium || 0,
             status: 'active',
-            type: policyData.type || '',
+            type: policyData.type || 'OUTRO',
             attachment_url: fileUrl,
-            notes: 'Dados extraídos exatamente como constam na apólice via IA'
+            notes: 'Dados extraídos via IA - verificar precisão'
           };
           
           console.log('Criando apólice com os dados:', policyToCreate);
           
-          // Criar a apólice no banco de dados
           const result = await createPolicy(policyToCreate);
           
           if (result === null) {
-            // In development mode, proceed even if table creation fails
             if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
               console.log('Ambiente de desenvolvimento - simulando sucesso mesmo sem tabela');
               setProgress('complete');
               toast.success('Apólice simulada com sucesso no ambiente de desenvolvimento!');
               
-              // Chamar callback de sucesso se fornecido
               if (onSuccess) onSuccess();
               return;
             }
             
-            // Verifica se precisa executar a migração
             setNeedsMigration(true);
             setProgress('error');
             setErrorMessage('A tabela de apólices não existe no banco de dados. Clique no botão abaixo para criar a tabela.');
@@ -197,7 +189,6 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             return;
           }
           
-          // 4. Criar notificação de lembrete
           if (result.id) {
             try {
               await createNotification({
@@ -212,25 +203,21 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
               console.log('Notificação de nova apólice criada com sucesso');
             } catch (notifError) {
               console.error('Erro ao criar notificação de nova apólice:', notifError);
-              // Não interrompe o fluxo se a notificação falhar
             }
           }
           
           setProgress('complete');
           toast.success('Apólice cadastrada com sucesso!');
           
-          // Chamar callback de sucesso se fornecido
           if (onSuccess) onSuccess();
         } catch (error) {
           console.error('Error creating policy:', error);
           
-          // In development mode, proceed even if policy creation fails
           if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
             console.log('Ambiente de desenvolvimento - simulando sucesso mesmo com erro na criação');
             setProgress('complete');
             toast.success('Apólice simulada com sucesso no ambiente de desenvolvimento!');
             
-            // Chamar callback de sucesso se fornecido
             if (onSuccess) onSuccess();
             return;
           }
@@ -273,6 +260,18 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  };
+
+  const renderFieldStatus = (value: any, label: string) => {
+    const hasValue = value !== undefined && value !== null && value !== '';
+    return (
+      <span className={`inline-flex items-center ml-2 text-xs ${hasValue ? 'text-green-600' : 'text-red-500'}`}>
+        {hasValue ? 
+          <Check className="h-3 w-3 mr-1" /> : 
+          <AlertTriangle className="h-3 w-3 mr-1" />}
+        {hasValue ? 'Identificado' : 'Não encontrado'}
+      </span>
+    );
   };
 
   return (
@@ -337,7 +336,7 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         )}
 
         {progress === 'complete' && (
-          <div className="flex flex-col items-center justify-center py-8">
+          <div className="flex flex-col items-center justify-center py-6">
             <div className="bg-green-500 text-white p-3 rounded-full mb-4">
               <Check className="h-8 w-8" />
             </div>
@@ -348,74 +347,135 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
               <div className="bg-muted p-4 rounded-lg w-full max-w-md mb-6">
                 <h3 className="font-semibold mb-3 text-center text-base">Dados Extraídos da Apólice</h3>
                 
-                <div className="space-y-3">
-                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Número:</p>
-                    <p className="text-sm font-bold">{extractedData.policy_number || 'Não identificado'}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Cliente:</p>
-                    <p className="text-sm font-bold">{extractedData.customer_name || 'Não identificado'}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Telefone:</p>
-                    <p className="text-sm font-bold">{extractedData.customer_phone || 'Não informado'}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Seguradora:</p>
-                    <p className="text-sm font-bold">{extractedData.insurer || 'Não identificada'}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Tipo:</p>
-                    <p className="text-sm font-bold">{extractedData.type || 'Não identificado'}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Vigência:</p>
-                    <div className="text-sm">
-                      <span className="font-bold">
-                        {formatDate(extractedData.issue_date || new Date())}
-                      </span>
-                      <span className="mx-1">a</span>
-                      <span className="font-bold">
-                        {formatDate(extractedData.expiry_date || new Date())}
-                      </span>
+                <div className="space-y-3 divide-y divide-gray-200 dark:divide-gray-700">
+                  <div className="grid grid-cols-[auto_1fr] gap-4 items-center pb-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <FileType className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center">
+                        <p className="text-sm font-medium text-muted-foreground">Número da Apólice:</p>
+                        {renderFieldStatus(extractedData.policy_number, 'Número da Apólice')}
+                      </div>
+                      <p className="text-sm font-bold">{extractedData.policy_number || 'Não identificado'}</p>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Cobertura:</p>
-                    <p className="text-sm font-bold text-green-600 dark:text-green-500">
-                      {formatCurrency(extractedData.coverage_amount || 0)}
-                    </p>
+                  <div className="grid grid-cols-[auto_1fr] gap-4 items-center py-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center">
+                        <p className="text-sm font-medium text-muted-foreground">Cliente:</p>
+                        {renderFieldStatus(extractedData.customer_name, 'Cliente')}
+                      </div>
+                      <p className="text-sm font-bold">{extractedData.customer_name || 'Não identificado'}</p>
+                    </div>
                   </div>
                   
-                  <div className="grid grid-cols-[120px_1fr] gap-2 items-center">
-                    <p className="text-sm font-medium text-muted-foreground">Prêmio:</p>
-                    <p className="text-sm font-bold text-blue-600 dark:text-blue-500">
-                      {formatCurrency(extractedData.premium || 0)}
-                    </p>
+                  <div className="grid grid-cols-[auto_1fr] gap-4 items-center py-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Phone className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center">
+                        <p className="text-sm font-medium text-muted-foreground">Telefone:</p>
+                        {renderFieldStatus(extractedData.customer_phone, 'Telefone')}
+                      </div>
+                      <p className="text-sm font-bold">{extractedData.customer_phone || 'Não informado'}</p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="mt-4 pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-xs text-center text-muted-foreground">
-                    Estes dados foram extraídos automaticamente do documento PDF
-                  </p>
+                  
+                  <div className="grid grid-cols-[auto_1fr] gap-4 items-center py-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Building className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center">
+                        <p className="text-sm font-medium text-muted-foreground">Seguradora:</p>
+                        {renderFieldStatus(extractedData.insurer, 'Seguradora')}
+                      </div>
+                      <p className="text-sm font-bold">{extractedData.insurer || 'Não identificada'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-[auto_1fr] gap-4 items-center py-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <FileType className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center">
+                        <p className="text-sm font-medium text-muted-foreground">Tipo:</p>
+                        {renderFieldStatus(extractedData.type, 'Tipo')}
+                      </div>
+                      <p className="text-sm font-bold">{extractedData.type || 'Não identificado'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-[auto_1fr] gap-4 items-center py-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Calendar className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center">
+                        <p className="text-sm font-medium text-muted-foreground">Vigência:</p>
+                        {(extractedData.issue_date && extractedData.expiry_date) ? 
+                          renderFieldStatus(true, 'Vigência') : 
+                          renderFieldStatus(false, 'Vigência')}
+                      </div>
+                      <div className="text-sm">
+                        <div className="grid grid-cols-2 gap-1">
+                          <div>
+                            <span className="text-xs text-muted-foreground">Início:</span>
+                            <span className="font-bold block">
+                              {extractedData.issue_date ? formatDate(extractedData.issue_date) : 'Não identificado'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Fim:</span>
+                            <span className="font-bold block">
+                              {extractedData.expiry_date ? formatDate(extractedData.expiry_date) : 'Não identificado'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-[auto_1fr] gap-4 items-center py-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="grid grid-cols-2 gap-1">
+                        <div>
+                          <div className="flex items-center">
+                            <p className="text-sm font-medium text-muted-foreground">Cobertura:</p>
+                            {renderFieldStatus(extractedData.coverage_amount, 'Cobertura')}
+                          </div>
+                          <p className="text-sm font-bold text-green-600 dark:text-green-500">
+                            {formatCurrency(extractedData.coverage_amount || 0)}
+                          </p>
+                        </div>
+                        <div>
+                          <div className="flex items-center">
+                            <p className="text-sm font-medium text-muted-foreground">Prêmio:</p>
+                            {renderFieldStatus(extractedData.premium, 'Prêmio')}
+                          </div>
+                          <p className="text-sm font-bold text-blue-600 dark:text-blue-500">
+                            {formatCurrency(extractedData.premium || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
             
-            <Button 
-              variant="outline" 
-              onClick={resetForm}
-              className="mt-2"
-            >
-              Processar outro documento
+            <Button onClick={resetForm} className="mt-2">
+              Enviar outra apólice
             </Button>
           </div>
         )}
@@ -425,72 +485,36 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             <div className="bg-red-500 text-white p-3 rounded-full mb-4">
               <AlertTriangle className="h-8 w-8" />
             </div>
-            <p className="font-medium text-red-600">Erro no processamento</p>
-            <p className="text-sm text-muted-foreground mb-2 text-center max-w-md">
-              {errorMessage || 'Ocorreu um erro ao processar seu documento.'}
+            <p className="font-medium text-red-600">Ocorreu um erro</p>
+            <p className="text-sm text-center text-muted-foreground mb-4">
+              {errorMessage || 'Não foi possível processar o documento.'}
             </p>
             
-            {/* Show API error details when available */}
-            {errorMessage && errorMessage.includes('OpenAI') && (
-              <div className="bg-red-50 p-3 rounded text-xs text-red-800 mb-4 max-w-md overflow-auto">
-                <p className="font-semibold mb-1">Erro na API da OpenAI:</p>
-                <p>{errorMessage}</p>
-                <p className="mt-2">
-                  Você pode verificar sua chave API em: 
-                  <a href="https://platform.openai.com/account/api-keys" 
-                     target="_blank" 
-                     rel="noopener noreferrer"
-                     className="text-blue-600 underline ml-1">
-                    https://platform.openai.com/account/api-keys
-                  </a>
-                </p>
-              </div>
-            )}
-            
-            <div className="flex gap-2 mt-2">
-              <Button 
-                variant="outline" 
-                onClick={resetForm}
-              >
-                Voltar
+            {needsMigration ? (
+              <Button onClick={handleMigration} className="mb-2 flex items-center gap-2">
+                <DatabaseZap className="h-4 w-4" />
+                Configurar sistema
               </Button>
-              
-              {needsMigration ? (
-                <Button 
-                  variant="default"
-                  onClick={handleMigration}
-                  className="gap-2"
-                >
-                  <DatabaseZap className="h-4 w-4" />
-                  Criar tabela e continuar
-                </Button>
-              ) : (
-                <Button 
-                  variant="default"
-                  onClick={handleUpload}
-                  disabled={!file}
-                >
-                  Tentar novamente
-                </Button>
-              )}
-            </div>
+            ) : (
+              <Button onClick={resetForm} className="mb-2">
+                Tentar novamente
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-end">
-        {progress === 'idle' && (
-          <Button 
-            onClick={handleUpload} 
-            disabled={!file || uploading}
-            className="gap-1.5"
-          >
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+      
+      {progress === 'idle' && file && (
+        <CardFooter className="flex justify-end border-t pt-4">
+          <Button onClick={handleUpload} className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
             Processar Documento
           </Button>
-        )}
-      </CardFooter>
+        </CardFooter>
+      )}
     </Card>
   );
 };
 
 export default PolicyUploadForm;
+

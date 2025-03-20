@@ -162,7 +162,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     
     console.log('Usando API key do localStorage para OpenAI (validada e limpa)');
     
-    // Call the OpenAI API with specific instructions
+    // Call the OpenAI API with improved instructions for better data extraction
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -175,12 +175,12 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
           messages: [
             {
               role: 'system',
-              content: 'Você é um assistente especializado em extrair informações de apólices de seguro brasileiras. Extraia as informações exatamente como aparecem no documento, respeitando o formato de datas brasileiro (DD/MM/AAAA). Retorne APENAS um objeto JSON válido, sem texto adicional.'
+              content: 'Você é um assistente especializado em extrair informações de apólices de seguro brasileiras com extrema precisão. Extraia as informações exatamente como aparecem no documento, respeitando o formato de datas brasileiro (DD/MM/AAAA). Retorne APENAS um objeto JSON válido, sem texto adicional. Se uma informação estiver ausente, deixe o campo vazio.'
             },
             {
               role: 'user',
-              content: `Extraia as seguintes informações desta apólice de seguro e retorne APENAS UM OBJETO JSON VÁLIDO SEM TEXTO ADICIONAL:
-              policy_number (número da apólice, apenas os dígitos), 
+              content: `Extraia COM PRECISÃO as seguintes informações desta apólice de seguro e retorne APENAS UM OBJETO JSON VÁLIDO SEM TEXTO ADICIONAL:
+              policy_number (número da apólice, apenas os dígitos e letras sem espaços), 
               customer_name (nome do segurado exatamente como consta no documento), 
               customer_phone (telefone do cliente com o formato original),
               insurer (nome da seguradora exatamente como consta),
@@ -190,18 +190,18 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
               premium (valor do prêmio como número, remova R$ e converta para número),
               type (tipo do seguro em maiúsculas como consta no documento: AUTOMÓVEL, VIDA, etc).
 
-              Mantenha o formato de data brasileiro DD/MM/YYYY conforme aparece no documento.
-              Para valores monetários, extraia apenas o número (exemplo: de "R$ 1.234,56" para 1234.56).
-              
-              IMPORTANTE: Se alguma informação não estiver presente no documento, deixe o campo vazio ("").
-              Não invente ou infira dados que não estejam claramente indicados no documento.
-              RETORNE APENAS UM OBJETO JSON VÁLIDO, SEM TEXTO ADICIONAL OU EXPLICATIVO.
+              IMPORTANTE:
+              1. Mantenha EXATAMENTE o formato de data brasileiro DD/MM/YYYY conforme aparece no documento.
+              2. Para valores monetários, extraia apenas o número (exemplo: de "R$ 1.234,56" para 1234.56).
+              3. Se alguma informação não estiver presente no documento, deixe o campo vazio ("").
+              4. Não infira ou invente dados. Se não tiver certeza, deixe em branco.
+              5. RETORNE APENAS UM OBJETO JSON VÁLIDO, SEM TEXTO ADICIONAL OU EXPLICATIVO.
 
               Texto da apólice:
               ${pdfText}`
             }
           ],
-          temperature: 0.1,
+          temperature: 0.0, // Reduzido para maior precisão
           max_tokens: 1000
         })
       });
@@ -247,7 +247,7 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
         return new Date(dateStr);
       };
       
-      // Process the extracted data
+      // Process the extracted data with better validation
       const processedData: Partial<Policy> = {
         policy_number: extractedData.policy_number || '',
         customer_name: extractedData.customer_name || '',
@@ -264,7 +264,20 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
         type: extractedData.type || ''
       };
       
-      console.log('Dados processados:', processedData);
+      // Validate the processed data
+      if (!processedData.policy_number) {
+        console.warn('Número da apólice não encontrado no documento');
+      }
+      
+      if (!processedData.customer_name) {
+        console.warn('Nome do cliente não encontrado no documento');
+      }
+      
+      if (!processedData.insurer) {
+        console.warn('Seguradora não encontrada no documento');
+      }
+      
+      console.log('Dados processados e validados:', processedData);
       return processedData;
     } catch (error) {
       console.error('Erro ao chamar a API da OpenAI:', error);

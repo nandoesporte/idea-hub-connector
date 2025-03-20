@@ -122,12 +122,24 @@ Deno.serve(async (req) => {
           const expiryDate = new Date(policy.expiry_date)
           const formattedDate = format(expiryDate, 'dd/MM/yyyy')
           
-          // Calcular dias restantes até o vencimento
+          // Calcular dias restantes até o vencimento de forma mais precisa
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
           
           console.log(`Processando apólice ${policy.policy_number}, vencimento em ${daysUntilExpiry} dias (${formattedDate})`)
           
-          // Criar notificação para o usuário
+          // Verificar se o usuário existe antes de criar a notificação
+          const { data: userData, error: userError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', policy.user_id)
+            .single()
+            
+          if (userError) {
+            console.warn(`Usuário ${policy.user_id} não encontrado, pulando notificação`)
+            continue
+          }
+          
+          // Criar notificação para o usuário com detalhes mais precisos da apólice
           const { data: notification, error: notificationError } = await supabase
             .from('notifications')
             .insert({
