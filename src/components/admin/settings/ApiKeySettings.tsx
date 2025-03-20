@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -30,7 +29,6 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [useTextarea, setUseTextarea] = useState(false);
   
-  // Load API key from localStorage on component mount
   useEffect(() => {
     const savedApiKey = localStorage.getItem('openai_api_key');
     if (savedApiKey && !openAiApiKey) {
@@ -41,28 +39,23 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
   
   const handleSave = async () => {
     try {
-      // Clean the API key before saving
       const cleanedApiKey = cleanApiKey(openAiApiKey);
       
-      // Validate the API key format
       if (!validateApiKey(cleanedApiKey)) {
         toast.error('Formato de chave API inválido');
         setConnectionStatus('error');
         setErrorMessage(
-          'Formato de chave API inválido. A chave deve começar com "sk-" seguido diretamente por caracteres alfanuméricos ' +
-          '(não deve começar com "sk-_" ou "sk-proj-"), ' +
-          'não deve conter espaços ou caracteres especiais, e deve ter pelo menos 20 caracteres. ' +
-          'Verifique se você está utilizando uma chave de API pessoal e não uma chave de projeto.'
+          'Formato de chave API inválido. A chave deve começar com "sk-" ' +
+          '(incluindo formatos como "sk-proj-" ou "sk-_"), ' +
+          'não deve conter espaços ou caracteres especiais, e deve ter pelo menos 20 caracteres.'
         );
         return;
       }
       
-      // Update the state with the cleaned key
       onApiKeyChange(cleanedApiKey);
       
       await onSave();
       
-      // Save API key to localStorage for use in analyze-policy.ts
       localStorage.setItem('openai_api_key', cleanedApiKey);
       console.log('API key saved to localStorage');
       
@@ -75,28 +68,20 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
     }
   };
 
-  // Clean API key by removing whitespace and invisible characters
   const cleanApiKey = (apiKey: string): string => {
     if (!apiKey) return '';
     
-    // Remove all whitespace, including invisible Unicode whitespace characters
     return apiKey.trim().replace(/\s+/g, '');
   };
 
   const validateApiKey = (apiKey: string): boolean => {
     if (!apiKey) return false;
     
-    // Updated validation for OpenAI API key format
-    // - Should start with "sk-" followed directly by alphanumeric characters
-    // - Should not start with "sk-_" or "sk-proj-" (project keys or invalid formats)
-    // - Should only contain alphanumeric characters, hyphens after the "sk-" prefix
-    // - Should be at least 20 characters long 
-    const hasValidPrefix = /^sk-[a-zA-Z0-9]/.test(apiKey);
-    const doesNotHaveInvalidPrefix = !apiKey.startsWith('sk-_') && !apiKey.startsWith('sk-proj-');
-    const hasValidFormat = /^sk-[a-zA-Z0-9][a-zA-Z0-9\-]*$/.test(apiKey);
+    const hasValidPrefix = apiKey.startsWith('sk-');
+    const hasValidFormat = /^sk-[a-zA-Z0-9_\-]+$/.test(apiKey);
     const isLongEnough = apiKey.length >= 20;
     
-    return hasValidPrefix && doesNotHaveInvalidPrefix && hasValidFormat && isLongEnough;
+    return hasValidPrefix && hasValidFormat && isLongEnough;
   };
 
   const testConnection = async () => {
@@ -105,16 +90,14 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
       return;
     }
     
-    // Clean the API key before testing
     const cleanedApiKey = cleanApiKey(openAiApiKey);
     
     if (!validateApiKey(cleanedApiKey)) {
       setConnectionStatus('error');
       setErrorMessage(
-        'Formato de chave API inválido. A chave deve começar com "sk-" seguido diretamente por caracteres alfanuméricos ' +
-        '(não deve começar com "sk-_" ou "sk-proj-"), ' +
-        'não deve conter espaços ou caracteres especiais, e deve ter pelo menos 20 caracteres. ' +
-        'Verifique se você está utilizando uma chave de API pessoal e não uma chave de projeto.'
+        'Formato de chave API inválido. A chave deve começar com "sk-" ' +
+        '(incluindo formatos como "sk-proj-" ou "sk-_"), ' +
+        'não deve conter espaços ou caracteres especiais, e deve ter pelo menos 20 caracteres.'
       );
       toast.error('Formato de chave API inválido');
       return;
@@ -142,9 +125,8 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
         toast.success('Conexão com a API do OpenAI estabelecida com sucesso!');
         console.log('API connection successful', data);
         
-        // Since the connection test was successful, save the cleaned API key immediately
         localStorage.setItem('openai_api_key', cleanedApiKey);
-        onApiKeyChange(cleanedApiKey); // Update the state with cleaned key
+        onApiKeyChange(cleanedApiKey);
         console.log('API key automatically saved after successful connection test');
       } else {
         setConnectionStatus('error');
@@ -174,7 +156,6 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
     const pastedText = e.clipboardData.getData('text');
     const cleanedKey = cleanApiKey(pastedText);
     
-    // Prevent default paste behavior and manually set the cleaned value
     e.preventDefault();
     onApiKeyChange(cleanedKey);
   };
@@ -267,7 +248,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
           <div className="flex flex-col space-y-2">
             <p className="text-xs text-muted-foreground">
               Esta chave é necessária para análise de documentos com OpenAI. 
-              A chave deve começar com "sk-" seguido por caracteres alfanuméricos (não use chaves de projeto que começam com "sk-proj-").
+              A chave deve começar com "sk-" (incluindo formatos como "sk-proj-" ou "sk-_").
               Obtenha sua chave em <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">platform.openai.com/api-keys</a>
             </p>
             

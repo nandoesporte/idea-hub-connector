@@ -1,4 +1,3 @@
-
 import { Policy } from "@/types";
 
 interface AnalyzeResponse {
@@ -113,16 +112,14 @@ function validateApiKey(apiKey: string): boolean {
   if (!apiKey) return false;
   
   // Updated validation for OpenAI API key format
-  // - Should start with "sk-" followed directly by alphanumeric characters
-  // - Should not start with "sk-_" or "sk-proj-" (project keys or invalid formats)
-  // - Should only contain alphanumeric characters, hyphens after the "sk-" prefix
-  // - Should be at least 20 characters long 
-  const hasValidPrefix = /^sk-[a-zA-Z0-9]/.test(apiKey);
-  const doesNotHaveInvalidPrefix = !apiKey.startsWith('sk-_') && !apiKey.startsWith('sk-proj-');
-  const hasValidFormat = /^sk-[a-zA-Z0-9][a-zA-Z0-9\-]*$/.test(apiKey);
+  // - Should start with "sk-" (now allowing "sk-proj-" and "sk-_" prefixes)
+  // - Should only contain alphanumeric characters, hyphens, and underscores after the "sk-" prefix
+  // - Should be at least 20 characters long
+  const hasValidPrefix = apiKey.startsWith('sk-');
+  const hasValidFormat = /^sk-[a-zA-Z0-9_\-]+$/.test(apiKey);
   const isLongEnough = apiKey.length >= 20;
   
-  return hasValidPrefix && doesNotHaveInvalidPrefix && hasValidFormat && isLongEnough;
+  return hasValidPrefix && hasValidFormat && isLongEnough;
 }
 
 /**
@@ -156,8 +153,8 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       console.error('Formato de API key do OpenAI inválido');
       throw new Error(
         'A chave API do OpenAI está em um formato inválido. A chave deve começar com "sk-" ' +
-        'seguido diretamente por caracteres alfanuméricos (não deve começar com "sk-_" ou "sk-proj-") ' +
-        'e ter pelo menos 20 caracteres sem espaços ou caracteres especiais. ' +
+        '(incluindo formatos como "sk-proj-" ou "sk-_"), ' +
+        'não deve conter espaços ou caracteres especiais, e deve ter pelo menos 20 caracteres. ' +
         'Por favor, verifique a chave nas configurações de administração.'
       );
     }
