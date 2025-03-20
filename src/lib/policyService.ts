@@ -171,6 +171,13 @@ export const deletePolicy = async (id: string) => {
 
 export const uploadPolicyAttachment = async (file: File, userId: string, policyId?: string) => {
   try {
+    // Check if running in development mode
+    if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+      console.log('Ambiente de desenvolvimento detectado - simulando upload do arquivo');
+      // Return a mock URL for development purposes with a unique timestamp
+      return `https://example.com/documento-simulado-${Date.now()}.pdf`;
+    }
+    
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${policyId || 'new'}_${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `policies/${fileName}`;
@@ -216,17 +223,7 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
       const migrationResult = await runInsurancePoliciesMigration();
       
       if (!migrationResult.success) {
-        // In production environment
-        if (!import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE !== 'true') {
-          toast.error('O bucket de armazenamento não está configurado no sistema. Contate o administrador.');
-          throw new Error('Bucket de armazenamento não configurado');
-        } 
-        // In development or demo mode, simulate success
-        else {
-          console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
-          // Return a mock URL for development purposes
-          return `https://example.com/documento-simulado-${Date.now()}.pdf`;
-        }
+        throw new Error('Bucket de armazenamento não configurado');
       }
       
       // Check again if bucket exists after migration
@@ -239,18 +236,7 @@ export const uploadPolicyAttachment = async (file: File, userId: string, policyI
       
       if (!bucketsAfterMigration.some(bucket => bucket.name === 'documents')) {
         console.error('Documents bucket still does not exist after migration');
-        
-        // In production environment
-        if (!import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE !== 'true') {
-          toast.error('O bucket de armazenamento não está configurado no sistema. Contate o administrador.');
-          throw new Error('Bucket de armazenamento não configurado');
-        } 
-        // In development or demo mode, simulate success
-        else {
-          console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
-          // Return a mock URL for development purposes
-          return `https://example.com/documento-simulado-${Date.now()}.pdf`;
-        }
+        throw new Error('Bucket de armazenamento não configurado');
       }
     }
 
@@ -410,40 +396,54 @@ export const runInsurancePoliciesMigration = async () => {
   try {
     console.log('Attempting to run insurance policies migration...');
     
-    // In development or demo mode, simulate success without making API calls
+    // Always simulate success in development or demo mode
     if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
       console.log('Ambiente de desenvolvimento - operação simulada com sucesso');
+      // Add a small delay to make it feel like something happened
+      await new Promise(resolve => setTimeout(resolve, 500));
       return { success: true };
     }
     
     // In production, attempt to call the API
-    const response = await fetch('/api/run-migration', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        migration: 'insurance_policies' 
-      })
-    });
-    
-    if (!response.ok) {
-      console.error('Failed to run migration:', response.statusText);
-      let errorMessage = 'Falha ao executar migração';
+    try {
+      const response = await fetch('/api/run-migration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          migration: 'insurance_policies' 
+        })
+      });
       
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch (e) {
-        console.error('Error parsing error response:', e);
+      // Check if response is not JSON (like HTML error page)
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('API returned non-JSON response:', await response.text());
+        return { success: false, error: 'API response não é JSON válido' };
       }
       
-      return { success: false, error: errorMessage };
+      if (!response.ok) {
+        console.error('Failed to run migration:', response.statusText);
+        let errorMessage = 'Falha ao executar migração';
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+        
+        return { success: false, error: errorMessage };
+      }
+      
+      const result = await response.json();
+      console.log('Migration result:', result);
+      return result;
+    } catch (apiError) {
+      console.error('API call error:', apiError);
+      return { success: false, error: 'Erro ao chamar API de migração: ' + (apiError.message || apiError) };
     }
-    
-    const result = await response.json();
-    console.log('Migration result:', result);
-    return result;
   } catch (error) {
     console.error('Error running migration:', error);
     

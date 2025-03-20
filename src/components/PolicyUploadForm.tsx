@@ -38,16 +38,6 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       setProgress('migrating');
       toast.info('Criando tabela de apólices e bucket de documentos...');
       
-      // Check if we're in development mode
-      if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
-        // In development mode, simulate success without actually running migrations
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
-        toast.success('Configuração simulada com sucesso no ambiente de desenvolvimento!');
-        setNeedsMigration(false);
-        await handleUpload();
-        return;
-      }
-      
       const result = await runInsurancePoliciesMigration();
       
       if (result.success) {
@@ -55,6 +45,15 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         setNeedsMigration(false);
         await handleUpload();
       } else {
+        // In development mode, we can proceed even if the API fails
+        if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+          console.log('Ambiente de desenvolvimento - continuando mesmo com erro na API');
+          toast.success('Configuração simulada com sucesso no ambiente de desenvolvimento!');
+          setNeedsMigration(false);
+          await handleUpload();
+          return;
+        }
+        
         setProgress('error');
         setErrorMessage(result.error || 'Não foi possível criar as estruturas necessárias. Contate o administrador do sistema.');
       }
@@ -98,21 +97,27 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       } catch (error) {
         console.error('Error uploading file:', error);
         
-        // Check if it's a bucket error
-        const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-        const isBucketError = errorMsg.includes('bucket') || errorMsg.includes('Bucket');
-        
-        if (isBucketError) {
-          setProgress('error');
-          setErrorMessage('O sistema de armazenamento não está configurado. É necessário executar a migração.');
-          setNeedsMigration(true);
-          setUploading(false);
-          return;
+        // In development mode, proceed with a simulated URL even on error
+        if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+          console.log('Ambiente de desenvolvimento - usando URL simulada após erro');
+          fileUrl = `https://example.com/documento-simulado-${Date.now()}.pdf`;
         } else {
-          setProgress('error');
-          setErrorMessage(errorMsg);
-          setUploading(false);
-          return;
+          // Check if it's a bucket error
+          const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+          const isBucketError = errorMsg.includes('bucket') || errorMsg.includes('Bucket');
+          
+          if (isBucketError) {
+            setProgress('error');
+            setErrorMessage('O sistema de armazenamento não está configurado. É necessário executar a migração.');
+            setNeedsMigration(true);
+            setUploading(false);
+            return;
+          } else {
+            setProgress('error');
+            setErrorMessage(errorMsg);
+            setUploading(false);
+            return;
+          }
         }
       }
       
@@ -173,6 +178,17 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           const result = await createPolicy(policyToCreate);
           
           if (result === null) {
+            // In development mode, proceed even if table creation fails
+            if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+              console.log('Ambiente de desenvolvimento - simulando sucesso mesmo sem tabela');
+              setProgress('complete');
+              toast.success('Apólice simulada com sucesso no ambiente de desenvolvimento!');
+              
+              // Chamar callback de sucesso se fornecido
+              if (onSuccess) onSuccess();
+              return;
+            }
+            
             // Verifica se precisa executar a migração
             setNeedsMigration(true);
             setProgress('error');
@@ -207,6 +223,18 @@ const PolicyUploadForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           if (onSuccess) onSuccess();
         } catch (error) {
           console.error('Error creating policy:', error);
+          
+          // In development mode, proceed even if policy creation fails
+          if (import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') {
+            console.log('Ambiente de desenvolvimento - simulando sucesso mesmo com erro na criação');
+            setProgress('complete');
+            toast.success('Apólice simulada com sucesso no ambiente de desenvolvimento!');
+            
+            // Chamar callback de sucesso se fornecido
+            if (onSuccess) onSuccess();
+            return;
+          }
+          
           setProgress('error');
           setErrorMessage(error instanceof Error ? error.message : 'Falha ao cadastrar a apólice.');
           setAnalyzing(false);
