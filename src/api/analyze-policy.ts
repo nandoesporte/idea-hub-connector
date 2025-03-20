@@ -17,8 +17,10 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
     // If it's a mock URL in dev mode, return simulated text
     if (pdfUrl.includes('example.com') || pdfUrl.includes('documento-simulado')) {
       console.log('URL de exemplo detectada, retornando texto simulado');
+      
+      // Simulação mais realista baseada na imagem fornecida pelo usuário
       return `APÓLICE DE SEGURO
-      NÚMERO: AP123456
+      NÚMERO DA APÓLICE: AP123456
       SEGURADO: João Silva
       TELEFONE: (11) 98765-4321
       SEGURADORA: Seguradora Brasil
@@ -184,11 +186,11 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
             },
             {
               role: 'user',
-              content: `Analise cuidadosamente este documento de apólice de seguro e extraia as seguintes informações COM MÁXIMA PRECISÃO:
+              content: `Analise cuidadosamente este documento de apólice de seguro e extraia as seguintes informações EXATAMENTE COMO APARECEM NO DOCUMENTO, sem fazer alterações:
 
-              - policy_number: o número da apólice, exatamente como aparece, remova apenas espaços extras
+              - policy_number: o número da apólice, exatamente como aparece
               - customer_name: nome completo do segurado/cliente
-              - customer_phone: telefone do cliente no formato original
+              - customer_phone: telefone do cliente no formato original 
               - insurer: nome da seguradora exatamente como aparece
               - issue_date: data de início da vigência no formato DD/MM/YYYY
               - expiry_date: data final da vigência no formato DD/MM/YYYY
@@ -204,12 +206,13 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
               5. NUNCA invente dados que não estão claramente presentes no documento.
               6. Retorne APENAS um objeto JSON válido sem texto adicional.
               7. Se encontrar padrões como "vigência de XX/XX/XXXX a YY/YY/YYYY", extraia corretamente as datas de início e fim.
+              8. Use EXATAMENTE os valores que aparecem no documento, não os reformate ou modifique.
 
               Documento da apólice para análise:
               ${pdfText}`
             }
           ],
-          temperature: 0.0, // Reduzido para maior precisão
+          temperature: 0.0, // Temperatura zero para maior precisão
           max_tokens: 1000
         })
       });
