@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 interface LogEntry {
@@ -25,6 +26,16 @@ export interface WhatsAppMessage {
   mimetype?: string;
   caption?: string;
   mediaUrl?: string;
+}
+
+export interface ReceivedMessage {
+  id: string;
+  phone: string;
+  message: string;
+  timestamp: Date;
+  type: 'text' | 'image' | 'document' | 'audio' | 'video';
+  mediaUrl?: string;
+  fileName?: string;
 }
 
 export interface EventReminder {
@@ -315,7 +326,6 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
         try {
           data = JSON.parse(responseText);
         } catch (e) {
-          // Se não conseguir fazer parse, assume sucesso se o status foi OK
           data = { result: 'success', message: responseText };
         }
       } else {
@@ -326,7 +336,6 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
       addLogEntry('warning', 'send-message', "Could not parse response, assuming success");
     }
     
-    // Verificar diferentes formatos de resposta de sucesso
     const isSuccess = data.result === 'success' || 
                      data.status === 'success' || 
                      data.success === true ||
@@ -363,6 +372,126 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
     
     return false;
   }
+};
+
+/**
+ * Retrieves received messages from WhatsApp using the WhatsGW API
+ */
+export const getReceivedMessages = async (limit = 50): Promise<ReceivedMessage[]> => {
+  const apiKey = getApiKey();
+  
+  if (!apiKey) {
+    addLogEntry('error', 'get-messages', "API key not set");
+    return [];
+  }
+  
+  try {
+    addLogEntry('info', 'get-messages', `Retrieving received WhatsApp messages (limit: ${limit})`);
+    
+    const urlParams = new URLSearchParams({
+      apikey: apiKey,
+      phone_number: "5544997270698",
+      limit: limit.toString()
+    });
+    
+    const apiUrl = `${WHATSGW_API_BASE_URL}/Receive?${urlParams.toString()}`;
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; WhatsGW-Client/1.0)',
+      }
+    });
+    
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        errorData = { message: `HTTP error ${response.status}` };
+      }
+      
+      const errorMessage = handleApiError(response.status, 'get-messages', errorData);
+      throw new Error(errorMessage);
+    }
+    
+    const data = await response.json();
+    
+    if (data && Array.isArray(data.messages)) {
+      const messages: ReceivedMessage[] = data.messages.map((msg: any) => ({
+        id: msg.id || `msg_${Date.now()}_${Math.random()}`,
+        phone: msg.contact_phone_number || msg.phone,
+        message: msg.message_body || msg.message,
+        timestamp: new Date(msg.message_timestamp || msg.timestamp || Date.now()),
+        type: msg.message_type || 'text',
+        mediaUrl: msg.message_body_url || msg.mediaUrl,
+        fileName: msg.message_body_filename || msg.fileName
+      }));
+      
+      addLogEntry('info', 'get-messages', `Retrieved ${messages.length} messages successfully`);
+      return messages;
+    }
+    
+    addLogEntry('warning', 'get-messages', "No messages found in response", data);
+    return [];
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    
+    addLogEntry('error', 'get-messages', "Error retrieving WhatsApp messages", {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    });
+    
+    console.error('WhatsApp get messages error:', error);
+    toast.error(`Erro ao recuperar mensagens: ${errorMessage}`);
+    return [];
+  }
+};
+
+/**
+ * Polls for new messages periodically
+ */
+export const startMessagePolling = (
+  onNewMessage: (message: ReceivedMessage) => void,
+  intervalMs = 30000
+): () => void => {
+  let lastMessageId = '';
+  
+  const poll = async () => {
+    try {
+      const messages = await getReceivedMessages(10);
+      
+      if (messages.length > 0) {
+        const newMessages = lastMessageId 
+          ? messages.filter(msg => msg.id !== lastMessageId && new Date(msg.timestamp) > new Date())
+          : messages.slice(0, 1); // Only get the latest message on first poll
+        
+        newMessages.forEach(onNewMessage);
+        
+        if (messages.length > 0) {
+          lastMessageId = messages[0].id;
+        }
+      }
+    } catch (error) {
+      addLogEntry('warning', 'message-polling', "Error during message polling", error);
+    }
+  };
+  
+  // Initial poll
+  poll();
+  
+  // Set up interval
+  const intervalId = setInterval(poll, intervalMs);
+  
+  addLogEntry('info', 'message-polling', `Started message polling every ${intervalMs}ms`);
+  
+  // Return cleanup function
+  return () => {
+    clearInterval(intervalId);
+    addLogEntry('info', 'message-polling', "Stopped message polling");
+  };
 };
 
 /**
@@ -422,9 +551,6 @@ export const sendEventReminder = async (event: EventReminder): Promise<boolean> 
   });
 };
 
-/**
- * Schedules notifications for future events
- */
 export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 24): Promise<void> => {
   if (!isWhatsAppConfigured()) {
     addLogEntry('warning', 'schedule-reminders', "API key not set, skipping event reminders");
@@ -434,7 +560,6 @@ export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 2
   const now = new Date();
   const reminderThreshold = new Date(now.getTime() + (hoursBeforeEvent * 60 * 60 * 1000));
   
-  // Filter events that need reminders
   const upcomingEvents = events.filter(event => {
     const eventDate = new Date(event.date);
     return eventDate > now && eventDate <= reminderThreshold;
@@ -445,7 +570,6 @@ export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 2
     hoursBeforeEvent 
   });
   
-  // Send reminders for each upcoming event
   for (const event of upcomingEvents) {
     if (!event.contactPhone) {
       addLogEntry('warning', 'schedule-reminders', `Skipping reminder for event "${event.title}" - no contact phone`);
@@ -470,9 +594,6 @@ export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 2
   }
 };
 
-/**
- * Gets admin notification numbers from localStorage
- */
 export const getAdminNumbers = (): string[] => {
   try {
     const savedNumbers = localStorage.getItem('whatsapp_notification_numbers');
@@ -486,9 +607,6 @@ export const getAdminNumbers = (): string[] => {
   return [];
 };
 
-/**
- * Sends a notification to all admin numbers
- */
 export const notifyAdminsAboutSystemEvent = async (
   eventType: string, 
   data: any
@@ -556,9 +674,6 @@ export const notifyAdminsAboutSystemEvent = async (
   return successCount;
 };
 
-/**
- * Formats a message for daily events
- */
 const formatDailyEventsMessage = (events: any[]): string => {
   if (!events || events.length === 0) {
     return "🗓️ *Agenda do Dia*\n\nNão há eventos programados para hoje.";
@@ -588,9 +703,6 @@ const formatDailyEventsMessage = (events: any[]): string => {
   return message;
 };
 
-/**
- * Formats a message for weekly events
- */
 const formatWeeklyEventsMessage = (events: any[]): string => {
   if (!events || events.length === 0) {
     return "🗓️ *Agenda da Semana*\n\nNão há eventos programados para a próxima semana.";
@@ -629,9 +741,6 @@ const formatWeeklyEventsMessage = (events: any[]): string => {
   return message;
 };
 
-/**
- * Formats a message for a new event
- */
 const formatNewEventMessage = (event: any): string => {
   if (!event) {
     return "⚠️ *Erro*\n\nDados do evento não fornecidos.";
@@ -667,9 +776,6 @@ const formatNewEventMessage = (event: any): string => {
   return message;
 };
 
-/**
- * Notifies admin numbers about a new event
- */
 export const notifyAdminsAboutEvent = async (event: any): Promise<number> => {
   return notifyAdminsAboutSystemEvent('new-event', { event });
 };
