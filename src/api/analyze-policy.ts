@@ -136,6 +136,11 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
     const pdfText = await extractTextFromPdf(fileUrl);
     console.log('Texto extraído do PDF:', pdfText.substring(0, 500) + '...');
     
+    // Verificar se temos texto real extraído
+    if (!pdfText || pdfText.trim().length < 50) {
+      throw new Error('Não foi possível extrair texto suficiente do documento PDF. Verifique se o arquivo é um PDF válido e legível.');
+    }
+    
     // 2. Use OpenAI API to analyze the document
     console.log('Enviando prompt para análise via OpenAI API');
     
@@ -173,47 +178,56 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini", // Modelo recomendado e mais acessível
+          model: "gpt-4o", // Usando modelo mais poderoso para melhor extração
           messages: [
             {
               role: 'system',
-              content: `Você é um assistente especializado em extrair informações de apólices de seguro brasileiras com extrema precisão. 
-              Sua tarefa é analisar documentos de apólices e extrair dados estruturados exatamente como aparecem.
-              Quando encontrar datas, mantenha sempre no formato brasileiro DD/MM/AAAA.
-              Ao encontrar valores monetários, extraia apenas os números, convertendo para formato decimal.
-              É FUNDAMENTAL que você retorne dados reais encontrados no documento, sem inventar informações.
-              Retorne APENAS um objeto JSON válido, sem texto adicional ou explicativo.`
+              content: `Você é um especialista em análise de documentos de apólices de seguro brasileiras.
+              Sua missão é extrair EXCLUSIVAMENTE os dados REAIS que estão claramente visíveis no documento fornecido.
+              
+              REGRAS FUNDAMENTAIS:
+              1. JAMAIS invente ou crie dados que não estejam explicitamente no documento
+              2. Se um dado não estiver visível ou claro, retorne string vazia ou null
+              3. Procure minuciosamente por cada informação em todo o texto
+              4. Mantenha os formatos originais (datas em DD/MM/YYYY, valores como aparecem)
+              5. Para valores monetários, extraia apenas números (sem R$, pontos ou vírgulas)
+              6. Retorne APENAS JSON válido, sem explicações adicionais
+              
+              IMPORTANTE: Analise TODO o texto fornecido, não apenas partes dele.`
             },
             {
               role: 'user',
-              content: `Analise cuidadosamente este documento de apólice de seguro e extraia as seguintes informações EXATAMENTE COMO APARECEM NO DOCUMENTO, sem fazer alterações:
+              content: `Analise este documento de apólice de seguro COMPLETO e extraia APENAS as informações que estão CLARAMENTE PRESENTES:
 
-              - policy_number: o número da apólice, exatamente como aparece
-              - customer_name: nome completo do segurado/cliente
-              - customer_phone: telefone do cliente no formato original 
-              - insurer: nome da seguradora exatamente como aparece
-              - issue_date: data de início da vigência no formato DD/MM/YYYY
-              - expiry_date: data final da vigência no formato DD/MM/YYYY
-              - coverage_amount: valor de cobertura (apenas o número, sem R$ ou outros símbolos)
-              - premium: valor do prêmio (apenas o número, sem R$ ou outros símbolos)
-              - type: tipo do seguro (AUTOMÓVEL, VIDA, RESIDENCIAL, etc)
+TEXTO COMPLETO DO DOCUMENTO:
+${pdfText}
 
-              INSTRUÇÕES IMPORTANTES:
-              1. Busque atentamente por cada informação no documento. Olhe em todas as seções.
-              2. Para datas, mantenha EXATAMENTE o formato brasileiro DD/MM/YYYY.
-              3. Para valores monetários, converta valores como "R$ 1.234,56" para o número 1234.56
-              4. Se não encontrar alguma informação com certeza, deixe o campo como string vazia.
-              5. NUNCA invente dados que não estão claramente presentes no documento.
-              6. Retorne APENAS um objeto JSON válido sem texto adicional.
-              7. Se encontrar padrões como "vigência de XX/XX/XXXX a YY/YY/YYYY", extraia corretamente as datas de início e fim.
-              8. Use EXATAMENTE os valores que aparecem no documento, não os reformate ou modifique.
+Extraia as seguintes informações EXATAMENTE como aparecem no documento:
 
-              Documento da apólice para análise:
-              ${pdfText}`
+{
+  "policy_number": "número da apólice (procure por 'apólice', 'nº', 'number', etc.)",
+  "customer_name": "nome completo do segurado/cliente (procure por 'segurado', 'contratante', 'cliente')",
+  "customer_phone": "telefone do cliente (qualquer formato de telefone encontrado)",
+  "insurer": "nome da seguradora/empresa (procure por 'seguradora', 'cia', 'company')",
+  "issue_date": "data de início da vigência (formato DD/MM/YYYY)",
+  "expiry_date": "data final da vigência (formato DD/MM/YYYY)",
+  "coverage_amount": "valor da cobertura (apenas números, sem símbolos)",
+  "premium": "valor do prêmio (apenas números, sem símbolos)",
+  "type": "tipo do seguro (AUTOMÓVEL, VIDA, RESIDENCIAL, etc.)"
+}
+
+INSTRUÇÕES CRÍTICAS:
+- Leia ATENTAMENTE todo o texto fornecido
+- Se não encontrar uma informação específica, use string vazia ""
+- Para datas, procure padrões como "vigência", "válido de", "período"
+- Para valores, procure "R$", "valor", "importância segurada", "prêmio"
+- NÃO MODIFIQUE os dados encontrados - use exatamente como estão
+- Retorne APENAS o objeto JSON, sem comentários`
             }
           ],
-          temperature: 0.0, // Temperatura zero para maior precisão
-          max_tokens: 1000
+          temperature: 0.0, // Máxima precisão
+          max_tokens: 1500,
+          top_p: 0.1 // Máxima determinismo
         })
       });
 
@@ -224,93 +238,116 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
       }
 
       const result = await response.json();
-      console.log('Resposta da OpenAI:', result);
+      console.log('Resposta completa da OpenAI:', result);
       
       // Parse the JSON from the API response
       const responseContent = result.choices[0].message.content;
-      console.log('Conteúdo da resposta:', responseContent);
+      console.log('Conteúdo bruto da resposta:', responseContent);
       
       let extractedData;
       try {
         // Use the helper function to extract JSON from the response
         extractedData = extractJsonFromLLMResponse(responseContent);
-        console.log('Dados extraídos:', extractedData);
+        console.log('Dados extraídos do JSON:', extractedData);
       } catch (parseError) {
         console.error('Erro ao analisar resposta JSON:', parseError);
+        console.log('Resposta que causou erro:', responseContent);
         throw new Error('A resposta da OpenAI não está em formato JSON válido');
+      }
+      
+      // Validar se temos dados reais extraídos
+      const hasRealData = extractedData.policy_number || extractedData.customer_name || extractedData.insurer;
+      if (!hasRealData) {
+        throw new Error('Não foi possível extrair dados reais do documento. Verifique se o PDF contém informações de apólice legíveis.');
       }
       
       // Convert date strings to Date objects, preserving the original Brazilian format
       const formatBrazilianDate = (dateStr: string) => {
-        if (!dateStr) return new Date();
+        if (!dateStr || dateStr.trim() === '') return new Date();
+        
+        // Remove espaços e caracteres especiais
+        const cleanDate = dateStr.trim();
         
         // Check if date is in Brazilian format (DD/MM/YYYY)
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
+        const parts = cleanDate.split('/');
+        if (parts.length === 3 && parts[0].length <= 2 && parts[1].length <= 2 && parts[2].length === 4) {
           // Convert DD/MM/YYYY to YYYY-MM-DD for ISO format
           const day = parts[0].trim().padStart(2, '0');
           const month = parts[1].trim().padStart(2, '0');
-          const year = parts[2].trim().padStart(4, '0');
-          return new Date(`${year}-${month}-${day}T00:00:00`);
+          const year = parts[2].trim();
+          
+          // Validar se a data é válida
+          const date = new Date(`${year}-${month}-${day}T00:00:00`);
+          if (!isNaN(date.getTime())) {
+            return date;
+          }
         }
         
-        // If not in Brazilian format, try direct parsing
-        return new Date(dateStr);
+        // Se não conseguir interpretar, retornar data padrão
+        console.warn('Data não pôde ser interpretada:', dateStr);
+        return new Date();
+      };
+      
+      // Parse numeric values more carefully
+      const parseMonetaryValue = (value: any) => {
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string') {
+          // Remove tudo exceto números, vírgulas e pontos
+          const cleaned = value.replace(/[^\d.,]/g, '');
+          if (cleaned === '') return 0;
+          
+          // Se tem vírgula como decimal (formato brasileiro)
+          if (cleaned.includes(',') && !cleaned.includes('.')) {
+            return parseFloat(cleaned.replace(',', '.'));
+          }
+          
+          // Se tem ponto e vírgula (formato 1.000,00)
+          if (cleaned.includes('.') && cleaned.includes(',')) {
+            return parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
+          }
+          
+          // Se só tem pontos (formato americano ou milhares)
+          if (cleaned.includes('.')) {
+            const parts = cleaned.split('.');
+            if (parts.length === 2 && parts[1].length <= 2) {
+              // É decimal (formato americano)
+              return parseFloat(cleaned);
+            } else {
+              // São milhares
+              return parseFloat(cleaned.replace(/\./g, ''));
+            }
+          }
+          
+          return parseFloat(cleaned) || 0;
+        }
+        return 0;
       };
       
       // Process the extracted data with better validation
       const processedData: Partial<Policy> = {
-        policy_number: extractedData.policy_number || '',
-        customer_name: extractedData.customer_name || '',
-        customer_phone: extractedData.customer_phone || '',
-        insurer: extractedData.insurer || '',
+        policy_number: extractedData.policy_number?.toString().trim() || '',
+        customer_name: extractedData.customer_name?.toString().trim() || '',
+        customer_phone: extractedData.customer_phone?.toString().trim() || '',
+        insurer: extractedData.insurer?.toString().trim() || '',
         issue_date: formatBrazilianDate(extractedData.issue_date),
         expiry_date: formatBrazilianDate(extractedData.expiry_date),
-        coverage_amount: typeof extractedData.coverage_amount === 'string' 
-          ? parseFloat(extractedData.coverage_amount.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.'))
-          : (typeof extractedData.coverage_amount === 'number' ? extractedData.coverage_amount : 0),
-        premium: typeof extractedData.premium === 'string'
-          ? parseFloat(extractedData.premium.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.'))
-          : (typeof extractedData.premium === 'number' ? extractedData.premium : 0),
-        type: extractedData.type || ''
+        coverage_amount: parseMonetaryValue(extractedData.coverage_amount),
+        premium: parseMonetaryValue(extractedData.premium),
+        type: extractedData.type?.toString().trim().toUpperCase() || ''
       };
       
-      // Validate the processed data and log warnings for missing fields
-      const missingFields = [];
+      // Log final processed data for debugging
+      console.log('Dados finais processados:', processedData);
       
-      if (!processedData.policy_number) {
-        console.warn('Número da apólice não encontrado no documento');
-        missingFields.push('número da apólice');
+      // Validate the processed data and log warnings for missing critical fields
+      const criticalFields = ['policy_number', 'insurer'];
+      const missingCritical = criticalFields.filter(field => !processedData[field as keyof typeof processedData]);
+      
+      if (missingCritical.length > 0) {
+        console.warn(`Campos críticos não encontrados: ${missingCritical.join(', ')}`);
+        throw new Error(`Não foi possível extrair informações essenciais do documento: ${missingCritical.join(', ')}. Verifique se o documento é uma apólice válida.`);
       }
       
-      if (!processedData.customer_name) {
-        console.warn('Nome do cliente não encontrado no documento');
-        missingFields.push('nome do cliente');
-      }
-      
-      if (!processedData.insurer) {
-        console.warn('Seguradora não encontrada no documento');
-        missingFields.push('nome da seguradora');
-      }
-      
-      if (isNaN(new Date(processedData.issue_date).getTime())) {
-        console.warn('Data de início inválida');
-        missingFields.push('data de início');
-        processedData.issue_date = new Date();
-      }
-      
-      if (isNaN(new Date(processedData.expiry_date).getTime())) {
-        console.warn('Data de vencimento inválida');
-        missingFields.push('data de vencimento');
-        processedData.expiry_date = new Date(new Date().setFullYear(new Date().getFullYear() + 1));
-      }
-      
-      // Se tiver muitos campos faltando, gerar um aviso apropriado
-      if (missingFields.length > 2) {
-        console.warn(`Múltiplos campos não encontrados: ${missingFields.join(', ')}`);
-      }
-      
-      console.log('Dados processados e validados:', processedData);
       return processedData;
     } catch (error) {
       console.error('Erro ao chamar a API da OpenAI:', error);
