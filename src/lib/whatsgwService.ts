@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 interface LogEntry {
@@ -53,15 +52,12 @@ export const addLogEntry = (
     details
   };
   
-  // Add to the beginning of the array (most recent first)
   logHistory.unshift(entry);
   
-  // Limit the array size
   if (logHistory.length > LOG_HISTORY_MAX_SIZE) {
     logHistory.pop();
   }
   
-  // Also log to console
   const logMethod = type === 'error' ? console.error : 
                     type === 'warning' ? console.warn : console.log;
   
@@ -87,8 +83,8 @@ export const clearLogHistory = (): void => {
  * Sets the API key
  */
 export const setApiKey = (apiKey: string): void => {
-  API_KEY = apiKey;
-  localStorage.setItem('whatsgw_api_key', apiKey);
+  API_KEY = apiKey.trim();
+  localStorage.setItem('whatsgw_api_key', API_KEY);
   addLogEntry('info', 'configuration', "WhatsApp API key set successfully");
 };
 
@@ -99,7 +95,7 @@ export const getApiKey = (): string => {
   if (!API_KEY) {
     const savedKey = localStorage.getItem('whatsgw_api_key');
     if (savedKey) {
-      API_KEY = savedKey;
+      API_KEY = savedKey.trim();
       addLogEntry('info', 'configuration', "API key loaded from localStorage");
     } else {
       addLogEntry('warning', 'configuration', "No API key found in localStorage");
@@ -117,38 +113,31 @@ export const isWhatsAppConfigured = (): boolean => {
 
 /**
  * Formats the phone number to the format accepted by the API
- * Ensures the number has a country code (adds 55 for Brazil if absent)
  */
 export const formatPhoneNumber = (phone: string): string | null => {
-  // Remove non-numeric characters
   let numericOnly = phone.replace(/\D/g, '');
   
   if (numericOnly.length < 8) {
     addLogEntry('warning', 'format-phone', "Phone number too short", { phone, numericOnly });
-    return null; // Invalid phone number
+    return null;
   }
   
-  // If it has 8-9 digits, it's probably missing the area code and country code
   if (numericOnly.length >= 8 && numericOnly.length <= 9) {
-    addLogEntry('warning', 'format-phone', "Phone number missing area code, cannot automatically determine it", { phone, numericOnly });
+    addLogEntry('warning', 'format-phone', "Phone number missing area code", { phone, numericOnly });
     toast.warning("Número de telefone sem código de área (DDD). Por favor, inclua o DDD.");
     return null;
   }
   
-  // If it has 10-11 digits (with area code but without country code)
   if (numericOnly.length >= 10 && numericOnly.length <= 11) {
     numericOnly = `55${numericOnly}`;
     addLogEntry('info', 'format-phone', "Added Brazilian country code to phone number", { original: phone, formatted: numericOnly });
   }
   
-  // If the number doesn't start with country code 55 (Brazil), add it
   if (numericOnly.length >= 12 && !numericOnly.startsWith('55')) {
     addLogEntry('info', 'format-phone', "Phone number doesn't start with Brazilian country code, adding it", { original: phone });
     numericOnly = `55${numericOnly}`;
   }
   
-  // Final validation - Brazilian numbers with country code should have 12-13 digits
-  // (55 + 2-digit area code + 8-9 digit phone number)
   if (numericOnly.length < 12 || numericOnly.length > 13) {
     addLogEntry('error', 'format-phone', "Invalid Brazilian phone number format", { phone, numericOnly, length: numericOnly.length });
     return null;
@@ -166,8 +155,8 @@ const handleApiError = (status: number, operation: string, responseData?: any): 
       addLogEntry('error', operation, "API authentication failed - invalid API key", responseData);
       return "Autenticação falhou. Verifique se sua chave de API está correta.";
     case 403:
-      addLogEntry('error', operation, "API access forbidden - domain not authorized or wrong API key", responseData);
-      return "Acesso negado (403). Verifique se o domínio está autorizado no painel da WhatsGW e se a chave de API está correta.";
+      addLogEntry('error', operation, "API access forbidden", responseData);
+      return "Acesso negado. Verifique se o domínio está autorizado no painel da WhatsGW.";
     case 404:
       addLogEntry('error', operation, "API endpoint not found", responseData);
       return "Endpoint da API não encontrado.";
@@ -187,26 +176,23 @@ const handleApiError = (status: number, operation: string, responseData?: any): 
 };
 
 /**
- * Tests the API connection without sending a message
+ * Tests the API connection
  */
 export const testApiConnection = async (): Promise<boolean> => {
   const apiKey = getApiKey();
   
   if (!apiKey) {
     addLogEntry('error', 'connection-test', "API key not set");
-    toast.error("Chave de API não configurada");
     return false;
   }
   
   try {
-    // Check if the status endpoint exists first
     addLogEntry('info', 'connection-test', "Testing API connection");
     
-    // Use the Send endpoint with minimum parameters as a test (using an invalid phone will just return an error)
-    const testPhone = "123"; // Invalid phone that will cause a validation error but still authenticate
+    const testPhone = "5544997270698";
     const urlParams = new URLSearchParams({
       apikey: apiKey,
-      phone_number: "5544997270698", // WhatsGW sender number
+      phone_number: "5544997270698",
       contact_phone_number: testPhone,
       message_custom_id: `test_${Date.now()}`,
       message_type: 'text',
@@ -215,24 +201,24 @@ export const testApiConnection = async (): Promise<boolean> => {
     
     const apiUrl = `${WHATSGW_API_BASE_URL}/Send?${urlParams.toString()}`;
     
-    const response = await fetch(apiUrl);
-    const data = await response.json();
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
     
-    // Even if it returns a validation error for the phone, if we get a JSON response
-    // it means our API key is valid and the domain is authorized
-    if (response.ok || (data && typeof data === 'object')) {
-      addLogEntry('info', 'connection-test', "API connection successful", data);
+    if (response.ok || response.status === 400) {
+      addLogEntry('info', 'connection-test', "API connection successful");
       return true;
     }
     
-    // If we got a non-JSON response or HTTP error, the connection failed
-    addLogEntry('error', 'connection-test', `API connection failed with status ${response.status}`, data);
+    addLogEntry('error', 'connection-test', `API connection failed with status ${response.status}`);
     return false;
   } catch (error) {
     addLogEntry('error', 'connection-test', "Error testing API connection", {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+      message: error instanceof Error ? error.message : 'Unknown error',
+      name: error instanceof Error ? error.name : 'Unknown'
     });
     return false;
   }
@@ -251,7 +237,6 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
   }
   
   try {
-    // Format the phone number
     const formattedPhone = formatPhoneNumber(params.phone);
     
     if (!formattedPhone) {
@@ -260,91 +245,122 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
       return false;
     }
     
-    // Set URL parameters
     const urlParams = new URLSearchParams({
       apikey: apiKey,
-      phone_number: "5544997270698", // WhatsGW sender number (configured in WhatsGW)
+      phone_number: "5544997270698",
       contact_phone_number: formattedPhone,
       message_custom_id: params.customId || `msg_${Date.now()}`,
       message_type: params.mediaUrl ? (params.mimetype?.startsWith('image/') ? 'image' : 'document') : 'text',
       message_body: params.message
     });
     
-    // Add media parameters if provided
     if (params.mediaUrl) {
       urlParams.set('message_body', params.mediaUrl);
       
       if (params.caption) {
-        urlParams.append('message_caption', params.caption);
+        urlParams.set('message_caption', params.caption);
       }
       
       if (params.mimetype) {
-        urlParams.append('message_body_mimetype', params.mimetype);
+        urlParams.set('message_body_mimetype', params.mimetype);
       }
       
       if (params.filename) {
-        urlParams.append('message_body_filename', params.filename);
+        urlParams.set('message_body_filename', params.filename);
       }
       
-      urlParams.append('download', '1');
+      urlParams.set('download', '1');
     }
     
-    // Build the complete URL
     const apiUrl = `${WHATSGW_API_BASE_URL}/Send?${urlParams.toString()}`;
     
-    addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone}`, { url: apiUrl });
+    addLogEntry('info', 'send-message', `Sending WhatsApp message to ${formattedPhone}`);
+    console.log('API URL:', apiUrl);
     
-    // Make the API request
-    const response = await fetch(apiUrl);
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; WhatsGW-Client/1.0)',
+      }
+    });
     
-    // Check if the response was successful
+    addLogEntry('info', 'send-message', `Response status: ${response.status}`);
+    
     if (!response.ok) {
       let errorData;
       try {
-        errorData = await response.json();
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+        
+        try {
+          errorData = JSON.parse(responseText);
+        } catch (e) {
+          errorData = { message: responseText || `HTTP error ${response.status}` };
+        }
       } catch (e) {
-        // If the response is not JSON, get the text instead
-        const text = await response.text();
-        errorData = { message: text && text.length < 200 ? text : `HTTP error ${response.status}` };
+        errorData = { message: `HTTP error ${response.status}` };
       }
       
       const errorMessage = handleApiError(response.status, 'send-message', errorData);
       throw new Error(errorMessage);
     }
     
-    // Process the response
-    const contentType = response.headers.get('content-type');
     let data;
-    
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      // If the response is not JSON, get the text and try to parse it
-      const text = await response.text();
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error(`Unexpected response format: ${text && text.length < 200 ? text : 'Response too large'}`);
+    try {
+      const responseText = await response.text();
+      console.log('Success response:', responseText);
+      
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          // Se não conseguir fazer parse, assume sucesso se o status foi OK
+          data = { result: 'success', message: responseText };
+        }
+      } else {
+        data = { result: 'success' };
       }
+    } catch (e) {
+      data = { result: 'success' };
+      addLogEntry('warning', 'send-message', "Could not parse response, assuming success");
     }
     
-    if (data.result === 'success') {
+    // Verificar diferentes formatos de resposta de sucesso
+    const isSuccess = data.result === 'success' || 
+                     data.status === 'success' || 
+                     data.success === true ||
+                     response.status === 200;
+    
+    if (isSuccess) {
       addLogEntry('info', 'send-message', "WhatsApp message sent successfully", data);
       toast.success("Mensagem enviada com sucesso!");
       return true;
     } else {
       addLogEntry('error', 'send-message', "API returned error", data);
-      toast.error(`Erro ao enviar mensagem: ${data.message || 'Erro desconhecido'}`);
+      toast.error(`Erro ao enviar mensagem: ${data.message || data.error || 'Erro desconhecido'}`);
       return false;
     }
   } catch (error) {
-    addLogEntry('error', 'send-message', "Error sending WhatsApp message", {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    const errorDetails = {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    };
     
-    toast.error(`Erro ao enviar mensagem: ${error.message}`);
+    addLogEntry('error', 'send-message', "Error sending WhatsApp message", errorDetails);
+    
+    console.error('WhatsApp send error:', error);
+    
+    if (errorMessage.includes("Failed to fetch")) {
+      toast.error("Erro de conectividade. Verifique sua conexão com a internet.");
+    } else if (errorMessage.includes("NetworkError")) {
+      toast.error("Erro de rede. Tente novamente em alguns instantes.");
+    } else {
+      toast.error(`Erro ao enviar mensagem: ${errorMessage}`);
+    }
+    
     return false;
   }
 };
@@ -355,7 +371,19 @@ export const sendWhatsAppMessage = async (params: WhatsAppMessage): Promise<bool
 export const sendTestMessage = async (phone: string): Promise<boolean> => {
   return sendWhatsAppMessage({
     phone,
-    message: "🔍 *Mensagem de Teste*\n\nOlá! Este é um teste de notificação via WhatsApp. Se você recebeu esta mensagem, a integração está funcionando corretamente."
+    message: "🔍 *Mensagem de Teste*\n\nOlá! Este é um teste de notificação via WhatsApp. Se você recebeu esta mensagem, a integração está funcionando corretamente.",
+    customId: `test_${Date.now()}`
+  });
+};
+
+/**
+ * Sends a test message directly to the specific number 44988057213
+ */
+export const sendTestToSpecificNumber = async (): Promise<boolean> => {
+  return sendWhatsAppMessage({
+    phone: "44988057213",
+    message: "🔍 *Teste Direto da API*\n\nOlá! Este é um teste direto da API do WhatsApp. Se você recebeu esta mensagem, a integração está funcionando corretamente.",
+    customId: `direct_test_${Date.now()}`
   });
 };
 
@@ -389,7 +417,8 @@ export const sendEventReminder = async (event: EventReminder): Promise<boolean> 
   
   return sendWhatsAppMessage({
     phone: contactPhone,
-    message
+    message,
+    customId: `reminder_${Date.now()}`
   });
 };
 
@@ -442,16 +471,6 @@ export const scheduleEventReminders = async (events: any[], hoursBeforeEvent = 2
 };
 
 /**
- * Sends a test message directly to the specific number provided in the example
- */
-export const sendTestToSpecificNumber = async (): Promise<boolean> => {
-  return sendWhatsAppMessage({
-    phone: "44988057213",
-    message: "🔍 *Teste Direto da API*\n\nOlá! Este é um teste direto da API do WhatsApp. Se você recebeu esta mensagem, a integração está funcionando corretamente."
-  });
-};
-
-/**
  * Gets admin notification numbers from localStorage
  */
 export const getAdminNumbers = (): string[] => {
@@ -493,7 +512,6 @@ export const notifyAdminsAboutSystemEvent = async (
     hour: '2-digit', minute: '2-digit', second: '2-digit'
   }).format(new Date());
   
-  // Create message based on event type
   switch (eventType) {
     case 'daily-events':
       message = formatDailyEventsMessage(data.events);
@@ -513,12 +531,12 @@ export const notifyAdminsAboutSystemEvent = async (
   
   let successCount = 0;
   
-  // Send to all admin numbers
   for (const number of adminNumbers) {
     try {
       const success = await sendWhatsAppMessage({
         phone: number,
-        message
+        message,
+        customId: `system_notification_${Date.now()}_${number}`
       });
       
       if (success) {
@@ -578,7 +596,6 @@ const formatWeeklyEventsMessage = (events: any[]): string => {
     return "🗓️ *Agenda da Semana*\n\nNão há eventos programados para a próxima semana.";
   }
   
-  // Group events by date
   const eventsByDate: Record<string, any[]> = {};
   
   events.forEach(event => {
