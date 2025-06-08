@@ -1,4 +1,3 @@
-
 import { Policy } from "@/types";
 
 interface AnalyzeResponse {
@@ -14,54 +13,51 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
   try {
     console.log('Extraindo texto do PDF:', pdfUrl);
     
-    // If it's a mock URL in dev mode, return simulated text
-    if (pdfUrl.includes('example.com') || pdfUrl.includes('documento-simulado')) {
-      console.log('URL de exemplo detectada, retornando texto simulado');
-      
-      // Simulação mais realista baseada na imagem fornecida pelo usuário
-      return `APÓLICE DE SEGURO
-      NÚMERO DA APÓLICE: AP123456
-      SEGURADO: João Silva
-      TELEFONE: (11) 98765-4321
-      SEGURADORA: Seguradora Brasil
-      VIGÊNCIA: 14/03/2025 a 14/03/2026
-      VALOR DE COBERTURA: R$ 100.000,00
-      PRÊMIO TOTAL: R$ 1.200,00
-      TIPO: AUTOMÓVEL`;
-    }
-
-    // Para PDFs reais, podemos usar o pacote pdfjs-dist que já está instalado
+    // REMOVIDO: Verificação de URL simulada que estava retornando dados fictícios
+    // Agora sempre tentamos extrair o texto real do PDF
+    
     try {
       const pdfjsLib = await import('pdfjs-dist');
       const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
       
       pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
       
-      // Em produção, precisamos carregar o PDF a partir da URL
+      // Carregar o PDF a partir da URL real
       const loadingTask = pdfjsLib.getDocument(pdfUrl);
       const pdf = await loadingTask.promise;
       let textContent = '';
+
+      console.log(`PDF carregado com ${pdf.numPages} páginas`);
 
       for(let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         
-        // Corrigindo o código para lidar com diferentes tipos de itens TextItem e TextMarkedContent
-        textContent += content.items.map(item => {
-          // Verificar se o item é do tipo TextItem que possui a propriedade 'str'
+        // Extrair texto de cada item na página
+        const pageText = content.items.map(item => {
           return 'str' in item ? item.str : '';
         }).join(' ');
+        
+        textContent += pageText + ' ';
+        console.log(`Página ${i} processada, texto extraído: ${pageText.substring(0, 100)}...`);
       }
       
-      console.log('Texto extraído do PDF real:', textContent.substring(0, 200) + '...');
-      return textContent;
+      console.log('Texto completo extraído do PDF:', textContent.substring(0, 500) + '...');
+      
+      // Verificar se conseguimos extrair texto real
+      if (!textContent || textContent.trim().length < 10) {
+        throw new Error('Não foi possível extrair texto do PDF. O arquivo pode estar protegido, ser uma imagem ou estar corrompido.');
+      }
+      
+      return textContent.trim();
+      
     } catch (pdfError) {
       console.error('Erro ao processar PDF com pdfjs:', pdfError);
-      throw new Error('Falha ao processar PDF: ' + pdfError.message);
+      throw new Error(`Falha ao processar PDF: ${pdfError.message}`);
     }
   } catch (error) {
     console.error('Erro na extração de texto do PDF:', error);
-    throw new Error('Falha ao extrair texto do PDF');
+    throw new Error('Falha ao extrair texto do PDF: ' + error.message);
   }
 }
 
@@ -132,9 +128,9 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
   try {
     console.log('Analisando documento de apólice:', fileUrl);
     
-    // 1. Extract text from PDF
+    // 1. Extract text from PDF - AGORA SEM DADOS SIMULADOS
     const pdfText = await extractTextFromPdf(fileUrl);
-    console.log('Texto extraído do PDF:', pdfText.substring(0, 500) + '...');
+    console.log('Texto extraído do PDF (primeiros 1000 caracteres):', pdfText.substring(0, 1000));
     
     // Verificar se temos texto real extraído
     if (!pdfText || pdfText.trim().length < 50) {
@@ -192,12 +188,16 @@ export const analyzePolicyDocument = async (fileUrl: string): Promise<Partial<Po
               4. Mantenha os formatos originais (datas em DD/MM/YYYY, valores como aparecem)
               5. Para valores monetários, extraia apenas números (sem R$, pontos ou vírgulas)
               6. Retorne APENAS JSON válido, sem explicações adicionais
+              7. NUNCA use dados de exemplo como "João Silva", "AP123456", etc.
+              8. Se não encontrar uma informação específica, deixe o campo vazio
               
               IMPORTANTE: Analise TODO o texto fornecido, não apenas partes dele.`
             },
             {
               role: 'user',
-              content: `Analise este documento de apólice de seguro COMPLETO e extraia APENAS as informações que estão CLARAMENTE PRESENTES:
+              content: `Analise este documento de apólice de seguro COMPLETO e extraia APENAS as informações que estão CLARAMENTE PRESENTES.
+
+ATENÇÃO: Este é o texto REAL extraído do documento PDF. NÃO use dados fictícios ou de exemplo:
 
 TEXTO COMPLETO DO DOCUMENTO:
 ${pdfText}
@@ -217,11 +217,12 @@ Extraia as seguintes informações EXATAMENTE como aparecem no documento:
 }
 
 INSTRUÇÕES CRÍTICAS:
-- Leia ATENTAMENTE todo o texto fornecido
+- Leia ATENTAMENTE todo o texto fornecido acima
 - Se não encontrar uma informação específica, use string vazia ""
 - Para datas, procure padrões como "vigência", "válido de", "período"
 - Para valores, procure "R$", "valor", "importância segurada", "prêmio"
 - NÃO MODIFIQUE os dados encontrados - use exatamente como estão
+- NÃO USE dados fictícios como "João Silva", "AP123456", etc.
 - Retorne APENAS o objeto JSON, sem comentários`
             }
           ],
@@ -255,7 +256,17 @@ INSTRUÇÕES CRÍTICAS:
         throw new Error('A resposta da OpenAI não está em formato JSON válido');
       }
       
-      // Validar se temos dados reais extraídos
+      // Validar se temos dados reais extraídos (não fictícios)
+      const hasSuspiciousData = 
+        extractedData.policy_number === 'AP123456' ||
+        extractedData.customer_name === 'João Silva' ||
+        extractedData.customer_phone === '(11) 98765-4321' ||
+        extractedData.insurer === 'Seguradora Brasil';
+        
+      if (hasSuspiciousData) {
+        throw new Error('A IA retornou dados fictícios em vez dos dados reais do documento. Verifique se o PDF contém texto legível.');
+      }
+      
       const hasRealData = extractedData.policy_number || extractedData.customer_name || extractedData.insurer;
       if (!hasRealData) {
         throw new Error('Não foi possível extrair dados reais do documento. Verifique se o PDF contém informações de apólice legíveis.');
