@@ -5,14 +5,14 @@ import { NavigationItem } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUser } from '@/contexts/UserContext';
 import UserProfile from './UserProfile';
+import { motion } from 'framer-motion';
 
 const navigationItems: NavigationItem[] = [
   { title: 'Início', path: '/' },
+  { title: 'Serviços', path: '/#services' },
+  { title: 'Portfólio', path: '/portfolio' },
   { title: 'Como Funciona', path: '/#how-it-works' },
-  { title: 'Projetos', path: '/projects' },
-  { title: 'Portfolio', path: '/portfolio' },
-  { title: 'Preços', path: '/#pricing' },
-  { title: 'Contato', path: '/#contact' },
+  { title: 'Contato', path: '/contact' },
 ];
 
 const Navbar = () => {
@@ -24,7 +24,7 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
+      setScrolled(window.scrollY > 20);
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -37,42 +37,59 @@ const Navbar = () => {
 
   return (
     <header 
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-        scrolled ? 'backdrop-blur-md bg-background/70 shadow-sm' : 'bg-transparent'
+      className={`sticky top-0 z-50 w-full transition-all duration-500 ${
+        scrolled 
+          ? 'bg-background/80 backdrop-blur-xl shadow-lg shadow-black/5 border-b border-border/50' 
+          : 'bg-transparent'
       }`}
     >
-      <div className="container flex items-center justify-between h-14 md:h-16">
-        <Link to="/" className="flex items-center space-x-2">
-          <span className="text-lg font-bold tracking-tight text-foreground animate-fade-in">
-            Ideal<span className="text-gradient">Hub</span>
-          </span>
+      <div className="container flex items-center justify-between h-16 md:h-20">
+        <Link to="/" className="flex items-center space-x-2 group">
+          <motion.span 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-xl font-bold tracking-tight"
+          >
+            Ideal<span className="text-gradient-hero">Hub</span>
+          </motion.span>
         </Link>
 
-        <nav className="hidden md:flex items-center space-x-4">
-          <ul className="flex items-center space-x-4">
-            {navigationItems.map((item) => (
-              <li key={item.path}>
+        <nav className="hidden md:flex items-center space-x-1">
+          <ul className="flex items-center space-x-1">
+            {navigationItems.map((item, index) => (
+              <motion.li 
+                key={item.path}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
                 <Link 
                   to={item.path}
-                  className={`text-sm font-medium transition-all duration-300 hover:text-primary relative after:absolute after:w-full after:h-0.5 after:bg-primary after:bottom-0 after:left-0 after:scale-x-0 after:origin-right after:transition-transform hover:after:scale-x-100 hover:after:origin-left ${
-                    location.pathname === item.path ? 'text-primary after:scale-x-100' : 'text-muted-foreground'
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary ${
+                    location.pathname === item.path 
+                      ? 'text-primary bg-primary/5' 
+                      : 'text-muted-foreground'
                   }`}
                 >
                   {item.title}
                 </Link>
-              </li>
+              </motion.li>
             ))}
           </ul>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-border">
             {user ? (
               <UserProfile />
             ) : (
               <>
                 <Link to="/login">
-                  <Button variant="ghost" size="sm" className="hover:bg-primary/5 transition-colors duration-300">Entrar</Button>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                    Entrar
+                  </Button>
                 </Link>
-                <Link to="/register">
-                  <Button size="sm" className="shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">Criar Conta</Button>
+                <Link to="/submit-idea">
+                  <Button size="sm" className="btn-glow rounded-lg">
+                    Começar Agora
+                  </Button>
                 </Link>
               </>
             )}
@@ -81,67 +98,74 @@ const Navbar = () => {
 
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 rounded-md"
+          className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
           aria-label="Toggle menu"
         >
-          <div className="flex flex-col space-y-1 w-5">
+          <div className="flex flex-col space-y-1.5 w-6">
             <span 
-              className={`block h-0.5 bg-foreground transition-all duration-300 transform ${
-                mobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''
+              className={`block h-0.5 bg-foreground transition-all duration-300 transform origin-center ${
+                mobileMenuOpen ? 'rotate-45 translate-y-2' : ''
               }`}
-            ></span>
+            />
             <span 
               className={`block h-0.5 bg-foreground transition-all duration-300 ${
-                mobileMenuOpen ? 'opacity-0' : 'opacity-100'
+                mobileMenuOpen ? 'opacity-0 scale-0' : 'opacity-100'
               }`}
-            ></span>
+            />
             <span 
-              className={`block h-0.5 bg-foreground transition-all duration-300 transform ${
-                mobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''
+              className={`block h-0.5 bg-foreground transition-all duration-300 transform origin-center ${
+                mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''
               }`}
-            ></span>
+            />
           </div>
         </button>
       </div>
 
+      {/* Mobile Menu */}
       {isMobile && (
-        <div 
-          className={`md:hidden absolute w-full backdrop-blur-md bg-background/90 border-b shadow-sm transition-all duration-300 ease-in-out ${
-            mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
-          } overflow-hidden`}
+        <motion.div 
+          initial={false}
+          animate={mobileMenuOpen ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
+          className="md:hidden overflow-hidden bg-background/95 backdrop-blur-xl border-b border-border"
         >
-          <div className="container py-3 space-y-3">
-            <nav className="flex flex-col space-y-2">
+          <div className="container py-4 space-y-4">
+            <nav className="flex flex-col space-y-1">
               {navigationItems.map((item) => (
                 <Link 
                   key={item.path}
                   to={item.path}
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location.pathname === item.path ? 'text-primary' : 'text-foreground'
+                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    location.pathname === item.path 
+                      ? 'text-primary bg-primary/10' 
+                      : 'text-foreground hover:bg-muted'
                   }`}
                 >
                   {item.title}
                 </Link>
               ))}
             </nav>
-            <div className="flex flex-col space-y-2 pt-2 border-t">
+            <div className="flex flex-col space-y-2 pt-4 border-t border-border">
               {user ? (
-                <div className="py-1">
+                <div className="py-2">
                   <UserProfile />
                 </div>
               ) : (
                 <>
                   <Link to="/login">
-                    <Button variant="ghost" size="sm" className="w-full justify-start">Entrar</Button>
+                    <Button variant="ghost" className="w-full justify-center">
+                      Entrar
+                    </Button>
                   </Link>
-                  <Link to="/register">
-                    <Button size="sm" className="w-full">Criar Conta</Button>
+                  <Link to="/submit-idea">
+                    <Button className="w-full btn-glow">
+                      Começar Agora
+                    </Button>
                   </Link>
                 </>
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </header>
   );

@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -63,16 +62,16 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				calendar: {
-					'event-past': '#FFDEE2',
-					'event-today': '#D3E4FD',
-					'event-future': '#F2FCE2',
-				}
+			},
+			fontFamily: {
+				sans: ['Inter', 'system-ui', 'sans-serif'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'calc(var(--radius) - 4px)',
+				'2xl': '1rem',
+				'3xl': '1.5rem',
 			},
 			keyframes: {
 				'accordion-down': {
@@ -84,8 +83,12 @@ export default {
 					to: { height: '0' }
 				},
 				'fade-in': {
-					from: { opacity: '0' },
-					to: { opacity: '1' }
+					from: { opacity: '0', transform: 'translateY(10px)' },
+					to: { opacity: '1', transform: 'translateY(0)' }
+				},
+				'fade-in-up': {
+					from: { opacity: '0', transform: 'translateY(30px)' },
+					to: { opacity: '1', transform: 'translateY(0)' }
 				},
 				'fade-out': {
 					from: { opacity: '1' },
@@ -99,70 +102,50 @@ export default {
 					from: { transform: 'translateY(-10px)', opacity: '0' },
 					to: { transform: 'translateY(0)', opacity: '1' }
 				},
+				'scale-in': {
+					from: { transform: 'scale(0.95)', opacity: '0' },
+					to: { transform: 'scale(1)', opacity: '1' }
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-20px)' }
+				},
 				'pulse-slow': {
 					'0%, 100%': { opacity: '1' },
-					'50%': { opacity: '0.8' }
+					'50%': { opacity: '0.7' }
 				},
-				float: {
-					'0%, 100%': { transform: 'translateY(0)' },
-					'50%': { transform: 'translateY(-10px)' }
+				'shimmer': {
+					'0%': { backgroundPosition: '-200% 0' },
+					'100%': { backgroundPosition: '200% 0' }
+				},
+				'glow': {
+					'0%, 100%': { boxShadow: '0 0 20px hsl(var(--primary) / 0.4)' },
+					'50%': { boxShadow: '0 0 40px hsl(var(--primary) / 0.6), 0 0 60px hsl(var(--accent) / 0.3)' }
 				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fade-in 0.5s ease-out',
+				'fade-in-up': 'fade-in-up 0.6s ease-out',
 				'fade-out': 'fade-out 0.5s ease-out',
 				'slide-up': 'slide-up 0.5s ease-out',
 				'slide-down': 'slide-down 0.5s ease-out',
+				'scale-in': 'scale-in 0.3s ease-out',
+				'float': 'float 6s ease-in-out infinite',
 				'pulse-slow': 'pulse-slow 3s infinite ease-in-out',
-				'float': 'float 3s infinite ease-in-out',
+				'shimmer': 'shimmer 2s infinite linear',
+				'glow': 'glow 2s ease-in-out infinite',
 			},
-			backdropFilter: {
-				'none': 'none',
-				'blur': 'blur(8px)',
+			boxShadow: {
+				'glow-sm': '0 0 15px hsl(var(--primary) / 0.2)',
+				'glow': '0 0 30px hsl(var(--primary) / 0.3)',
+				'glow-lg': '0 0 50px hsl(var(--primary) / 0.4)',
+				'glow-accent': '0 0 30px hsl(var(--accent) / 0.3)',
 			},
 		}
 	},
 	plugins: [
 		require("tailwindcss-animate"),
-		function ({ addUtilities }) {
-			const newUtilities = {
-				'.glass': {
-					backgroundColor: 'rgba(255, 255, 255, 0.15)',
-					backdropFilter: 'blur(10px)',
-					borderRadius: '0.5rem',
-					border: '1px solid rgba(255, 255, 255, 0.18)',
-				},
-				'.glass-dark': {
-					backgroundColor: 'rgba(20, 20, 22, 0.5)',
-					backdropFilter: 'blur(10px)',
-					borderRadius: '0.5rem',
-					border: '1px solid rgba(255, 255, 255, 0.08)',
-				},
-				'.event-card-past': {
-					backgroundColor: 'var(--color-calendar-event-past, #FFDEE2)',
-					color: '#D14F69',
-				},
-				'.event-card-today': {
-					backgroundColor: 'var(--color-calendar-event-today, #D3E4FD)',
-					color: '#3B82F6',
-				},
-				'.event-card-future': {
-					backgroundColor: 'var(--color-calendar-event-future, #F2FCE2)',
-					color: '#22C55E',
-				},
-				'.calendar-dot-past': {
-					backgroundColor: '#F87171',
-				},
-				'.calendar-dot-today': {
-					backgroundColor: '#3B82F6',
-				},
-				'.calendar-dot-future': {
-					backgroundColor: '#22C55E',
-				},
-			}
-			addUtilities(newUtilities)
-		}
 	],
 } satisfies Config;
