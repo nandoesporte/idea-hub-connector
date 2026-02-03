@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 
 const CTASection = () => {
   const handleWhatsApp = () => {
-    window.open('https://wa.me/5511999999999?text=Olá! Gostaria de agendar uma consultoria gratuita.', '_blank');
+    window.open('https://wa.me/5544988057213?text=Olá! Gostaria de agendar uma consultoria gratuita.', '_blank');
   };
 
   return (
