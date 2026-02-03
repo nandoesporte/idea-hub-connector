@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { ArrowRight, Play, Star, CheckCircle, MessageCircle } from 'lucide-react';
+import heroImage from '@/assets/hero-tech.jpg';
 
 const HeroSales = () => {
   const handleWhatsApp = () => {
@@ -131,57 +132,58 @@ const HeroSales = () => {
             </motion.div>
           </motion.div>
           
-          {/* Right Content - Stats Cards */}
+          {/* Right Content - Hero Image with Stats */}
           <motion.div 
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             className="relative"
           >
-            <div className="grid grid-cols-2 gap-4">
-              {/* Stat Card 1 */}
-              <motion.div 
-                whileHover={{ y: -5, scale: 1.02 }}
-                className="glass-card p-6 rounded-2xl card-hover"
-              >
-                <p className="text-4xl md:text-5xl font-bold text-gradient-hero">100+</p>
-                <p className="text-sm text-muted-foreground mt-2">Projetos Entregues</p>
-              </motion.div>
+            {/* Main Hero Image */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1, delay: 0.5 }}
+              className="relative"
+            >
+              <div className="relative rounded-3xl overflow-hidden border border-primary/20 shadow-2xl shadow-primary/20">
+                <img 
+                  src={heroImage} 
+                  alt="Transformação Digital e Inovação Tecnológica" 
+                  className="w-full h-auto object-cover"
+                />
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+              </div>
               
-              {/* Stat Card 2 */}
+              {/* Floating stats on image */}
               <motion.div 
-                whileHover={{ y: -5, scale: 1.02 }}
-                className="glass-card p-6 rounded-2xl card-hover mt-8"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 1 }}
+                className="absolute -bottom-6 left-4 right-4 grid grid-cols-3 gap-3"
               >
-                <p className="text-4xl md:text-5xl font-bold text-gradient-hero">98%</p>
-                <p className="text-sm text-muted-foreground mt-2">Clientes Satisfeitos</p>
+                <div className="glass-card p-4 rounded-xl text-center">
+                  <p className="text-2xl md:text-3xl font-bold text-gradient-hero">100+</p>
+                  <p className="text-xs text-muted-foreground">Projetos</p>
+                </div>
+                <div className="glass-card p-4 rounded-xl text-center">
+                  <p className="text-2xl md:text-3xl font-bold text-gradient-hero">98%</p>
+                  <p className="text-xs text-muted-foreground">Satisfação</p>
+                </div>
+                <div className="glass-card p-4 rounded-xl text-center">
+                  <p className="text-2xl md:text-3xl font-bold text-gradient-hero">5+</p>
+                  <p className="text-xs text-muted-foreground">Anos</p>
+                </div>
               </motion.div>
-              
-              {/* Stat Card 3 */}
-              <motion.div 
-                whileHover={{ y: -5, scale: 1.02 }}
-                className="glass-card p-6 rounded-2xl card-hover"
-              >
-                <p className="text-4xl md:text-5xl font-bold text-gradient-hero">24h</p>
-                <p className="text-sm text-muted-foreground mt-2">Tempo de Resposta</p>
-              </motion.div>
-              
-              {/* Stat Card 4 */}
-              <motion.div 
-                whileHover={{ y: -5, scale: 1.02 }}
-                className="glass-card p-6 rounded-2xl card-hover mt-8"
-              >
-                <p className="text-4xl md:text-5xl font-bold text-gradient-hero">5+</p>
-                <p className="text-sm text-muted-foreground mt-2">Anos de Experiência</p>
-              </motion.div>
-            </div>
+            </motion.div>
             
             {/* Floating badge */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 1 }}
-              className="absolute -bottom-4 -left-4 glass-card px-4 py-3 rounded-xl animate-float"
+              transition={{ duration: 0.6, delay: 1.2 }}
+              className="absolute -top-4 -right-4 glass-card px-4 py-3 rounded-xl animate-float"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center">
