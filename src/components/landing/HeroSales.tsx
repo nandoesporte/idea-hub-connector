@@ -7,7 +7,7 @@ import heroImage from '@/assets/hero-tech.jpg';
 
 const HeroSales = () => {
   const handleWhatsApp = () => {
-    window.open('https://wa.me/5511999999999?text=Olá! Gostaria de saber mais sobre os serviços da IdealHub.', '_blank');
+    window.open('https://wa.me/5544988057213?text=Olá! Gostaria de saber mais sobre os serviços da IdealHub.', '_blank');
   };
 
   return (
