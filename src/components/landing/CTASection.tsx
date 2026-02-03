@@ -11,20 +11,30 @@ const CTASection = () => {
 
   return (
     <section className="section-padding relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-accent -z-10" />
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAzMHYySDI0di0yaDEyek0zNiAyNnYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-30 -z-10" />
+      {/* Background - Dark elegant gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground -z-10" />
+      
+      {/* Accent overlay gradient */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 via-transparent to-accent/20 -z-10" />
+      
+      {/* Subtle pattern */}
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAzMHYySDI0di0yaDEyek0zNiAyNnYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] -z-10" />
       
       {/* Floating elements */}
       <motion.div 
         animate={{ y: [-20, 20, -20] }}
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-20 left-[10%] w-20 h-20 rounded-full bg-white/10 blur-xl"
+        className="absolute top-20 left-[10%] w-32 h-32 rounded-full bg-primary/10 blur-3xl"
       />
       <motion.div 
         animate={{ y: [20, -20, 20] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-20 right-[15%] w-32 h-32 rounded-full bg-white/10 blur-xl"
+        className="absolute bottom-20 right-[15%] w-40 h-40 rounded-full bg-accent/10 blur-3xl"
+      />
+      <motion.div 
+        animate={{ scale: [1, 1.2, 1] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-primary/5 blur-3xl"
       />
       
       <div className="container max-w-5xl mx-auto relative">
@@ -33,12 +43,23 @@ const CTASection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center text-white space-y-8"
+          className="text-center space-y-8"
         >
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
-            Pronto para Transformar Seu Negócio?
+          {/* Badge */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20"
+          >
+            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            <span className="text-sm font-medium text-background/80">Consultoria Gratuita</span>
+          </motion.div>
+          
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-background">
+            Pronto para <span className="text-gradient-hero">Transformar</span> Seu Negócio?
           </h2>
-          <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-background/60 max-w-2xl mx-auto leading-relaxed">
             Agende uma consultoria gratuita e descubra como podemos ajudar 
             a impulsionar seu negócio com soluções digitais sob medida.
           </p>
@@ -48,8 +69,7 @@ const CTASection = () => {
             <Link to="/submit-idea">
               <Button 
                 size="lg" 
-                variant="secondary"
-                className="w-full sm:w-auto px-8 py-6 text-base bg-white text-primary hover:bg-white/90 rounded-xl group shadow-xl"
+                className="w-full sm:w-auto px-8 py-6 text-base bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl group shadow-xl shadow-primary/20"
               >
                 <Calendar className="mr-2 w-5 h-5" />
                 Agendar Consultoria Gratuita
@@ -60,7 +80,7 @@ const CTASection = () => {
               size="lg" 
               variant="outline"
               onClick={handleWhatsApp}
-              className="w-full sm:w-auto px-8 py-6 text-base border-2 border-white/30 text-white hover:bg-white/10 rounded-xl group"
+              className="w-full sm:w-auto px-8 py-6 text-base border-2 border-background/20 text-background hover:bg-background/10 hover:border-background/30 rounded-xl group"
             >
               <MessageCircle className="mr-2 w-5 h-5" />
               Falar no WhatsApp
@@ -73,20 +93,24 @@ const CTASection = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-6 pt-8 text-white/70"
+            className="flex flex-wrap justify-center gap-8 pt-8"
           >
             <a 
-              href="tel:+5511999999999" 
-              className="flex items-center gap-2 hover:text-white transition-colors"
+              href="tel:+5544988057213" 
+              className="flex items-center gap-3 text-background/50 hover:text-accent transition-colors group"
             >
-              <Phone className="w-4 h-4" />
-              <span>(11) 99999-9999</span>
+              <div className="w-10 h-10 rounded-full bg-background/5 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                <Phone className="w-4 h-4" />
+              </div>
+              <span>(44) 98805-7213</span>
             </a>
             <a 
               href="mailto:contato@idealhub.com.br" 
-              className="flex items-center gap-2 hover:text-white transition-colors"
+              className="flex items-center gap-3 text-background/50 hover:text-accent transition-colors group"
             >
-              <Mail className="w-4 h-4" />
+              <div className="w-10 h-10 rounded-full bg-background/5 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                <Mail className="w-4 h-4" />
+              </div>
               <span>contato@idealhub.com.br</span>
             </a>
           </motion.div>
