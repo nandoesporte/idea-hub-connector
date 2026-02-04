@@ -6,6 +6,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useUser } from '@/contexts/UserContext';
 import UserProfile from './UserProfile';
 import { motion } from 'framer-motion';
+import logoIcon from '@/assets/logo-icon.png';
 
 const navigationItems: NavigationItem[] = [
   { title: 'Início', path: '/' },
@@ -45,13 +46,20 @@ const Navbar = () => {
     >
       <div className="container flex items-center justify-between h-16 md:h-20">
         <Link to="/" className="flex items-center space-x-2 group">
-          <motion.span 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-xl font-bold tracking-tight"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center gap-2"
           >
-            Ideal<span className="text-gradient-hero">Hub</span>
-          </motion.span>
+            <img 
+              src={logoIcon} 
+              alt="IdealHub Logo" 
+              className="h-8 w-8 md:h-9 md:w-9 object-contain"
+            />
+            <span className="text-xl font-bold tracking-tight">
+              Ideal<span className="text-gradient-hero">Hub</span>
+            </span>
+          </motion.div>
         </Link>
 
         <nav className="hidden md:flex items-center space-x-1">
