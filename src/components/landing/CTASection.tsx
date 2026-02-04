@@ -30,12 +30,13 @@ const CTASection = () => {
       />
       
       <div className="container max-w-5xl mx-auto relative">
+        {/* Glass card background for better readability */}
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center space-y-8"
+          className="text-center space-y-8 bg-black/20 backdrop-blur-md rounded-3xl p-8 md:p-12 lg:p-16 border border-white/10 shadow-2xl"
         >
           {/* Badge */}
           <motion.div
